@@ -1,0 +1,23 @@
+import express from 'express';
+import marchaRoutes from './routes/marcha.js';
+import autorRoutes from './routes/autor.js';
+import bandaRoutes from './routes/banda.js';
+import cors from 'cors';
+
+const app = express();
+const port = 3000;  
+
+app.use(express.json());
+app.use(cors());
+app.use('/marcha', marchaRoutes);
+app.use('/autor', autorRoutes);
+app.use('/banda', bandaRoutes);
+
+
+app.get('/', (req, res) => {
+  res.send('Hello World');  
+});
+
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);  
+});
