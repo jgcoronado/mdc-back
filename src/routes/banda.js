@@ -30,6 +30,11 @@ router.get('/:id', async (req, res) => {
     const [results_banda] = await connection.execute(sql_autor, params);
     const autor = results_banda[0];
     if (results_banda.length === 0) res.send([]);
+    const sql_discos = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD from DISCO d
+      WHERE d.BANDADISCO LIKE ?
+      ORDER BY d.FECHA_CD ASC`;
+    const [results_discos] = await connection.execute(sql_discos, params);
+    const discosLength = results_discos.length;
     const sql_estrenos = `SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA, 
       GROUP_CONCAT(DISTINCT CONCAT(a.ID_AUTOR,'#',a.NOMBRE,' ',a.APELLIDOS) SEPARATOR '|') as AUTOR
       FROM marcha m
@@ -43,7 +48,13 @@ router.get('/:id', async (req, res) => {
     const [results_marchas] = await connection.execute(sql_estrenos, params);
     results_marchas.map(r => formatAutor(r));
     const marchasLength = results_marchas.length;
-    const resToSend = { ...autor, marchasLength, marchas: results_marchas};
+    const resToSend = {
+      ...autor,
+      discosLength,
+      discos: results_discos,
+      marchasLength,
+      marchas: results_marchas,
+    };
     res.send(resToSend);
   } catch (err) {
     console.log(err);
@@ -59,27 +70,6 @@ router.get('/search/:name', async (req, res) => {
       WHERE b.NOMBRE_COMPLETO LIKE ?
       GROUP BY b.ID_BANDA ORDER BY b.NOMBRE_BREVE ASC`;
     const params = [`%${name}%`];
-    const results = await resolveQuery(sql,params);
-    res.send(results);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-
- //TODO
-router.get('/:id/disco', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const sql = `SELECT b.ID_BANDA, d.ID_DISCO, d.NOMBRE_CD,
-      d.FECHA_CD, CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA
-      FROM disco_marcha dm
-      INNER JOIN disco d
-      ON d.ID_DISCO = dm.ID_DISCO
-      INNER JOIN banda b
-      ON b.ID_BANDA = d.BANDADISCO
-      WHERE dm.IDMARCHA LIKE ? ORDER BY d.FECHA_CD ASC`;
-    const params = [id];
     const results = await resolveQuery(sql,params);
     res.send(results);
   } catch (err) {

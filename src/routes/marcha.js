@@ -26,24 +26,26 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const sql = `SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA, 
         GROUP_CONCAT(DISTINCT CONCAT(a.ID_AUTOR,"#", a.NOMBRE,' ', a.APELLIDOS) SEPARATOR '|') as AUTOR,
-        m.BANDA_ESTRENO, CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA,
-        CASE WHEN dm.IDMARCHA is not null then 1 else 0 end as GRABADA
-        FROM marcha m
-        INNER JOIN marcha_autor ma 
-        ON ma.ID_MARCHA = m.ID_MARCHA
-        INNER JOIN autor a
-        ON a.ID_AUTOR = ma.ID_AUTOR
-        LEFT OUTER JOIN disco_marcha dm 
-        ON dm.IDMARCHA = m.ID_MARCHA
-        LEFT OUTER JOIN banda b 
-        ON b.ID_BANDA = m.BANDA_ESTRENO
-        WHERE m.ID_MARCHA
-        LIKE ?
+        m.BANDA_ESTRENO, CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA FROM marcha m
+        INNER JOIN marcha_autor ma ON ma.ID_MARCHA = m.ID_MARCHA
+        INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
+        LEFT OUTER JOIN disco_marcha dm ON dm.IDMARCHA = m.ID_MARCHA
+        LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
+        WHERE m.ID_MARCHA LIKE ?
         GROUP BY m.ID_MARCHA`;
     const params = [id];
     const [results] = await connection.execute(sql, params);
     if (results.length === 0) res.send([]);
-    const resToSend = formatAutor(results[0]);
+    const res_marcha = formatAutor(results[0]);
+    const sql_discos = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA,
+      CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA FROM disco d
+      LEFT OUTER JOIN disco_marcha dm ON dm.ID_DISCO = d.ID_DISCO
+      LEFT OUTER JOIN banda b ON b.ID_BANDA = d.BANDADISCO
+      WHERE dm.IDMARCHA LIKE ?
+      ORDER BY d.FECHA_CD ASC`;
+    const [results_disco] = await connection.execute(sql_discos, params);
+    const discosLength = results_disco.length;
+    const resToSend = { ...res_marcha, discosLength, discos: results_disco};
     res.send(resToSend);
   } catch (err) {
     console.log(err);
