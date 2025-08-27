@@ -23,7 +23,7 @@ router.get('/all', async (_, res) => {
 
 router.get('/search', async (req, res) => {
   try {
-    const { titulo, fecha, dedicatoria, localidad, provincia } = req.query;
+    const { titulo, fechaDesde, fechaHasta, dedicatoria, localidad, provincia } = req.query;
     const sql_search = [];
     const params = [];
 
@@ -31,9 +31,13 @@ router.get('/search', async (req, res) => {
       sql_search.push(`MATCH(m.TITULO) AGAINST(? IN NATURAL LANGUAGE MODE)`);
       params.push(`%${titulo}%`);
     }
-    if(fecha) {
-      sql_search.push(`m.FECHA LIKE ?`);
-      params.push(`%${fecha}%`);
+    if(fechaDesde) {
+      sql_search.push(`m.FECHA >= ?`);
+      params.push(`${fechaDesde}`);
+    }
+    if(fechaHasta) {
+      sql_search.push(`m.FECHA <= ?`);
+      params.push(`${fechaHasta}`);
     }
     if(dedicatoria) {
       sql_search.push(`m.DEDICATORIA LIKE ?`);
@@ -59,7 +63,6 @@ router.get('/search', async (req, res) => {
         ON dm.IDMARCHA = m.ID_MARCHA WHERE `;
     const sql_tail = ` GROUP BY m.ID_MARCHA ORDER BY m.TITULO ASC`;
     const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
-    console.log("🚀 ~ sql:", sql)
     const results = await resolveQuery(sql,params);
     results.data.map(r => formatAutor(r));
     res.send(results);
@@ -81,9 +84,7 @@ router.get('/:id', async (req, res) => {
         WHERE m.ID_MARCHA LIKE ?
         GROUP BY m.ID_MARCHA`;
     const params = [id];
-    console.log("🚀 ~ params:", params)
     const [results] = await connection.execute(sql, params);
-    console.log("🚀 ~ results:", results)
     if (results.length === 0) res.send([]);
     const res_marcha = formatAutor(results[0]);
     const sql_discos = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA,
