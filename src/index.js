@@ -1,4 +1,5 @@
 import express from 'express';
+import loginRoutes from './routes/login.js';
 import marchaRoutes from './routes/marcha.js';
 import autorRoutes from './routes/autor.js';
 import bandaRoutes from './routes/banda.js';
@@ -11,6 +12,7 @@ const port = 3000;
 
 app.use(express.json());
 app.use(cors());
+app.use('/login', loginRoutes);
 app.use('/marcha', marchaRoutes);
 app.use('/autor', autorRoutes);
 app.use('/banda', bandaRoutes);
