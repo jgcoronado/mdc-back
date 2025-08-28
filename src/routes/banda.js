@@ -4,6 +4,34 @@ import { resolveQuery, formatAutor } from '../helpers/index.js';
 
 const router = express.Router();
 
+const getTimeline = async banda => {
+  const timeline = [];
+  const { ID_BANDA, FECHA_FUND, NOMBRE_BREVE } = banda;
+  timeline.push({ ID_BANDA, FECHA_FUND, NOMBRE_BREVE });
+  let idAnt = banda.FORMACION_ANT;
+  let idSig = banda.FORMACION_SIG;
+  [[idAnt, 'ANT'], [idSig,'SIG']].forEach(async e => {
+    let [id, _] = e;
+    while(id) {
+      const sql = `SELECT b.ID_BANDA, b.FORMACION_${e[1]}, b.FORMACION_${e[1]}2, b.NOMBRE_BREVE, b.FECHA_FUND
+        FROM BANDA b WHERE b.ID_BANDA = ${id}`;
+      const [results, fields] = await connection.query(sql);
+      if(fields.length > 0) {
+        const { ID_BANDA, FECHA_FUND, NOMBRE_BREVE } = results[0];
+        timeline.push({
+          ID_BANDA,
+          FECHA_FUND,
+          NOMBRE_BREVE,
+      });
+      }
+      const name = `FORMACION_${e[1]}`;
+      const {[name]: form} = results[0];
+      id = form;
+    }
+  });
+  return timeline;
+};
+
 router.get('/', ( _, res) => {
     const response = 'Allow endpoints are: /all, /:id, /search/:name .';
     res.send(response);
@@ -29,6 +57,7 @@ router.get('/:id', async (req, res) => {
     const params = [id];
     const [results_banda] = await connection.execute(sql_autor, params);
     const autor = results_banda[0];
+    const timeline = await getTimeline(autor);
     if (results_banda.length === 0) res.send([]);
     const sql_discos = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD from DISCO d
       WHERE d.BANDADISCO LIKE ?
@@ -48,8 +77,10 @@ router.get('/:id', async (req, res) => {
     const [results_marchas] = await connection.execute(sql_estrenos, params);
     results_marchas.map(r => formatAutor(r));
     const marchasLength = results_marchas.length;
+    timeline.sort((a, b) => a.FECHA_FUND - b.FECHA_FUND);
     const resToSend = {
       ...autor,
+      timeline,
       discosLength,
       discos: results_discos,
       marchasLength,
