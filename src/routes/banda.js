@@ -6,21 +6,23 @@ const router = express.Router();
 
 const getTimeline = async banda => {
   const timeline = [];
-  const { ID_BANDA, FECHA_FUND, NOMBRE_BREVE } = banda;
-  timeline.push({ ID_BANDA, FECHA_FUND, NOMBRE_BREVE });
+  const { ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE } = banda;
+  timeline.push({ ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE });
   let idAnt = banda.FORMACION_ANT;
   let idSig = banda.FORMACION_SIG;
   [[idAnt, 'ANT'], [idSig,'SIG']].forEach(async e => {
     let [id, _] = e;
     while(id) {
-      const sql = `SELECT b.ID_BANDA, b.FORMACION_${e[1]}, b.FORMACION_${e[1]}2, b.NOMBRE_BREVE, b.FECHA_FUND
+      const sql = `SELECT b.ID_BANDA, b.FORMACION_${e[1]}, b.FORMACION_${e[1]}2,
+        b.NOMBRE_BREVE, b.FECHA_FUND, b.FECHA_EXT
         FROM BANDA b WHERE b.ID_BANDA = ${id}`;
       const [results, fields] = await connection.query(sql);
       if(fields.length > 0) {
-        const { ID_BANDA, FECHA_FUND, NOMBRE_BREVE } = results[0];
+        const { ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE } = results[0];
         timeline.push({
           ID_BANDA,
           FECHA_FUND,
+          FECHA_EXT,
           NOMBRE_BREVE,
       });
       }
@@ -59,9 +61,9 @@ router.get('/:id', async (req, res) => {
     const autor = results_banda[0];
     const timeline = await getTimeline(autor);
     if (results_banda.length === 0) res.send([]);
-    const sql_discos = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD from DISCO d
-      WHERE d.BANDADISCO LIKE ?
-      ORDER BY d.FECHA_CD ASC`;
+    const sql_discos = `SELECT DISTINCT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD,
+      (SELECT COUNT(m.ID_DM) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as PISTAS from DISCO d
+      WHERE d.BANDADISCO LIKE ? ORDER BY d.FECHA_CD ASC`;
     const [results_discos] = await connection.execute(sql_discos, params);
     const discosLength = results_discos.length;
     const sql_estrenos = `SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA, 
