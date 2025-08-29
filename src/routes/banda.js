@@ -62,7 +62,8 @@ router.get('/:id', async (req, res) => {
     const timeline = await getTimeline(autor);
     if (results_banda.length === 0) res.send([]);
     const sql_discos = `SELECT DISTINCT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD,
-      (SELECT COUNT(m.ID_DM) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as PISTAS from DISCO d
+      (SELECT COUNT(m.ID_DM) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as PISTAS,
+      (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as DISCOS from DISCO d
       WHERE d.BANDADISCO LIKE ? ORDER BY d.FECHA_CD ASC`;
     const [results_discos] = await connection.execute(sql_discos, params);
     const discosLength = results_discos.length;
