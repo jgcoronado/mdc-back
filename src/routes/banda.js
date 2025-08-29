@@ -51,6 +51,36 @@ router.get('/all', async (_, res) => {
   }
 });
 
+router.get('/search', async (req, res) => {
+  try {
+    const { titulo, localidad, provincia } = req.query;
+    const sql_search = [];
+    const params = [];
+
+    if(titulo) {
+      sql_search.push(`b.NOMBRE_COMPLETO LIKE ?`);
+      params.push(`%${titulo}%`);
+    }
+    if(localidad) {
+      sql_search.push(`b.LOCALIDAD LIKE ?`);
+      params.push(`%${localidad}%`);
+    }
+    if(provincia) {
+      sql_search.push(`b.PROVINCIA LIKE ?`);
+      params.push(`%${provincia}%`);
+    }
+    const sql_head = `SELECT b.ID_BANDA, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO, b.PROVINCIA,
+      b.LOCALIDAD, b.FECHA_FUND, b.FECHA_EXT, CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA
+      FROM banda b WHERE `;
+    const sql_tail = ` GROUP BY b.ID_BANDA ORDER BY b.NOMBRE_BREVE ASC`;
+    const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
+    const results = await resolveQuery(sql,params);
+    res.send(results);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -90,22 +120,6 @@ router.get('/:id', async (req, res) => {
       marchas: results_marchas,
     };
     res.send(resToSend);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.get('/search/:name', async (req, res) => {
-  try {
-    const { name } = req.params;
-    const sql = `SELECT b.ID_BANDA, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO, b.PROVINCIA,
-      b.LOCALIDAD, b.FECHA_FUND, b.FECHA_EXT, CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA
-      FROM banda b
-      WHERE b.NOMBRE_COMPLETO LIKE ?
-      GROUP BY b.ID_BANDA ORDER BY b.NOMBRE_BREVE ASC`;
-    const params = [`%${name}%`];
-    const results = await resolveQuery(sql,params);
-    res.send(results);
   } catch (err) {
     console.log(err);
   }
