@@ -1,6 +1,5 @@
-import connection from '../db.js';
 import express from 'express';
-import { resolveQuery } from '../helpers/index.js';
+import { resolveQuery, poolExecute } from '../helpers/index.js';
 
 const router = express.Router();
 
@@ -9,27 +8,14 @@ router.get('/', ( _, res) => {
     res.send(response);
 });
 
-router.get('/all', async (_, res) => {
-  try {
-    const [results, fields] = await connection.query(
-      'SELECT * FROM autor LIMIT 100'
-    );
-    console.log(fields); // fields contains extra meta data about results, if available
-    res.send(results);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const sql_autor = `SELECT * from autor
       WHERE autor.ID_AUTOR LIKE ?`;
     const params = [id];
-    const [results_autor] = await connection.execute(sql_autor, params);
+    const [results_autor] = await poolExecute(sql_autor, params);
     const autor = results_autor[0];
-    console.log("🚀 ~ autor:", autor)
     if (results_autor.length === 0) res.send([]);
     const sql_marcha = `SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.DEDICATORIA from marcha m
       INNER JOIN marcha_autor ma 
@@ -38,7 +24,7 @@ router.get('/:id', async (req, res) => {
       ON a.ID_AUTOR = ma.ID_AUTOR
       WHERE a.ID_AUTOR
       LIKE ? ORDER BY m.FECHA ASC`
-    const [results_marchas] = await connection.execute(sql_marcha, params);
+    const [results_marchas] = await poolExecute(sql_marcha, params);
     const marchasLength = results_marchas.length;
     const resToSend = { ...autor, marchasLength, marchas: results_marchas};
     res.send(resToSend);
