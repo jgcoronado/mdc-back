@@ -1,10 +1,19 @@
-import connection from '../db.js';
+import db from '../db.js';
 
 const resolveQuery = async (sql, params) => {
-    const [queryResults] = await connection.execute(sql, params);
+    const conn = await db.pool.getConnection();
+    const [queryResults] = await conn.execute(sql, params);
+    db.pool.releaseConnection(conn);
     const queryRows = queryResults.length;
     return { rowsReturned: queryRows, data: queryResults };
 };
+
+const poolExecute = async (sql, params) => {
+  const conn = await db.pool.getConnection();
+  const result = await conn.execute(sql, params);
+  db.pool.releaseConnection(conn);
+  return result;  
+}
 
 const mapIdAutor = autor => {
   const result = [];
@@ -28,4 +37,4 @@ const formatAutor = query => {
   return query;
 }
 
-export { resolveQuery, formatAutor };
+export { resolveQuery, poolExecute, formatAutor };
