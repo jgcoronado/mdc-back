@@ -15,7 +15,7 @@ const getTimeline = async banda => {
     while(id) {
       const sql = `SELECT b.ID_BANDA, b.FORMACION_${e[1]}, b.FORMACION_${e[1]}2,
         b.NOMBRE_BREVE, b.FECHA_FUND, b.FECHA_EXT
-        FROM BANDA b WHERE b.ID_BANDA = ${id}`;
+        FROM banda b WHERE b.ID_BANDA = ${id}`;
       const [results, fields] = await connection.query(sql);
       if(fields.length > 0) {
         const { ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE } = results[0];
@@ -84,8 +84,8 @@ router.get('/search', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const sql_autor = `SELECT * from BANDA
-      WHERE BANDA.ID_BANDA LIKE ?`;
+    const sql_autor = `SELECT * from banda
+      WHERE banda.ID_BANDA LIKE ?`;
     const params = [id];
     const [results_banda] = await connection.execute(sql_autor, params);
     const autor = results_banda[0];
@@ -93,7 +93,7 @@ router.get('/:id', async (req, res) => {
     if (results_banda.length === 0) res.send([]);
     const sql_discos = `SELECT DISTINCT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD,
       (SELECT COUNT(m.ID_DM) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as PISTAS,
-      (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as DISCOS from DISCO d
+      (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as DISCOS from disco d
       WHERE d.BANDADISCO LIKE ? ORDER BY d.FECHA_CD ASC`;
     const [results_discos] = await connection.execute(sql_discos, params);
     const discosLength = results_discos.length;

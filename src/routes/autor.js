@@ -24,14 +24,14 @@ router.get('/all', async (_, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const sql_autor = `SELECT * from AUTOR
-      WHERE AUTOR.ID_AUTOR LIKE ?`;
+    const sql_autor = `SELECT * from autor
+      WHERE autor.ID_AUTOR LIKE ?`;
     const params = [id];
     const [results_autor] = await connection.execute(sql_autor, params);
     const autor = results_autor[0];
     console.log("🚀 ~ autor:", autor)
     if (results_autor.length === 0) res.send([]);
-    const sql_marcha = `SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.DEDICATORIA from MARCHA m
+    const sql_marcha = `SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.DEDICATORIA from marcha m
       INNER JOIN marcha_autor ma 
       ON ma.ID_MARCHA = m.ID_MARCHA
       INNER JOIN autor a

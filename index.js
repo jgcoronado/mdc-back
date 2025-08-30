@@ -1,9 +1,9 @@
 import express from 'express';
-import loginRoutes from './routes/login.js';
-import marchaRoutes from './routes/marcha.js';
-import autorRoutes from './routes/autor.js';
-import bandaRoutes from './routes/banda.js';
-import discoRoutes from './routes/disco.js';
+import loginRoutes from './src/routes/login.js';
+import marchaRoutes from './src/routes/marcha.js';
+import autorRoutes from './src/routes/autor.js';
+import bandaRoutes from './src/routes/banda.js';
+import discoRoutes from './src/routes/disco.js';
 
 import cors from 'cors';
 

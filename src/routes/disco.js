@@ -27,7 +27,7 @@ router.get('/:id', async (req, res) => {
     const sql_autor = `SELECT d.ID_DISCO, d.NOMBRE_CD,
       d.FECHA_CD, d.d_DETALLES, b.ID_BANDA,
       (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as DISCOS, 
-      CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA from DISCO d
+      CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA from disco d
       LEFT JOIN BANDA b ON b.ID_BANDA = d.BANDADISCO
       WHERE d.ID_DISCO LIKE ?`;
     const params = [id];
@@ -57,7 +57,7 @@ router.get('/search/:name', async (req, res) => {
   try {
     const { name } = req.params;
     const sql = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA, 
-      CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA from DISCO d
+      CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA from disco d
       LEFT JOIN BANDA b ON b.ID_BANDA = d.BANDADISCO
       WHERE d.NOMBRE_CD LIKE ?
       ORDER BY d.NOMBRE_cd ASC`;
