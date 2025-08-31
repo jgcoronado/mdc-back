@@ -1,6 +1,6 @@
-import connection from '../db.js';
+import db from '../db.js';
 import express from 'express';
-import { resolveQuery, formatAutor } from '../helpers/index.js';
+import { resolveQuery, poolExecute, formatAutor } from '../helpers/index.js';
 
 const router = express.Router();
 
@@ -11,7 +11,7 @@ router.get('/', ( _, res) => {
 
 router.get('/all', async (_, res) => {
   try {
-    const [results, fields] = await connection.query(
+    const [results, fields] = await db.connection.query(
       'SELECT * FROM disco LIMIT 100'
     );
     console.log(fields); // fields contains extra meta data about results, if available
@@ -31,7 +31,7 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
       WHERE d.ID_DISCO LIKE ?`;
     const params = [id];
-    const [results_disco] = await connection.execute(sql_autor, params);
+    const [results_disco] = await poolExecute(sql_autor, params);
     if (results_disco.length === 0) res.send([]);
     const sql_marchas = `SELECT dm.N_DISCO, dm.NUMEROMARCHA, m.ID_MARCHA, m.TITULO, m.FECHA,					
       GROUP_CONCAT(DISTINCT CONCAT(a.ID_AUTOR,'#',a.NOMBRE,' ',a.APELLIDOS) SEPARATOR '|') as AUTOR,
@@ -43,7 +43,7 @@ router.get('/:id', async (req, res) => {
       INNER JOIN autor a ON a.ID_AUTOR = am.ID_AUTOR
       WHERE d.ID_DISCO LIKE ?
       GROUP BY dm.ID_DM ORDER BY dm.N_DISCO ASC, dm.NUMEROMARCHA ASC, dm.DM_ENLAZADA ASC;`;
-    const [results_marchas] = await connection.execute(sql_marchas, params);
+    const [results_marchas] = await poolExecute(sql_marchas, params);
     results_marchas.map(r => formatAutor(r));
     const marchasLength = results_marchas.length;
     const resToSend = { ...results_disco[0], marchasLength, marchas: results_marchas};
