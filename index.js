@@ -4,6 +4,8 @@ import marchaRoutes from './src/routes/marcha.js';
 import autorRoutes from './src/routes/autor.js';
 import bandaRoutes from './src/routes/banda.js';
 import discoRoutes from './src/routes/disco.js';
+import statsRoutes from './src/routes/stats.js';
+
 
 import cors from 'cors';
 
@@ -17,6 +19,7 @@ app.use('/marcha', marchaRoutes);
 app.use('/autor', autorRoutes);
 app.use('/banda', bandaRoutes);
 app.use('/disco', discoRoutes);
+app.use('/stats', statsRoutes);
 
 app.get('/', (req, res) => {
   res.send('Hello World');  
