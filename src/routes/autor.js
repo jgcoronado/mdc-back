@@ -8,6 +8,28 @@ router.get('/', ( _, res) => {
     res.send(response);
 });
 
+router.get('/search', async (req, res) => {
+  try {
+    const { nombre } = req.query;
+    const sql_search = [];
+    const params = [];
+
+    if(nombre) {
+      sql_search.push(`MATCH(a.APELLIDOS, a.NOMBRE, a.NOMBRE_ART) AGAINST(?)`);
+      params.push(`%${nombre}%`);
+    }
+    const sql_head = `SELECT *, CONCAT(a.NOMBRE,' ', a.APELLIDOS) as NOMBRE_COMPLETO,
+      (SELECT COUNT(ma.ID_MARCHA) from marcha_autor ma WHERE ma.ID_AUTOR = a.ID_AUTOR)
+      AS MARCHAS from autor a WHERE `;
+    const sql_tail = ` ORDER BY a.APELLIDOS ASC`;
+    const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
+    const results = await resolveQuery(sql,params);
+    res.send(results);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -29,21 +51,6 @@ router.get('/:id', async (req, res) => {
     const marchasLength = results_marchas.length;
     const resToSend = { ...autor, marchasLength, marchas: results_marchas};
     res.send(resToSend);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.get('/search/:name', async (req, res) => {
-  try {
-    const { name } = req.params;
-    const sql = `SELECT a.ID_AUTOR, a.NOMBRE_ART, 
-					CONCAT(a.NOMBRE,' ', a.APELLIDOS) AS AUTOR FROM autor a
-					WHERE MATCH(a.APELLIDOS, a.NOMBRE, a.NOMBRE_ART) AGAINST(?) 
-					ORDER BY a.APELLIDOS ASC, a.NOMBRE ASC`;
-    const params = [`%${name}%`];
-    const results = await resolveQuery(sql,params);
-    res.send(results);
   } catch (err) {
     console.log(err);
   }
