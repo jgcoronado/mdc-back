@@ -64,4 +64,17 @@ router.get('/masGrabada', async (req, res) => {
   }
 });
 
+router.get('/estado', async (req, res) => {
+  try {
+    const sql= `SELECT (SELECT COUNT(m.ID_MARCHA) from marcha m) as MARCHAS,
+      (SELECT COUNT(a.ID_AUTOR) from autor a) as AUTORES,
+      (SELECT COUNT(b.ID_BANDA) from banda b) as BANDAS,
+      (SELECT COUNT(d.ID_DISCO) from disco d) as DISCOS`;
+    const [results] = await poolExecute(sql);
+    res.send(results);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 export default router;
