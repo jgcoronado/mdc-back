@@ -1,7 +1,7 @@
 import express from 'express';
 import { resolveQuery, poolExecute } from '../helpers/index.js';
 
-const router = express.Router();
+export const router = express.Router();
 
 router.get('/', ( _, res) => {
     const response = 'Allow endpoints are: /all, /:id, /search/:name .';

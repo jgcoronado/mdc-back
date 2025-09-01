@@ -21,6 +21,28 @@ router.get('/all', async (_, res) => {
   }
 });
 
+router.get('/search', async (req, res) => {
+  try {
+    const { nombre } = req.query;
+    const sql_search = [];
+    const params = [];
+
+    if(nombre) {
+      sql_search.push(`d.NOMBRE_CD LIKE ?`);
+      params.push(`%${nombre}%`);
+    }
+    const sql_head = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA, 
+      CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA from disco d
+      LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO WHERE `;
+    const sql_tail = ` ORDER BY d.FECHA_CD ASC`;
+    const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
+    const results = await resolveQuery(sql,params);
+    res.send(results);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -49,22 +71,6 @@ router.get('/:id', async (req, res) => {
     const marchasLength = results_marchas.length;
     const resToSend = { ...results_disco[0], marchasLength, marchas: results_marchas};
     res.send(resToSend);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.get('/search/:name', async (req, res) => {
-  try {
-    const { name } = req.params;
-    const sql = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA, 
-      CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA from disco d
-      LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
-      WHERE d.NOMBRE_CD LIKE ?
-      ORDER BY d.NOMBRE_cd ASC`;
-    const params = [`%${name}%`];
-    const results = await resolveQuery(sql,params);
-    res.send(results);
   } catch (err) {
     console.log(err);
   }
