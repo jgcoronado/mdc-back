@@ -55,6 +55,7 @@ router.get('/search', async (req, res) => {
     const sql_tail = ` GROUP BY m.ID_MARCHA ORDER BY m.TITULO ASC`;
     const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
     const results = await resolveQuery(sql,params);
+    results.data.map(r => r.FECHA === 0 || r.FECHA === '' ? r.FECHA = 's/f' : r.FECHA);
     results.data.map(r => formatAutor(r));
     res.send(results);
   } catch (err) {
@@ -67,7 +68,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const sql = `SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA, 
         GROUP_CONCAT(DISTINCT CONCAT(a.ID_AUTOR,"#", a.NOMBRE,' ', a.APELLIDOS) SEPARATOR '|') as AUTOR,
-        m.BANDA_ESTRENO, CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA FROM marcha m
+        m.BANDA_ESTRENO, m.DETALLES_MARCHA, CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA FROM marcha m
         INNER JOIN marcha_autor ma ON ma.ID_MARCHA = m.ID_MARCHA
         INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
         LEFT OUTER JOIN disco_marcha dm ON dm.IDMARCHA = m.ID_MARCHA

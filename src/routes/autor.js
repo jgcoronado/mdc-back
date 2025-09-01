@@ -25,6 +25,7 @@ router.get('/:id', async (req, res) => {
       WHERE a.ID_AUTOR
       LIKE ? ORDER BY m.FECHA ASC`
     const [results_marchas] = await poolExecute(sql_marcha, params);
+    results_marchas.map(r => r.FECHA === 0 || r.FECHA === '' ? r.FECHA = 's/f' : r.FECHA);
     const marchasLength = results_marchas.length;
     const resToSend = { ...autor, marchasLength, marchas: results_marchas};
     res.send(resToSend);

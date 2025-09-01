@@ -44,6 +44,7 @@ router.get('/:id', async (req, res) => {
       WHERE d.ID_DISCO LIKE ?
       GROUP BY dm.ID_DM ORDER BY dm.N_DISCO ASC, dm.NUMEROMARCHA ASC, dm.DM_ENLAZADA ASC;`;
     const [results_marchas] = await poolExecute(sql_marchas, params);
+    results_marchas.map(r => r.FECHA === 0 || r.FECHA === '' ? r.FECHA = 's/f' : r.FECHA);
     results_marchas.map(r => formatAutor(r));
     const marchasLength = results_marchas.length;
     const resToSend = { ...results_disco[0], marchasLength, marchas: results_marchas};

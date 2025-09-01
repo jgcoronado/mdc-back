@@ -71,7 +71,7 @@ router.get('/estado', async (req, res) => {
       (SELECT COUNT(b.ID_BANDA) from banda b) as BANDAS,
       (SELECT COUNT(d.ID_DISCO) from disco d) as DISCOS`;
     const [results] = await poolExecute(sql);
-    res.send(results);
+    res.send(results[0]);
   } catch (err) {
     console.log(err);
   }
