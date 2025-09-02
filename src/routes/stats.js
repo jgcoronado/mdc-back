@@ -10,7 +10,6 @@ router.get('/', ( _, res) => {
 
 router.get('/test', async ( _, res) => {
   const response = 'Allow endpoints are: /all, /:id, /search/:name.';
-  console.log("🚀 ~ response:", response)
       const sql = `SELECT * FROM autor LIMIT 3`;
     const [results] = await poolExecute(sql);
   res.send({ response, results });
