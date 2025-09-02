@@ -8,7 +8,7 @@ const resolveQuery = async (sql, params) => {
     return { rowsReturned: queryRows, data: queryResults };
 };
 
-const poolExecute = async (sql, params) => {
+const poolExecute = async (sql, params = []) => {
   console.log("🚀 ~ poolExecute ~ params:", params)
   console.log("🚀 ~ poolExecute ~ sql:", sql)
   const conn = await db.pool.getConnection().catch(err => console.log("getConnection error", err));
