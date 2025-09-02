@@ -45,7 +45,7 @@ router.get('/masDedica', async (req, res) => {
 
 router.get('/masEstreno', async (req, res) => {
   try {
-    const sql = `SELECT b.ID_BANDA, COUNT(m.BANDA_ESTRENO) AS MARCHAS,
+    const sql = `SELECT b.ID_BANDA, COUNT(m.ID_MARCHA) AS MARCHAS,
       CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA FROM marcha m
       INNER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO 
       GROUP BY BANDA HAVING b.ID_BANDA != 0 ORDER BY MARCHAS DESC LIMIT 20`;
