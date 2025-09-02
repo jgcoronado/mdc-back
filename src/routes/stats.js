@@ -8,6 +8,15 @@ router.get('/', ( _, res) => {
   res.send(response);
 });
 
+router.get('/test', async ( _, res) => {
+  const response = 'Allow endpoints are: /all, /:id, /search/:name.';
+  console.log("🚀 ~ response:", response)
+      const sql = `SELECT * FROM autor LIMIT 3`;
+    const [results] = await poolExecute(sql);
+  res.send({ response, results });
+});
+
+
 router.get('/masAutor', async (req, res) => {
   try {
     const sql = `SELECT a.ID_AUTOR, COUNT(m.ID_MARCHA) AS MARCHAS,
