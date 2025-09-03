@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - HOST=${HOST:-localhost}
+      - HOST=${HOST:-host.docker.internal}
       - PORT=${PORT:-3306}
       - USER=${USER:-mdcreadonly}
       - PASSWORD=${PASSWORD:-klapaucius}
@@ -14,29 +14,4 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-    depends_on:
-      - db
-    networks:
-      - mdc-network
-
-  db:
-    image: mysql:8.0
-    environment:
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpassword}
-      - MYSQL_DATABASE=${DATABASE:-mdc}
-      - MYSQL_USER=${USER:-mdcreadonly}
-      - MYSQL_PASSWORD=${PASSWORD:-klapaucius}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    restart: unless-stopped
-    networks:
-      - mdc-network
-
-volumes:
-  mysql_data:
-
-networks:
-  mdc-network:
-    driver: bridge
+    network_mode: host
