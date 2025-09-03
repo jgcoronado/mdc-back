@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post('/', async (req, res, next) => {
     const { username, password } = req.body;
-    const sql = `SELECT u.USUARIO, u.CLAVE FROM USUARIOS u
+    const sql = `SELECT u.USUARIO, u.CLAVE FROM usuarios u
         WHERE u.USUARIO LIKE ? LIMIT 1`;
     const params = [username];
     const results = await resolveQuery(sql,params);
