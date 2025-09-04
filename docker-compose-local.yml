@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+      - "3006:3006"
+    environment:
+      - HOST=jaguerra27.helioho.st
+      - PORT=3306
+      - USER=jaguerra27_admin
+      - PASSWORD=n5im63_X4
+      - DATABASE=jaguerra27_mdc
+      - SECRET_KEY=calimerocalimerocalimero
+    restart: unless-stopped

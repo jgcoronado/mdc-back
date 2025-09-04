@@ -9,6 +9,7 @@ services:
       - USER=${USER:-mdcreadonly}
       - PASSWORD=${PASSWORD:-klapaucius}
       - DATABASE=${DATABASE:-mdc}
+      - SECRET_KEY=${SECRET_KEY:-transeufratina}
     env_file:
       - .env
     restart: unless-stopped
