@@ -6,6 +6,7 @@ import { getCurrentUser, logout } from '../../services/authService';
 const router = useRouter();
 
 const user = ref('');
+const marchaId = ref('');
 
 onMounted(() => {
   const session = getCurrentUser();
@@ -16,15 +17,44 @@ function goToLogout() {
   logout();
   router.push('/login');
 }
+
+function goToMarchaEdit() {
+  if (!marchaId.value) {
+    return;
+  }
+  router.push({
+    name: 'marchaEdit',
+    params: { id: marchaId.value },
+  });
+}
 </script>
 
 <template>
   <h1>WELCOME TO DASHBOARD {{ user }}</h1>
-    <div class="divider"></div>
+  <div class="divider"></div>
+  <div class="flex flex-wrap gap-3 items-end">
+    <fieldset class="fieldset">
+      <label class="label">ID de marcha a editar</label>
+      <input
+        class="input"
+        type="number"
+        min="1"
+        v-model="marchaId"
+        placeholder="Ej: 125"
+        @keyup.enter="goToMarchaEdit()"
+      />
+    </fieldset>
+    <button
+      class="btn btn-neutral"
+      @click="goToMarchaEdit()"
+    >
+      Ir a edición
+    </button>
     <button
       class="btn"
       @click="goToLogout()"
     >
       Logout
     </button>
+  </div>
 </template>

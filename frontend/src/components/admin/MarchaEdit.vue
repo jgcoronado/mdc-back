@@ -1,81 +1,96 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { goToDetail } from '@/services/goTo';
 import { getDetailData } from '@/services/getData';
-import { paramsToUpdate } from '@/services/admin';
-import axios from 'axios';
+import { buildMarchaUpdatePayload } from '@/services/admin';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-const router = useRouter()
-const route = useRoute()
-const apiData = ref({});
-let oldData = {};
+const router = useRouter();
+const route = useRoute();
+
+const apiData = ref(null);
+const oldData = ref(null);
+const pendingUpdate = ref({
+  marchaId: null,
+  keysToUpdate: [],
+  valuesToUpdate: [],
+  params: [],
+  sqlPreview: '',
+  changedFields: [],
+});
 
 const AUTOR = 'autor';
-const MARCHA = 'marcha'
+const MARCHA = 'marcha';
 
 onMounted(async () => {
-  apiData.value = await getDetailData(MARCHA,route);
-  oldData.value = {...apiData.value};
+  const data = await getDetailData(MARCHA, route);
+  apiData.value = { ...data };
+  oldData.value = { ...data };
+  pendingUpdate.value = buildMarchaUpdatePayload(oldData.value, apiData.value);
 });
 
 watch(
-  () => apiData,
-  (newValue, oldValue) => {
-    console.log("🚀 ~ newValue, oldValue:", newValue, oldValue)
+  () => apiData.value,
+  () => {
+    if (!apiData.value || !oldData.value) {
+      return;
+    }
+    pendingUpdate.value = buildMarchaUpdatePayload(oldData.value, apiData.value);
   },
   { deep: true }
-)
+);
 
-async function sendDataToEditMarcha() {
-  const { ID_MARCHA } = apiData.value;
-  const newData = {...apiData.value};
-  const keysToUpdate = paramsToUpdate(oldData.value, newData);
-  const valuesToUpdate = [];
-  keysToUpdate.forEach(k => {
-    valuesToUpdate.push(newData[`${k}`]);
-  });
-  const apiUrl = `${BASE_URL}/admin/editMarha`;
-  // const res = await axios.post(apiUrl, {ID_MARCHA, keysToUpdate, valuesToUpdate});
-  console.log("🚀 ~ sendDataToEditMarcha ~ ID_MARCHA, keysToUpdate, valuesToUpdate:", ID_MARCHA, keysToUpdate, valuesToUpdate)
+function sendDataToEditMarcha() {
+  const payload = buildMarchaUpdatePayload(oldData.value, apiData.value);
+  pendingUpdate.value = payload;
+  const apiUrl = `${BASE_URL}/admin/editMarcha`;
+  console.log('Prepared marcha update payload:', { apiUrl, ...payload });
+}
+
+function resetChanges() {
+  apiData.value = { ...oldData.value };
+  pendingUpdate.value = buildMarchaUpdatePayload(oldData.value, apiData.value);
+}
+
+function formatPreviewValue(value) {
+  return value === null || value === undefined || value === '' ? '(vacío)' : value;
 }
 </script>
 
 <template>
   <div v-if="apiData">
     <div class="md:min-w-4xl">
+      <div class="headDetail">Edición de marcha #{{ apiData.ID_MARCHA }}</div>
       <table class="table table-zebra">
         <tbody>
           <tr>
             <th>Título</th>
             <td>
-                <input
-                  class="input"
-                  type="text"
-                  v-model="apiData.TITULO"
-                  placeholder="apiData.TITULO"
+              <input
+                class="input w-full"
+                type="text"
+                v-model="apiData.TITULO"
+                placeholder="Título"
               />
-              {{ oldData.value?.TITULO }}
             </td>
           </tr>
           <tr>
             <th>Fecha</th>
             <td>
               <input
-                class="input"
+                class="input w-full"
                 type="text"
                 v-model="apiData.FECHA"
-                placeholder="apiData.FECHA"
-            />
-              {{ oldData.value?.FECHA }}
+                placeholder="Fecha (ej: 1998)"
+              />
             </td>
           </tr>
           <tr>
             <th>Autor</th>
             <td>
-              <div v-for="a in apiData.AUTOR">
-                <a @click="goToDetail(router, AUTOR, a.autorId)">
+              <div v-for="a in apiData.AUTOR" :key="a.autorId">
+                <a class="hover:underline cursor-pointer" @click="goToDetail(router, AUTOR, a.autorId)">
                   {{ a.nombre }}
                 </a>
               </div>
@@ -85,36 +100,102 @@ async function sendDataToEditMarcha() {
             <th>Dedicatoria</th>
             <td>
               <input
-                class="input"
+                class="input w-full"
                 type="text"
                 v-model="apiData.DEDICATORIA"
-                placeholder="apiData.DEDICATORIA"
+                placeholder="Dedicatoria"
               />
-              {{ oldData.value?.DEDICATORIA }}
             </td>
           </tr>
           <tr>
-            <th>Estrenada por</th>
+            <th>Localidad</th>
             <td>
               <input
-                class="input"
+                class="input w-full"
                 type="text"
-                v-model="apiData.BANDA_ESTRENO"
-                placeholder="apiData.BANDA_ESTRENO"
+                v-model="apiData.LOCALIDAD"
+                placeholder="Localidad"
               />
-                {{ oldData.value?.BANDA }}
+            </td>
+          </tr>
+          <tr>
+            <th>Audio</th>
+            <td>
+              <input
+                class="input w-full"
+                type="text"
+                v-model="apiData.AUDIO"
+                placeholder="URL audio"
+              />
+            </td>
+          </tr>
+          <tr>
+            <th>ID banda estreno</th>
+            <td>
+              <input
+                class="input w-full"
+                type="number"
+                v-model.number="apiData.BANDA_ESTRENO"
+                placeholder="ID de banda"
+              />
+            </td>
+          </tr>
+          <tr>
+            <th>Detalles</th>
+            <td>
+              <textarea
+                class="textarea w-full min-h-28"
+                v-model="apiData.DETALLES_MARCHA"
+                placeholder="Información adicional"
+              />
             </td>
           </tr>
         </tbody>
       </table>
-      <button
-        class="btn btn-neutral mt-4"
-        @keyup.enter="sendDataToEditMarcha()"
-        @click="sendDataToEditMarcha()"
-      >
-        Buscar
-      </button>
+
+      <div class="divider py-2 my-2">Previsualización</div>
+      <div v-if="pendingUpdate.changedFields.length > 0" class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead class="bg-neutral-content text-neutral">
+            <tr>
+              <td>Campo</td>
+              <td>Valor actual</td>
+              <td>Nuevo valor</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="field in pendingUpdate.changedFields" :key="field.key">
+              <td>{{ field.key }}</td>
+              <td>{{ formatPreviewValue(field.previousValue) }}</td>
+              <td>{{ formatPreviewValue(field.newValue) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="alert">No hay cambios pendientes.</div>
+
+      <div v-if="pendingUpdate.sqlPreview" class="mt-4">
+        <p class="font-semibold">SQL preparada:</p>
+        <pre class="bg-base-200 p-3 rounded-box overflow-x-auto">{{ pendingUpdate.sqlPreview }}</pre>
+        <p class="font-semibold mt-2">Parámetros:</p>
+        <pre class="bg-base-200 p-3 rounded-box overflow-x-auto">{{ pendingUpdate.params }}</pre>
+      </div>
+
+      <div class="flex gap-2 mt-4">
+        <button
+          class="btn btn-neutral"
+          @click="sendDataToEditMarcha()"
+        >
+          Preparar update
+        </button>
+        <button
+          class="btn"
+          @click="resetChanges()"
+        >
+          Revertir cambios
+        </button>
+      </div>
     </div>
   </div>
-  <p v-else>Loading...</p>   
+  <p v-else>Loading...</p>
 </template>
