@@ -16,27 +16,40 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+const apiLocalOnly = (process.env.API_LOCAL_ONLY || 'true').toLowerCase() === 'true';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendDistPath = path.join(__dirname, 'public');
 
 app.use(express.json());
-app.use(cors());
-// app.use(cors({
-//   origin(origin, callback) {
-//     if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-//       return callback(null, true);
-//     }
-//     return callback(new Error('CORS origin not allowed'));
-//   },
-// }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS origin not allowed'));
+  },
+}));
+
+app.use('/api', (req, res, next) => {
+  if (!apiLocalOnly) {
+    return next();
+  }
+  const peerAddress = req.socket?.remoteAddress || '';
+  const localPeers = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+  if (localPeers.has(peerAddress)) {
+    return next();
+  }
+  return res.status(403).json({ error: 'API access allowed only from server host' });
+});
+
 app.use('/api/login', loginRoutes);
 app.use('/api/marcha', marchaRoutes);
 app.use('/api/autor', autorRoutes);
 app.use('/api/banda', bandaRoutes);
 app.use('/api/disco', discoRoutes);
 app.use('/api/stats', statsRoutes);
-app.set('trust proxy', true);
+app.set('trust proxy', false);
 
 if (fs.existsSync(frontendDistPath)) {
   app.use(express.static(frontendDistPath));

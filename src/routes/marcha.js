@@ -3,6 +3,7 @@ import {
   resolveQuery, 
   poolExecute, 
   formatAutor,
+  parsePositiveInt,
 } from '../helpers/index.js';
 
 const router = express.Router();
@@ -53,6 +54,9 @@ router.get('/search', async (req, res) => {
         LEFT OUTER JOIN disco_marcha dm 
         ON dm.IDMARCHA = m.ID_MARCHA WHERE `;
     const sql_tail = ` GROUP BY m.ID_MARCHA ORDER BY m.TITULO ASC`;
+    if (sql_search.length === 0) {
+      return res.send({ rowsReturned: 0, data: [] });
+    }
     const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
     const results = await resolveQuery(sql,params);
     results.data.map(r => r.FECHA === 0 || r.FECHA === '' ? r.FECHA = 's/f' : r.FECHA);
@@ -66,7 +70,10 @@ router.get('/search', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parsePositiveInt(req.params.id);
+    if (!id) {
+      return res.status(400).send({ error: 'Invalid id' });
+    }
     const sql = `SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA, 
         GROUP_CONCAT(DISTINCT CONCAT(a.ID_AUTOR,"#", a.NOMBRE,' ', a.APELLIDOS) SEPARATOR '|') as AUTOR,
         m.BANDA_ESTRENO, m.DETALLES_MARCHA, CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA FROM marcha m
@@ -74,17 +81,19 @@ router.get('/:id', async (req, res) => {
         INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
         LEFT OUTER JOIN disco_marcha dm ON dm.IDMARCHA = m.ID_MARCHA
         LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
-        WHERE m.ID_MARCHA LIKE ?
+        WHERE m.ID_MARCHA = ?
         GROUP BY m.ID_MARCHA`;
     const params = [id];
     const [results] = await poolExecute(sql, params);
-    if (results.length === 0) res.send([]);
+    if (results.length === 0) {
+      return res.send([]);
+    }
     const res_marcha = formatAutor(results[0]);
     const sql_discos = `SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA,
       CONCAT (b.NOMBRE_BREVE,' (',b.LOCALIDAD,')') as BANDA FROM disco d
       LEFT OUTER JOIN disco_marcha dm ON dm.ID_DISCO = d.ID_DISCO
       LEFT OUTER JOIN banda b ON b.ID_BANDA = d.BANDADISCO
-      WHERE dm.IDMARCHA LIKE ?
+      WHERE dm.IDMARCHA = ?
       ORDER BY d.FECHA_CD ASC`;
     const [results_disco] = await poolExecute(sql_discos, params);
     const discosLength = results_disco.length;
@@ -98,7 +107,10 @@ router.get('/:id', async (req, res) => {
 
 router.get('/:id/disco', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parsePositiveInt(req.params.id);
+    if (!id) {
+      return res.status(400).send({ error: 'Invalid id' });
+    }
     const sql = `SELECT b.ID_BANDA, d.ID_DISCO, d.NOMBRE_CD,
       d.FECHA_CD, CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA
       FROM disco_marcha dm
@@ -106,7 +118,7 @@ router.get('/:id/disco', async (req, res) => {
       ON d.ID_DISCO = dm.ID_DISCO
       INNER JOIN banda b
       ON b.ID_BANDA = d.BANDADISCO
-      WHERE dm.IDMARCHA LIKE ? ORDER BY d.FECHA_CD ASC`;
+      WHERE dm.IDMARCHA = ? ORDER BY d.FECHA_CD ASC`;
     const params = [id];
     const results = await resolveQuery(sql,params);
     res.send(results);

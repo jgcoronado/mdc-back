@@ -1,5 +1,5 @@
 import express from 'express';
-import { resolveQuery, poolExecute } from '../helpers/index.js';
+import { resolveQuery, poolExecute, parsePositiveInt } from '../helpers/index.js';
 
 export const router = express.Router();
 
@@ -22,6 +22,34 @@ router.get('/search', async (req, res) => {
       (SELECT COUNT(ma.ID_MARCHA) from marcha_autor ma WHERE ma.ID_AUTOR = a.ID_AUTOR)
       AS MARCHAS from autor a WHERE `;
     const sql_tail = ` ORDER BY a.APELLIDOS ASC`;
+    if (sql_search.length === 0) {
+      return res.send({ rowsReturned: 0, data: [] });
+    }
+    const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
+    const results = await resolveQuery(sql,params);
+    res.send(results);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+router.get('/fastSearch/:nombre', async (req, res) => {
+  try {
+    const { nombre } = req.params;
+    const sql_search = [];
+    const params = [];
+
+    if(nombre) {
+      sql_search.push(`a.APELLIDOS LIKE ?`);
+      params.push(`${nombre}%`);
+    }
+    const sql_head = `SELECT a.ID_AUTOR,
+      CONCAT(a.NOMBRE,' ', a.APELLIDOS) as NOMBRE_COMPLETO
+      from autor a WHERE `;
+    const sql_tail = ` ORDER BY a.APELLIDOS`;
+    if (sql_search.length === 0) {
+      return res.send({ rowsReturned: 0, data: [] });
+    }
     const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
     const results = await resolveQuery(sql,params);
     res.send(results);
@@ -32,20 +60,25 @@ router.get('/search', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parsePositiveInt(req.params.id);
+    if (!id) {
+      return res.status(400).send({ error: 'Invalid id' });
+    }
     const sql_autor = `SELECT * from autor
-      WHERE autor.ID_AUTOR LIKE ?`;
+      WHERE autor.ID_AUTOR = ?`;
     const params = [id];
     const [results_autor] = await poolExecute(sql_autor, params);
+    if (results_autor.length === 0) {
+      return res.send([]);
+    }
     const autor = results_autor[0];
-    if (results_autor.length === 0) res.send([]);
     const sql_marcha = `SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.DEDICATORIA from marcha m
       INNER JOIN marcha_autor ma 
       ON ma.ID_MARCHA = m.ID_MARCHA
       INNER JOIN autor a
       ON a.ID_AUTOR = ma.ID_AUTOR
       WHERE a.ID_AUTOR
-      LIKE ? ORDER BY m.FECHA ASC`
+      = ? ORDER BY m.FECHA ASC`
     const [results_marchas] = await poolExecute(sql_marcha, params);
     results_marchas.map(r => r.FECHA === 0 || r.FECHA === '' ? r.FECHA = 's/f' : r.FECHA);
     const marchasLength = results_marchas.length;

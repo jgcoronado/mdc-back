@@ -2,18 +2,32 @@ import db from '../db.js';
 
 const resolveQuery = async (sql, params) => {
     const conn = await db.pool.getConnection();
-    const [queryResults] = await conn.execute(sql, params);
-    db.pool.releaseConnection(conn);
-    const queryRows = queryResults.length;
-    return { rowsReturned: queryRows, data: queryResults };
+    try {
+      const [queryResults] = await conn.execute(sql, params);
+      const queryRows = queryResults.length;
+      return { rowsReturned: queryRows, data: queryResults };
+    } finally {
+      db.pool.releaseConnection(conn);
+    }
 };
 
 const poolExecute = async (sql, params = []) => {
   const conn = await db.pool.getConnection();
-  const result = await conn.execute(sql, params);
-  db.pool.releaseConnection(conn);
-  return result;  
-}
+  try {
+    const result = await conn.execute(sql, params);
+    return result;
+  } finally {
+    db.pool.releaseConnection(conn);
+  }
+};
+
+const parsePositiveInt = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
 
 const mapIdAutor = autor => {
   const result = [];
@@ -37,4 +51,4 @@ const formatAutor = query => {
   return query;
 }
 
-export { resolveQuery, poolExecute, formatAutor };
+export { resolveQuery, poolExecute, formatAutor, parsePositiveInt };
