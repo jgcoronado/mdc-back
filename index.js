@@ -1,20 +1,24 @@
 import express from 'express';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import loginRoutes from './src/routes/login.js';
 import marchaRoutes from './src/routes/marcha.js';
 import autorRoutes from './src/routes/autor.js';
 import bandaRoutes from './src/routes/banda.js';
 import discoRoutes from './src/routes/disco.js';
 import statsRoutes from './src/routes/stats.js';
-
-
 import cors from 'cors';
 
 const app = express();
-const port = Number(process.env.APP_PORT || 3000);
+const port = Number(process.env.APP_PORT || 80);
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.join(__dirname, 'public');
 
 app.use(express.json());
 app.use(cors({
@@ -33,10 +37,17 @@ app.use('/api/disco', discoRoutes);
 app.use('/api/stats', statsRoutes);
 app.set('trust proxy', true);
 
-app.get('/', (req, res) => {
-  res.send('Hello World');  
-});
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    return res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);  
+  console.log(`Server listening on port ${port}`);
 });
