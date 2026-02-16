@@ -10,10 +10,21 @@ import statsRoutes from './src/routes/stats.js';
 import cors from 'cors';
 
 const app = express();
-const port = 3000;  
+const port = Number(process.env.APP_PORT || 3000);
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS origin not allowed'));
+  },
+}));
 app.use('/api/login', loginRoutes);
 app.use('/api/marcha', marchaRoutes);
 app.use('/api/autor', autorRoutes);

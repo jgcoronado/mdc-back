@@ -1,16 +1,11 @@
 services:
   app:
+    container_name: mdc-back
     build: .
     ports:
       - "3000:3000"
     environment:
-      - HOST=${HOST:-host.docker.internal}
-      - PORT=${PORT:-3306}
-      - USER=${USER:-mdcreadonly}
-      - PASSWORD=${PASSWORD:-klapaucius}
-      - DATABASE=${DATABASE:-mdc}
-      - SECRET_KEY=${SECRET_KEY:-transeufratina}
-    env_file:
-      - .env
+      NODE_ENV: production
+      APP_PORT: 3000
+    env_file: .env
     restart: unless-stopped
-    network_mode: host
