@@ -57,7 +57,7 @@ const getMasGrabada = computed(async () => {
           <tbody>
             <tr v-for="a in masAutor">
               <td>
-                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'autor', autor.ID_AUTOR)">
+                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'autor', a.ID_AUTOR)">
                   {{ a.AUTOR }}
                 </a>
               </td>
