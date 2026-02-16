@@ -30,7 +30,7 @@
 </template> 
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { goToDetail } from '@/services/goTo';
 
 const props = defineProps({
@@ -45,11 +45,20 @@ const props = defineProps({
   }
 })
 
+const hasCoverError = ref(false);
+const defaultCoverPath = '/cover/default.png';
+
 const srcImg = computed(() => {
+  if (hasCoverError.value) {
+    return defaultCoverPath;
+  }
   return `/cover/${props.disco.ID_DISCO}.png`;
 });
 
 const onCoverError = (event) => {
-  event.target.src = '/cover/default.png';
+  hasCoverError.value = true;
+  // Evita bucles si la imagen por defecto tampoco existe.
+  event.target.onerror = null;
+  event.target.src = defaultCoverPath;
 };
 </script>
