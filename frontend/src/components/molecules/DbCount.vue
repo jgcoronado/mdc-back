@@ -2,7 +2,7 @@
 import { onMounted, computed, ref } from 'vue';
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
+const BASE_URL = (import.meta.env.VITE_BASE_URL || '/api').replace(/\/$/, '');
 const estado = ref('');
 
 onMounted( async () => {
