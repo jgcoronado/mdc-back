@@ -31,6 +31,7 @@ DB_NAME=nombre_bd
 SECRET_KEY=tu_secret
 APP_PORT=80
 CORS_ORIGINS=https://marchasdecristo.com,http://localhost:8080
+SITE_URL=https://marchasdecristo.com
 ```
 
 Notas:
@@ -38,6 +39,7 @@ Notas:
 - `DB_HOST` debe ser accesible desde el contenedor.
 - El usuario MySQL debe tener permisos para conectarse desde la red Docker.
 - `COVER_DIR` se define en el entorno del servidor (no en `.env` de la app) para montar portadas externas.
+- `SITE_URL` define el dominio canónico para `sitemap.xml` y `robots.txt`.
 
 ## Gestión de portadas (sin rebuild)
 
@@ -67,6 +69,19 @@ docker compose up -d --build
 ```
 
 El frontend carga las imágenes en `/cover/{ID_DISCO}.png`.
+
+## SEO técnico
+
+La app publica automáticamente:
+
+- `/sitemap.xml`: incluye solo URLs públicas (home, listados públicos y detalles de marcha/autor/banda/disco).
+- `/robots.txt`: permite indexación general y bloquea zona privada:
+  - `/login`
+  - `/dashboard`
+
+Recomendación:
+
+- configura `SITE_URL` con tu dominio HTTPS final para que el sitemap use URLs canónicas correctas.
 
 ## Ejecutar en local
 
