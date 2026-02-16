@@ -21,14 +21,15 @@ const __dirname = path.dirname(__filename);
 const frontendDistPath = path.join(__dirname, 'public');
 
 app.use(express.json());
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS origin not allowed'));
-  },
-}));
+app.use(cors());
+// app.use(cors({
+//   origin(origin, callback) {
+//     if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+//       return callback(null, true);
+//     }
+//     return callback(new Error('CORS origin not allowed'));
+//   },
+// }));
 app.use('/api/login', loginRoutes);
 app.use('/api/marcha', marchaRoutes);
 app.use('/api/autor', autorRoutes);
