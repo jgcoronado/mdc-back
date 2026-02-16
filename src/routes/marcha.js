@@ -59,7 +59,8 @@ router.get('/search', async (req, res) => {
     results.data.map(r => formatAutor(r));
     res.send(results);
   } catch (err) {
-    console.log(err);
+    console.error('GET /api/marcha/search failed:', err);
+    res.status(500).send({ error: 'Internal server error' });
   }
 });
 
@@ -90,7 +91,8 @@ router.get('/:id', async (req, res) => {
     const resToSend = { ...res_marcha, discosLength, discos: results_disco};
     res.send(resToSend);
   } catch (err) {
-    console.log(err);
+    console.error('GET /api/marcha/:id failed:', err);
+    res.status(500).send({ error: 'Internal server error' });
   }
 });
 
@@ -109,7 +111,8 @@ router.get('/:id/disco', async (req, res) => {
     const results = await resolveQuery(sql,params);
     res.send(results);
   } catch (err) {
-    console.log(err);
+    console.error('GET /api/marcha/:id/disco failed:', err);
+    res.status(500).send({ error: 'Internal server error' });
   }
 });
 
