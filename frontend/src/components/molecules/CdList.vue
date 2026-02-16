@@ -30,7 +30,7 @@
 </template> 
 
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { goToDetail } from '@/services/goTo';
 
 const props = defineProps({
@@ -45,5 +45,13 @@ const props = defineProps({
   }
 })
 
-const srcImg = ref(`../../assets/cover/${props.disco.ID_DISCO}.png`);
+const coverImages = import.meta.glob('/src/assets/cover/*.png', {
+  eager: true,
+  import: 'default',
+});
+
+const srcImg = computed(() => {
+  const key = `/src/assets/cover/${props.disco.ID_DISCO}.png`;
+  return coverImages[key] || '';
+});
 </script>

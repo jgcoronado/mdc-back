@@ -12,8 +12,14 @@ onMounted(async () => {
   apiData.value = await getDetailData('disco',route);
 });
 
+const coverImages = import.meta.glob('/src/assets/cover/*.png', {
+  eager: true,
+  import: 'default',
+});
+
 function getCover(ID_DISCO) {
-  return `../../assets/cover/${ID_DISCO}.png`;
+  const key = `/src/assets/cover/${ID_DISCO}.png`;
+  return coverImages[key] || '';
 }
 function getAlt(NOMBRE_CD) {
   return `Portada del disco '${NOMBRE_CD}'`;
