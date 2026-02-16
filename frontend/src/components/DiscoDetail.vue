@@ -12,17 +12,15 @@ onMounted(async () => {
   apiData.value = await getDetailData('disco',route);
 });
 
-const coverImages = import.meta.glob('/src/assets/cover/*.png', {
-  eager: true,
-  import: 'default',
-});
-
 function getCover(ID_DISCO) {
-  const key = `/src/assets/cover/${ID_DISCO}.png`;
-  return coverImages[key] || '';
+  return `/cover/${ID_DISCO}.png`;
 }
 function getAlt(NOMBRE_CD) {
   return `Portada del disco '${NOMBRE_CD}'`;
+}
+
+function onCoverError(event) {
+  event.target.src = '/cover/default.png';
 }
 </script>
 
@@ -34,6 +32,7 @@ function getAlt(NOMBRE_CD) {
           class="shadow-sm"
           :src="getCover(apiData.ID_DISCO)"
           :alt="getAlt(apiData.NOMBRE_CD)"
+          @error="onCoverError"
         />
       </figure>
     <div class="justify-items-center">
