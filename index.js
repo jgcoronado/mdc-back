@@ -14,12 +14,13 @@ const port = 3000;
 
 app.use(express.json());
 app.use(cors());
-app.use('/login', loginRoutes);
-app.use('/marcha', marchaRoutes);
-app.use('/autor', autorRoutes);
-app.use('/banda', bandaRoutes);
-app.use('/disco', discoRoutes);
-app.use('/stats', statsRoutes);
+app.use('/api/login', loginRoutes);
+app.use('/api/marcha', marchaRoutes);
+app.use('/api/autor', autorRoutes);
+app.use('/api/banda', bandaRoutes);
+app.use('/api/disco', discoRoutes);
+app.use('/api/stats', statsRoutes);
+app.set('trust proxy', true);
 
 app.get('/', (req, res) => {
   res.send('Hello World');  
