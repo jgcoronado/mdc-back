@@ -22,7 +22,8 @@ router.get('/masAutor', async (req, res) => {
       CONCAT(a.NOMBRE,' ', a.APELLIDOS) AS AUTOR FROM autor a
       INNER JOIN marcha_autor am ON am.ID_AUTOR = a.ID_AUTOR 
       INNER JOIN marcha m ON m.ID_MARCHA = am.ID_MARCHA 	
-      GROUP BY AUTOR ORDER BY MARCHAS DESC LIMIT 0,10`;
+      GROUP BY a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
+      ORDER BY MARCHAS DESC LIMIT 0,10`;
     const [results] = await poolExecute(sql);
     res.send(results);
   } catch (err) {
@@ -48,7 +49,9 @@ router.get('/masEstreno', async (req, res) => {
     const sql = `SELECT b.ID_BANDA, COUNT(m.ID_MARCHA) AS MARCHAS,
       CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA FROM marcha m
       INNER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO 
-      GROUP BY BANDA HAVING b.ID_BANDA != 0 ORDER BY MARCHAS DESC LIMIT 20`;
+      WHERE b.ID_BANDA != 0
+      GROUP BY b.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
+      ORDER BY MARCHAS DESC LIMIT 20`;
     const [results] = await poolExecute(sql);
     res.send(results);
   } catch (err) {
