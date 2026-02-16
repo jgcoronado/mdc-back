@@ -1,5 +1,6 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /frontend
+ENV NODE_OPTIONS=--max-old-space-size=768
 
 COPY frontend/package*.json ./
 RUN npm ci

@@ -10,3 +10,4 @@ README.md
 .nyc_output
 coverage
 .DS_Store
+frontend/src/assets/cover
