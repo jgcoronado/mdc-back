@@ -3,7 +3,7 @@
   <li class="list-row">
     <div class="cursor-pointer">
       <a @click="goToDetail($router, 'disco',disco.ID_DISCO)">
-        <img class="size-15 rounded-box" :src=srcImg />
+        <img class="size-15 rounded-box" :src="srcImg" @error="onCoverError" />
       </a>
     </div>
     <div class="text-xl list-col-grow">
@@ -45,13 +45,11 @@ const props = defineProps({
   }
 })
 
-const coverImages = import.meta.glob('/src/assets/cover/*.png', {
-  eager: true,
-  import: 'default',
+const srcImg = computed(() => {
+  return `/cover/${props.disco.ID_DISCO}.png`;
 });
 
-const srcImg = computed(() => {
-  const key = `/src/assets/cover/${props.disco.ID_DISCO}.png`;
-  return coverImages[key] || '';
-});
+const onCoverError = (event) => {
+  event.target.src = '/cover/default.png';
+};
 </script>
