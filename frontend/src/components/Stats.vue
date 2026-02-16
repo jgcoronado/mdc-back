@@ -6,7 +6,7 @@ import axios from 'axios';
 
 const router = useRouter()
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
+const BASE_URL = (import.meta.env.VITE_BASE_URL || '/api').replace(/\/$/, '');
 const masAutor = ref('');
 const masDedica = ref('');
 const masEstreno = ref('');
