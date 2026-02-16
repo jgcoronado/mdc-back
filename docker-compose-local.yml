@@ -1,14 +1,10 @@
 services:
   app:
+    container_name: mdc-app
     build: .
     ports:
-      - "3000:3000"
-      - "3006:3006"
+      - "8080:80"
     environment:
-      - HOST=jaguerra27.helioho.st
-      - PORT=3306
-      - USER=jaguerra27_admin
-      - PASSWORD=n5im63_X4
-      - DATABASE=jaguerra27_mdc
-      - SECRET_KEY=calimerocalimerocalimero
+      APP_PORT: 80
+    env_file: .env
     restart: unless-stopped

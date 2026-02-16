@@ -1,16 +1,15 @@
 services:
   app:
+    container_name: mdc-app
     build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "3000:3000"
+      - "127.0.0.1:8080:80"
     environment:
-      - HOST=${HOST:-host.docker.internal}
-      - PORT=${PORT:-3306}
-      - USER=${USER:-mdcreadonly}
-      - PASSWORD=${PASSWORD:-klapaucius}
-      - DATABASE=${DATABASE:-mdc}
-      - SECRET_KEY=${SECRET_KEY:-transeufratina}
-    env_file:
-      - .env
+      NODE_ENV: production
+      APP_PORT: 80
+    env_file: .env
+    volumes:
+      - ${COVER_DIR:-/var/www/mdc-assets/cover}:/app/public/cover:ro
     restart: unless-stopped
-    network_mode: host
