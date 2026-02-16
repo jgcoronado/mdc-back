@@ -31,6 +31,7 @@ DB_NAME=nombre_bd
 SECRET_KEY=tu_secret
 APP_PORT=80
 CORS_ORIGINS=https://marchasdecristo.com,http://localhost:8080
+API_LOCAL_ONLY=true
 ```
 
 Notas:
@@ -38,6 +39,8 @@ Notas:
 - `DB_HOST` debe ser accesible desde el contenedor.
 - El usuario MySQL debe tener permisos para conectarse desde la red Docker.
 - `COVER_DIR` se define en el entorno del servidor (no en `.env` de la app) para montar portadas externas.
+- `API_LOCAL_ONLY=true` (valor por defecto) restringe `/api/*` a llamadas locales del servidor.
+  Si necesitas exponer API a clientes externos, cambia a `API_LOCAL_ONLY=false` y revisa CORS.
 
 ## Gestión de portadas (sin rebuild)
 
@@ -108,6 +111,12 @@ docker ps
 docker logs --tail 200 mdc-app
 curl -i http://127.0.0.1:8080/
 curl -i "http://127.0.0.1:8080/api/marcha/search?titulo=cristo"
+```
+
+Prueba de bloqueo de API desde fuera del host (debe responder `403` si `API_LOCAL_ONLY=true`):
+
+```bash
+curl -i "https://tu-dominio/api/marcha/search?titulo=cristo"
 ```
 
 ## Nginx (recomendado)
