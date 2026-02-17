@@ -31,7 +31,7 @@ apiData.value = await getListData(AUTOR,route);
       <tbody>
         <tr v-for="autor in apiData.data">
           <td>
-            <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'autor', autor.ID_AUTOR)">
+            <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'autor', autor.ID_AUTOR, autor.NOMBRE_COMPLETO)">
               {{ autor.NOMBRE_COMPLETO }}
             </a>
           </td>

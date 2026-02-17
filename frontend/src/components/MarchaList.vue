@@ -32,13 +32,13 @@ onMounted( async () => {
       <tbody>
         <tr v-for="marcha in apiData.data">
           <td>
-            <a class="hover:underline cursor-pointer" @click="goToDetail(r, MARCHA, marcha.ID_MARCHA)">
+            <a class="hover:underline cursor-pointer" @click="goToDetail(r, MARCHA, marcha.ID_MARCHA, marcha.TITULO)">
               {{ marcha.TITULO }}
             </a>
           </td>
           <td>
             <div v-for="a in marcha.AUTOR">
-              <a class="hover:underline cursor-pointer" @click="goToDetail(r,AUTOR,a.autorId)">
+              <a class="hover:underline cursor-pointer" @click="goToDetail(r,AUTOR,a.autorId,a.nombre)">
                 {{ a.nombre }}
               </a>
             </div>

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { goToDetail } from '@/services/goTo';
+import { canonicalizeDetailRoute, goToDetail } from '@/services/goTo';
 import { getDetailData } from '@/services/getData';
 
 const router = useRouter()
@@ -10,6 +10,7 @@ const apiData = ref('');
 
 onMounted(async () => {
   apiData.value = await getDetailData('disco',route);
+  canonicalizeDetailRoute(router, route, 'disco', apiData.value.ID_DISCO, apiData.value.NOMBRE_CD);
 });
 
 function getCover(ID_DISCO) {
@@ -53,7 +54,7 @@ function onCoverError(event) {
               <td>
                 <a
                   class="hover:underline cursor-pointer"
-                  @click="goToDetail(router, 'banda', apiData.ID_BANDA)"
+                  @click="goToDetail(router, 'banda', apiData.ID_BANDA, apiData.BANDA)"
                 >
                   {{ apiData.BANDA }}
                 </a>
@@ -85,7 +86,7 @@ function onCoverError(event) {
               <td>
                 <a 
                   class="hover:underline cursor-pointer"
-                  @click="goToDetail(router, 'marcha', m.ID_MARCHA)"
+                  @click="goToDetail(router, 'marcha', m.ID_MARCHA, m.TITULO)"
                 >
                   {{ m.TITULO }}
                 </a>
@@ -94,7 +95,7 @@ function onCoverError(event) {
               <div v-for="a in m.AUTOR">
                 <a
                   class="hover:underline cursor-pointer"
-                  @click="goToDetail(router, 'autor', a.autorId)"
+                  @click="goToDetail(router, 'autor', a.autorId, a.nombre)"
                 >
                   {{ a.nombre }}
                 </a>

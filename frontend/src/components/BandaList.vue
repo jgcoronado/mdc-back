@@ -44,7 +44,7 @@ function showLocalidad(loc, prov) {
       <tbody>
         <tr  v-for="b in apiData.data">
           <td>
-            <a class="hover:underline cursor-pointer" @click="goToDetail(router, BANDA, b.ID_BANDA)">
+            <a class="hover:underline cursor-pointer" @click="goToDetail(router, BANDA, b.ID_BANDA, b.NOMBRE_COMPLETO)">
               {{ b.NOMBRE_COMPLETO }}
             </a>
           </td>

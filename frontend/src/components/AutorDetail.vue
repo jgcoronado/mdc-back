@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getDetailData } from '@/services/getData';
-import { goToDetail } from '@/services/goTo';
+import { canonicalizeDetailRoute, goToDetail } from '@/services/goTo';
 
 const router = useRouter();
 const route = useRoute()
@@ -13,6 +13,8 @@ const MARCHA = 'marcha';
 
 onMounted(async () => {
   apiData.value = await getDetailData(AUTOR, route);
+  const fullName = `${apiData.value.NOMBRE || ''} ${apiData.value.APELLIDOS || ''}`.trim();
+  canonicalizeDetailRoute(router, route, AUTOR, apiData.value.ID_AUTOR, fullName);
 });
 </script>
 
@@ -44,7 +46,7 @@ onMounted(async () => {
         <tbody>
           <tr v-for="m in apiData.marchas">
             <td>
-              <a class="hover:underline cursor-pointer" @click="goToDetail(router, MARCHA, m.ID_MARCHA)">
+              <a class="hover:underline cursor-pointer" @click="goToDetail(router, MARCHA, m.ID_MARCHA, m.TITULO)">
                 {{ m.TITULO }}
               </a>
             </td>

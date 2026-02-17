@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router'
 import CdList from './molecules/CdList.vue';
 import Timeline from './molecules/Timeline.vue';
-import { goToDetail } from '@/services/goTo';
+import { canonicalizeDetailRoute, goToDetail } from '@/services/goTo';
 import { getDetailData } from '@/services/getData';
 
 const router = useRouter();
@@ -13,6 +13,7 @@ const apiData = ref('');
 
 onMounted(async () => {
   apiData.value = await getDetailData('banda',route);
+  canonicalizeDetailRoute(router, route, 'banda', apiData.value.ID_BANDA, apiData.value.NOMBRE_COMPLETO);
 });
 </script>
 
@@ -62,18 +63,18 @@ onMounted(async () => {
           <tr v-for="m in apiData.marchas">
             <td>{{ m.FECHA }}</td>
             <td>
-              <a
-                class="hover:underline cursor-pointer"
-                @click="goToDetail(router, 'marcha', m.ID_MARCHA)"
-              >
-                {{ m.TITULO }}
-              </a>
+                <a
+                  class="hover:underline cursor-pointer"
+                  @click="goToDetail(router, 'marcha', m.ID_MARCHA, m.TITULO)"
+                >
+                  {{ m.TITULO }}
+                </a>
             </td>
             <td>
               <div v-for="a in m.AUTOR">
                 <a
                   class="hover:underline cursor-pointer"
-                  @click="goToDetail(router, 'autor', a.autorId)"
+                  @click="goToDetail(router, 'autor', a.autorId, a.nombre)"
                 >
                   {{ a.nombre }}
                 </a>

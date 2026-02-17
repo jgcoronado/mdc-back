@@ -57,7 +57,7 @@ const getMasGrabada = computed(async () => {
           <tbody>
             <tr v-for="a in masAutor">
               <td>
-                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'autor', a.ID_AUTOR)">
+                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'autor', a.ID_AUTOR, a.AUTOR)">
                   {{ a.AUTOR }}
                 </a>
               </td>
@@ -105,7 +105,7 @@ const getMasGrabada = computed(async () => {
           <tbody>
             <tr v-for="e in masEstreno">
               <td>
-                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'banda', e.ID_BANDA)">
+                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'banda', e.ID_BANDA, e.BANDA)">
                   {{ e.BANDA }}
                 </a>
               </td>
@@ -132,13 +132,13 @@ const getMasGrabada = computed(async () => {
           <tbody>
             <tr v-for="g in masGrabada">
               <td>
-                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'marcha', g.ID_MARCHA)">
+                <a class="hover:underline cursor-pointer" @click="goToDetail(router, 'marcha', g.ID_MARCHA, g.TITULO)">
                   {{ g.TITULO }}
                 </a>
               </td>
               <td>
                 <div v-for="a in g.AUTOR">
-                  <a class="hover:underline cursor-pointer" @click="goToDetail(router,'autor',a.autorId)">
+                  <a class="hover:underline cursor-pointer" @click="goToDetail(router,'autor',a.autorId, a.nombre)">
                     {{ a.nombre }}
                   </a>
                 </div>

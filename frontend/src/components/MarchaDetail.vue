@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import CdList from './molecules/CdList.vue';
-import { goToDetail } from '@/services/goTo';
+import { canonicalizeDetailRoute, goToDetail } from '@/services/goTo';
 import { getDetailData } from '@/services/getData';
 
 const router = useRouter()
@@ -11,6 +11,7 @@ const apiData = ref('');
 
 onMounted(async () => {
   apiData.value = await getDetailData('marcha',route);
+  canonicalizeDetailRoute(router, route, 'marcha', apiData.value.ID_MARCHA, apiData.value.TITULO);
 });
 
 function getDedicatoria(ded, loc) {
@@ -36,7 +37,7 @@ function getDedicatoria(ded, loc) {
             <th>Autor</th>
             <td>
               <div v-for="a in apiData.AUTOR">
-                <a class="hover:underline cursor-pointer" @click="goToDetail(router,'autor',a.autorId)">
+                <a class="hover:underline cursor-pointer" @click="goToDetail(router,'autor',a.autorId,a.nombre)">
                   {{ a.nombre }}
                 </a>
               </div>
@@ -51,7 +52,7 @@ function getDedicatoria(ded, loc) {
           <tr v-if="apiData.BANDA_ESTRENO">
             <th>Estrenada por</th>
             <td>
-              <a class="hover:underline cursor-pointer" @click="goToDetail(router,'banda',apiData.BANDA_ESTRENO)">
+              <a class="hover:underline cursor-pointer" @click="goToDetail(router,'banda',apiData.BANDA_ESTRENO, apiData.BANDA)">
                 {{ apiData.BANDA }}
               </a>
             </td>
