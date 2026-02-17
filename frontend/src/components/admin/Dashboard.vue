@@ -1,45 +1,60 @@
 <script setup>
 import { onMounted, ref } from 'vue';
-import axios from 'axios';
-import { useRouter, useRoute } from 'vue-router';
-import { logout } from '../../services/authService';
+import { useRouter } from 'vue-router';
+import { getCurrentUser, logout } from '../../services/authService';
 
 const router = useRouter();
-const route = useRoute();
 
 const user = ref('');
+const marchaId = ref('');
 
 onMounted(() => {
-  user.value = route.params.name;
-
-  // let token=localStorage.getItem("token");
-  // console.log(token);
-  // axios
-  //   .get("http://localhost:3000/auth/user", {
-  //     headers: {
-  //       Authorization: `Bearer ${token}`,
-  //       token: token
-  //     }
-  //   })
-  //   .then(res => {
-  //     console.log(res);
-  //   });
+  const session = getCurrentUser();
+  user.value = session?.user || '';
 });
 
 function goToLogout() {
   logout();
   router.push('/login');
-};
+}
+
+function goToMarchaEdit() {
+  if (!marchaId.value) {
+    return;
+  }
+  router.push({
+    name: 'marchaEdit',
+    params: { id: marchaId.value },
+  });
+}
 </script>
 
 <template>
   <h1>WELCOME TO DASHBOARD {{ user }}</h1>
-    <div class="divider"></div>
+  <div class="divider"></div>
+  <div class="flex flex-wrap gap-3 items-end">
+    <fieldset class="fieldset">
+      <label class="label">ID de marcha a editar</label>
+      <input
+        class="input"
+        type="number"
+        min="1"
+        v-model="marchaId"
+        placeholder="Ej: 125"
+        @keyup.enter="goToMarchaEdit()"
+      />
+    </fieldset>
+    <button
+      class="btn btn-neutral"
+      @click="goToMarchaEdit()"
+    >
+      Ir a edición
+    </button>
     <button
       class="btn"
       @click="goToLogout()"
     >
       Logout
     </button>
+  </div>
 </template>
-

@@ -1,29 +1,28 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { login } from '../../services/authService';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const form = reactive({
-    username: '',
-    password: ''
+  username: '',
+  password: ''
 });
+const errorMessage = ref('');
+
 async function handleLogin() {
-  let login_status = false;
-  console.log("🚀 ~ handleLogin ~ login:", login_status)
+  errorMessage.value = '';
   try {
-    await login(form);
-    console.log(form.username);
-    router.push({
-      name: 'dashboard',
-      params: {
-        name: form.username,
-      },
-    });
+    const result = await login(form);
+    if (result?.login) {
+      router.push({ name: 'dashboard' });
+      return;
+    }
+    errorMessage.value = 'Credenciales no válidas';
   } catch (error) {
-    console.error('Error al iniciar sesión', error);
+    errorMessage.value = error?.response?.data?.msg || 'Error al iniciar sesión';
   }
-};
+}
 </script>
 <template>
   <fieldset
@@ -49,11 +48,10 @@ async function handleLogin() {
       <button
         class="btn btn-neutral mt-4"
         type="submit"
-        @keyup.enter="handleLogin"
-        @click="handleLogin"
       >
         Entrar
       </button>
+      <p v-if="errorMessage" class="text-error mt-2">{{ errorMessage }}</p>
     </form>
   </fieldset>
 </template>

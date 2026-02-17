@@ -2,11 +2,12 @@ import { createWebHistory, createRouter } from 'vue-router';
 import Login from '@/components/admin/Login.vue';
 import Dashboard from '@/components/admin/Dashboard.vue';
 import MarchaEdit from '@/components/admin/MarchaEdit.vue';
+import { isAuthenticated } from '@/services/authService';
 
 import viewPages from './viewPages.js';
 
 const routes = [
-  { path: '/login', component: Login },
+  { path: '/login', name: 'login', component: Login },
   { path: '/dashboard/',
     name: 'dashboard', 
     component: Dashboard, 
@@ -28,8 +29,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  if (to.matched.some(record => record.meta.requiresAuth) && !loggedIn) {
+  if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
     next('/login');
+  } else if (to.name === 'login' && isAuthenticated()) {
+    next('/dashboard');
   } else {
     next();
   }

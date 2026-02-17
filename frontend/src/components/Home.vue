@@ -16,8 +16,8 @@
           agrupaciones musicales.
         </p>
         <p class="text-justify indent-8">
-          De momento está actualizado todo hasta principios de 2020, en las próximas semanas
-          se irá actualizando y poniendo al día todo el contenido de la web. Espero que te sea de utilidad.
+          Por desgracia, la base de datos se quedó parada a principios de 2020, confío en que pronto
+          pueda actualizarse y llevar a día de hoy toda la web. Espero que te sea de utilidad.
         </p>
       </div>
       <div class="text-right text-base">
