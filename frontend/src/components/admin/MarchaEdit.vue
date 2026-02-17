@@ -3,9 +3,11 @@ import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { goToDetail } from '@/services/goTo';
 import { getDetailData } from '@/services/getData';
-import { buildMarchaUpdatePayload } from '@/services/admin';
+import {
+  buildMarchaUpdatePayload,
+  executeMarchaUpdate,
+} from '@/services/edits';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
 const router = useRouter();
 const route = useRoute();
 
@@ -18,6 +20,11 @@ const pendingUpdate = ref({
   params: [],
   sqlPreview: '',
   changedFields: [],
+});
+const requestState = ref({
+  status: 'idle',
+  code: '',
+  msg: '',
 });
 
 const AUTOR = 'autor';
@@ -37,20 +44,53 @@ watch(
       return;
     }
     pendingUpdate.value = buildMarchaUpdatePayload(oldData.value, apiData.value);
+    if (requestState.value.status !== 'saving') {
+      requestState.value = { status: 'idle', code: '', msg: '' };
+    }
   },
   { deep: true }
 );
 
-function sendDataToEditMarcha() {
+async function sendDataToEditMarcha() {
   const payload = buildMarchaUpdatePayload(oldData.value, apiData.value);
   pendingUpdate.value = payload;
-  const apiUrl = `${BASE_URL}/admin/editMarcha`;
-  console.log('Prepared marcha update payload:', { apiUrl, ...payload });
+
+  if (payload.keysToUpdate.length === 0) {
+    requestState.value = {
+      status: 'no_changes',
+      code: 'NO_CHANGES',
+      msg: 'No hay cambios pendientes.',
+    };
+    return;
+  }
+
+  requestState.value = { status: 'saving', code: '', msg: '' };
+
+  try {
+    const result = await executeMarchaUpdate(payload);
+    requestState.value = {
+      status: result.code === 'UPDATED' ? 'success' : 'error',
+      code: result.code || 'UNKNOWN',
+      msg: result.msg || 'Respuesta sin mensaje',
+    };
+
+    if (result.code === 'UPDATED') {
+      oldData.value = { ...apiData.value };
+      pendingUpdate.value = buildMarchaUpdatePayload(oldData.value, apiData.value);
+    }
+  } catch (error) {
+    requestState.value = {
+      status: 'error',
+      code: error?.response?.data?.code || 'REQUEST_ERROR',
+      msg: error?.response?.data?.msg || 'No se pudo actualizar la marcha.',
+    };
+  }
 }
 
 function resetChanges() {
   apiData.value = { ...oldData.value };
   pendingUpdate.value = buildMarchaUpdatePayload(oldData.value, apiData.value);
+  requestState.value = { status: 'idle', code: '', msg: '' };
 }
 
 function formatPreviewValue(value) {
@@ -181,15 +221,23 @@ function formatPreviewValue(value) {
         <pre class="bg-base-200 p-3 rounded-box overflow-x-auto">{{ pendingUpdate.params }}</pre>
       </div>
 
+      <div v-if="requestState.status !== 'idle'" class="mt-3">
+        <div class="alert" :class="requestState.status === 'success' ? 'alert-success' : requestState.status === 'saving' ? 'alert-info' : 'alert-error'">
+          <span>{{ requestState.code }} - {{ requestState.msg }}</span>
+        </div>
+      </div>
+
       <div class="flex gap-2 mt-4">
         <button
           class="btn btn-neutral"
+          :disabled="requestState.status === 'saving'"
           @click="sendDataToEditMarcha()"
         >
-          Preparar update
+          Guardar cambios
         </button>
         <button
           class="btn"
+          :disabled="requestState.status === 'saving'"
           @click="resetChanges()"
         >
           Revertir cambios

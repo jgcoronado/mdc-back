@@ -8,6 +8,7 @@ import autorRoutes from './src/routes/autor.js';
 import bandaRoutes from './src/routes/banda.js';
 import discoRoutes from './src/routes/disco.js';
 import statsRoutes from './src/routes/stats.js';
+import adminRoutes from './src/routes/admin.js';
 import cors from 'cors';
 
 const app = express();
@@ -22,20 +23,13 @@ const frontendDistPath = path.join(__dirname, 'public');
 
 app.use(express.json());
 app.use(cors());
-// app.use(cors({
-//   origin(origin, callback) {
-//     if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-//       return callback(null, true);
-//     }
-//     return callback(new Error('CORS origin not allowed'));
-//   },
-// }));
 app.use('/api/login', loginRoutes);
 app.use('/api/marcha', marchaRoutes);
 app.use('/api/autor', autorRoutes);
 app.use('/api/banda', bandaRoutes);
 app.use('/api/disco', discoRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/admin', adminRoutes);
 app.set('trust proxy', true);
 
 if (fs.existsSync(frontendDistPath)) {
