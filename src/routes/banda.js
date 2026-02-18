@@ -39,6 +39,44 @@ router.get('/', ( _, res) => {
     res.send(response);
 });
 
+router.get('/fastSearch', async (req, res) => {
+  try {
+    const { nombre = '' } = req.query;
+    const trimmed = String(nombre).trim();
+
+    if (trimmed.length < 1) {
+      return res.send({ rowsReturned: 0, data: [] });
+    }
+
+    const prefix = `${trimmed}%`;
+    const contains = `%${trimmed}%`;
+    const sql = `
+      SELECT
+        b.ID_BANDA,
+        b.NOMBRE_BREVE,
+        b.NOMBRE_COMPLETO,
+        b.LOCALIDAD
+      FROM banda b
+      WHERE
+        b.NOMBRE_BREVE LIKE ? OR
+        b.NOMBRE_COMPLETO LIKE ? OR
+        CONCAT(b.NOMBRE_BREVE, ' ', b.LOCALIDAD) LIKE ? OR
+        CONCAT(b.NOMBRE_COMPLETO, ' ', b.LOCALIDAD) LIKE ?
+      ORDER BY
+        (b.NOMBRE_BREVE LIKE ?) DESC,
+        (b.NOMBRE_COMPLETO LIKE ?) DESC,
+        b.NOMBRE_BREVE ASC
+      LIMIT 5
+    `;
+    const params = [prefix, prefix, contains, contains, prefix, prefix];
+    const [rows] = await poolExecute(sql, params);
+    return res.send({ rowsReturned: rows.length, data: rows });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send({ rowsReturned: 0, data: [] });
+  }
+});
+
 router.get('/all', async (_, res) => {
   try {
     const [results, fields] = await db.connection.query(

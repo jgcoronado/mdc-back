@@ -14,6 +14,15 @@ const EDITABLE_MARCHA_FIELDS = new Set([
   'BANDA_ESTRENO',
   'DETALLES_MARCHA',
 ]);
+const INSERTABLE_MARCHA_FIELDS = [
+  'TITULO',
+  'FECHA',
+  'DEDICATORIA',
+  'LOCALIDAD',
+  'AUDIO',
+  'BANDA_ESTRENO',
+  'DETALLES_MARCHA',
+];
 
 const verifySession = (token) => {
   const [encodedPayload, signature] = (token || '').split('.');
@@ -104,6 +113,44 @@ router.post('/editMarcha', async (req, res) => {
     });
   } catch (err) {
     console.error('POST /api/admin/editMarcha failed:', err);
+    return res.status(500).json({ code: 'INTERNAL_ERROR', msg: 'Internal server error' });
+  }
+});
+
+router.post('/addMarcha', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : '';
+    const session = verifySession(token);
+    if (!session) {
+      return res.status(401).json({ code: 'AUTH_REQUIRED', msg: 'Unauthorized' });
+    }
+
+    const { marcha = {}, autoresIds = null } = req.body || {};
+    const sanitizedMarcha = {};
+    INSERTABLE_MARCHA_FIELDS.forEach((field) => {
+      sanitizedMarcha[field] = normalizeValue(marcha[field]);
+    });
+    const sanitizedAutores = normalizeValue(autoresIds);
+
+    // TODO(add-marcha): Implement manual INSERT SQL here.
+    // Suggested flow:
+    // 1) INSERT into `marcha` with fields in INSERTABLE_MARCHA_FIELDS.
+    // 2) Read inserted ID (result.insertId).
+    // 3) If `sanitizedAutores` has values, split by comma and insert relations in junction table.
+    // 4) Return { code: 'CREATED', msg: 'Marcha created successfully', marchaId: insertId }.
+    return res.status(501).json({
+      code: 'TODO_INSERT_MARCHA',
+      msg: 'Pendiente implementar INSERT manual en backend.',
+      preview: {
+        marcha: sanitizedMarcha,
+        autoresIds: sanitizedAutores,
+      },
+    });
+  } catch (err) {
+    console.error('POST /api/admin/addMarcha failed:', err);
     return res.status(500).json({ code: 'INTERNAL_ERROR', msg: 'Internal server error' });
   }
 });
