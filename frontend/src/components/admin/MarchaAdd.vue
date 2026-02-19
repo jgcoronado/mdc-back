@@ -13,7 +13,7 @@ const draftData = ref({
   FECHA: '',
   DEDICATORIA: '',
   LOCALIDAD: '',
-  AUDIO: '',
+  PROVINCIA: '',
   BANDA_ESTRENO: null,
   DETALLES_MARCHA: '',
   AUTORES_IDS: '',
@@ -98,7 +98,7 @@ function resetDraft() {
     FECHA: '',
     DEDICATORIA: '',
     LOCALIDAD: '',
-    AUDIO: '',
+    PROVINCIA: '',
     BANDA_ESTRENO: null,
     DETALLES_MARCHA: '',
     AUTORES_IDS: '',
@@ -183,13 +183,13 @@ function formatPreviewValue(value) {
           </td>
         </tr>
         <tr>
-          <th>Audio</th>
+          <th>Provincia</th>
           <td>
             <input
               class="input w-full"
               type="text"
-              v-model="draftData.AUDIO"
-              placeholder="URL audio"
+              v-model="draftData.PROVINCIA"
+              placeholder="Provincia"
             />
           </td>
         </tr>
