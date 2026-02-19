@@ -2,16 +2,16 @@
   <ul class="list bg-base-200 hover:bg-base-300 rounded-box shadow-md">  
   <li class="list-row">
     <div class="cursor-pointer">
-      <a @click="goToDetail($router, 'disco',disco.ID_DISCO)">
+      <a @click="goToDetail($router, 'disco',disco.ID_DISCO, disco.NOMBRE_CD)">
         <img class="size-15 rounded-box" :src="srcImg" @error="onCoverError" />
       </a>
     </div>
     <div class="text-xl list-col-grow">
-      <a class="hover:underline cursor-pointer" @click="goToDetail($router, 'disco',disco.ID_DISCO)">
+      <a class="hover:underline cursor-pointer" @click="goToDetail($router, 'disco',disco.ID_DISCO, disco.NOMBRE_CD)">
         {{ disco.NOMBRE_CD}}
       </a>
       <div v-if="disco.BANDA" class="text-sm font-semibold opacity-60 indent-4">
-        <a class="hover:underline cursor-pointer" @click="goToDetail($router, 'banda',disco.ID_BANDA)">
+        <a class="hover:underline cursor-pointer" @click="goToDetail($router, 'banda',disco.ID_BANDA, disco.BANDA)">
           {{disco.BANDA}}
         </a>
       </div>

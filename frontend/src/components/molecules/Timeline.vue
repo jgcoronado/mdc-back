@@ -36,7 +36,7 @@
         </svg>
       </div>
       <div class="timeline-end timeline-box bg-base-200">
-        <a class="hover:underline cursor-pointer" @click="goToDetail($router,'banda', banda.ID_BANDA)">
+        <a class="hover:underline cursor-pointer" @click="goToDetail($router,'banda', banda.ID_BANDA, banda.NOMBRE_BREVE)">
           {{ banda.NOMBRE_BREVE }}
         </a>
         </div>
