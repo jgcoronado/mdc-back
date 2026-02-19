@@ -1,10 +1,8 @@
 import express from 'express';
-import crypto from 'node:crypto';
 import { poolExecuteAdmin } from '../helpers/admin.js';
+import { getTokenFromRequest, verifySession } from '../helpers/authSession.js';
 
 const router = express.Router();
-
-const tokenSecret = process.env.SECRET_KEY || 'change-this-secret';
 const EDITABLE_MARCHA_FIELDS = new Set([
   'TITULO',
   'FECHA',
@@ -24,28 +22,6 @@ const INSERTABLE_MARCHA_FIELDS = [
   'DETALLES_MARCHA',
 ];
 
-const verifySession = (token) => {
-  const [encodedPayload, signature] = (token || '').split('.');
-  if (!encodedPayload || !signature) {
-    return null;
-  }
-
-  const expectedSignature = crypto
-    .createHmac('sha256', tokenSecret)
-    .update(encodedPayload)
-    .digest('base64url');
-  if (signature !== expectedSignature) {
-    return null;
-  }
-
-  const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
-  if (!payload.exp || Date.now() > payload.exp) {
-    return null;
-  }
-
-  return payload;
-};
-
 const normalizeValue = (value) => {
   if (value === undefined) {
     return null;
@@ -59,10 +35,7 @@ const normalizeValue = (value) => {
 
 router.post('/editMarcha', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ')
-      ? authHeader.slice(7).trim()
-      : '';
+    const token = getTokenFromRequest(req);
     const session = verifySession(token);
     if (!session) {
       return res.status(401).json({ code: 'AUTH_REQUIRED', msg: 'Unauthorized' });
@@ -119,10 +92,7 @@ router.post('/editMarcha', async (req, res) => {
 
 router.post('/addMarcha', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ')
-      ? authHeader.slice(7).trim()
-      : '';
+    const token = getTokenFromRequest(req);
     const session = verifySession(token);
     if (!session) {
       return res.status(401).json({ code: 'AUTH_REQUIRED', msg: 'Unauthorized' });
@@ -173,4 +143,3 @@ router.post('/addMarcha', async (req, res) => {
 });
 
 export default router;
-

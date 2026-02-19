@@ -5,15 +5,22 @@ const API_URL = `${API_BASE_URL}/login`;
 const STORAGE_KEY = 'auth_session';
 
 export const login = async (credentials) => {
-  const response = await axios.post(`${API_URL}`, credentials);
-  if (response.data?.token) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(response.data));
+  const response = await axios.post(`${API_URL}`, credentials, { withCredentials: true });
+  if (response.data?.login) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      user: response.data.user,
+      expiresAt: response.data.expiresAt,
+    }));
   }
   return response.data;
 };
 
-export const logout = () => {
-  localStorage.removeItem(STORAGE_KEY);
+export const logout = async () => {
+  try {
+    await axios.post(`${API_URL}/logout`, {}, { withCredentials: true });
+  } finally {
+    localStorage.removeItem(STORAGE_KEY);
+  }
 };
 
 export const getCurrentUser = () => {
@@ -24,7 +31,7 @@ export const getCurrentUser = () => {
 
   try {
     const session = JSON.parse(raw);
-    if (!session?.token || !session?.expiresAt || Date.now() > session.expiresAt) {
+    if (!session?.user || !session?.expiresAt || Date.now() > session.expiresAt) {
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }
@@ -35,4 +42,20 @@ export const getCurrentUser = () => {
   }
 };
 
-export const isAuthenticated = () => Boolean(getCurrentUser());
+export const isAuthenticated = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/verify`, { withCredentials: true });
+    if (response.data?.authenticated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        user: response.data.user,
+        expiresAt: response.data.expiresAt,
+      }));
+      return true;
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    return false;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return false;
+  }
+};

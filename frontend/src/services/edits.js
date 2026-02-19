@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getCurrentUser } from './authService';
 
 const BASE_URL = (import.meta.env.VITE_BASE_URL || '/api').replace(/\/$/, '');
 
@@ -67,13 +66,8 @@ const buildMarchaUpdatePayload = (originalData, draftData) => {
 };
 
 const executeMarchaUpdate = async (payload) => {
-  const session = getCurrentUser();
-  const headers = session?.token
-    ? { Authorization: `Bearer ${session.token}` }
-    : {};
-
   const apiUrl = `${BASE_URL}/admin/editMarcha`;
-  const res = await axios.post(apiUrl, payload, { headers });
+  const res = await axios.post(apiUrl, payload, { withCredentials: true });
   return res.data;
 };
 
@@ -101,13 +95,8 @@ const buildMarchaInsertPayload = (draftData) => {
 };
 
 const executeMarchaInsert = async (payload) => {
-  const session = getCurrentUser();
-  const headers = session?.token
-    ? { Authorization: `Bearer ${session.token}` }
-    : {};
-
   const apiUrl = `${BASE_URL}/admin/addMarcha`;
-  const res = await axios.post(apiUrl, payload, { headers });
+  const res = await axios.post(apiUrl, payload, { withCredentials: true });
   return res.data;
 };
 
