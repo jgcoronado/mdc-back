@@ -14,6 +14,15 @@ const EDITABLE_MARCHA_FIELDS = new Set([
   'BANDA_ESTRENO',
   'DETALLES_MARCHA',
 ]);
+const INSERTABLE_MARCHA_FIELDS = [
+  'TITULO',
+  'FECHA',
+  'DEDICATORIA',
+  'LOCALIDAD',
+  'AUDIO',
+  'BANDA_ESTRENO',
+  'DETALLES_MARCHA',
+];
 
 const verifySession = (token) => {
   const [encodedPayload, signature] = (token || '').split('.');
@@ -108,4 +117,60 @@ router.post('/editMarcha', async (req, res) => {
   }
 });
 
+router.post('/addMarcha', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : '';
+    const session = verifySession(token);
+    if (!session) {
+      return res.status(401).json({ code: 'AUTH_REQUIRED', msg: 'Unauthorized' });
+    }
+
+    const { marcha = {}, autoresIds = null } = req.body || {};
+    const sanitizedMarcha = {};
+    INSERTABLE_MARCHA_FIELDS.forEach((field) => {
+      sanitizedMarcha[field] = normalizeValue(marcha[field]);
+    });
+    const columns = INSERTABLE_MARCHA_FIELDS.join(', ');
+    const placeholders = INSERTABLE_MARCHA_FIELDS.map(() => '?').join(', ');
+    const insertSql = `INSERT INTO marcha (${columns}) VALUES (${placeholders})`;
+    const insertParams = INSERTABLE_MARCHA_FIELDS.map((field) => sanitizedMarcha[field]);
+    const [insertResult] = await poolExecuteAdmin(insertSql, insertParams);
+    const insertId = insertResult.insertId;
+
+    if (!insertId) {
+      return res.status(500).json({ code: 'INTERNAL_ERROR', msg: 'Could not create marcha' });
+    }
+
+    const normalizedAutoresInput = Array.isArray(autoresIds)
+      ? autoresIds.join(',')
+      : String(autoresIds ?? '');
+    const sanitizedAutores = [...new Set(
+      normalizedAutoresInput
+        .split(',')
+        .map((value) => Number.parseInt(String(value).trim(), 10))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    )];
+
+    if (sanitizedAutores.length > 0) {
+      const relationPlaceholders = sanitizedAutores.map(() => '(?, ?)').join(', ');
+      const relationParams = sanitizedAutores.flatMap((autorId) => [insertId, autorId]);
+      const relationSql = `INSERT INTO marcha_autor (ID_MARCHA, ID_AUTOR) VALUES ${relationPlaceholders}`;
+      await poolExecuteAdmin(relationSql, relationParams);
+    }
+
+    return res.status(201).json({
+      code: 'CREATED',
+      msg: 'Marcha created successfully',
+      marchaId: insertId,
+    });
+  } catch (err) {
+    console.error('POST /api/admin/addMarcha failed:', err);
+    return res.status(500).json({ code: 'INTERNAL_ERROR', msg: 'Internal server error' });
+  }
+});
+
 export default router;
+

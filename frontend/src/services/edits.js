@@ -12,6 +12,7 @@ const EDITABLE_MARCHA_FIELDS = [
   'BANDA_ESTRENO',
   'DETALLES_MARCHA',
 ];
+const INSERTABLE_MARCHA_FIELDS = [...EDITABLE_MARCHA_FIELDS];
 
 const normalizeValue = (value) => {
   if (value === undefined) {
@@ -76,9 +77,46 @@ const executeMarchaUpdate = async (payload) => {
   return res.data;
 };
 
+const buildMarchaInsertPayload = (draftData) => {
+  const valuesToInsert = INSERTABLE_MARCHA_FIELDS.map((key) => normalizeValue(draftData?.[key]));
+  const autoresIds = normalizeValue(draftData?.AUTORES_IDS);
+  const sqlPreview = `INSERT INTO marcha (${INSERTABLE_MARCHA_FIELDS.join(', ')}) VALUES (${INSERTABLE_MARCHA_FIELDS.map(() => '?').join(', ')})`;
+
+  const previewFields = INSERTABLE_MARCHA_FIELDS.map((key, index) => ({
+    key,
+    newValue: valuesToInsert[index],
+  }));
+
+  return {
+    fieldsToInsert: INSERTABLE_MARCHA_FIELDS,
+    valuesToInsert,
+    marcha: INSERTABLE_MARCHA_FIELDS.reduce((acc, key, index) => {
+      acc[key] = valuesToInsert[index];
+      return acc;
+    }, {}),
+    autoresIds,
+    sqlPreview,
+    previewFields,
+  };
+};
+
+const executeMarchaInsert = async (payload) => {
+  const session = getCurrentUser();
+  const headers = session?.token
+    ? { Authorization: `Bearer ${session.token}` }
+    : {};
+
+  const apiUrl = `${BASE_URL}/admin/addMarcha`;
+  const res = await axios.post(apiUrl, payload, { headers });
+  return res.data;
+};
+
 export {
   EDITABLE_MARCHA_FIELDS,
+  INSERTABLE_MARCHA_FIELDS,
   paramsToUpdate,
   buildMarchaUpdatePayload,
   executeMarchaUpdate,
+  buildMarchaInsertPayload,
+  executeMarchaInsert,
 };

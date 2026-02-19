@@ -27,6 +27,10 @@ function goToMarchaEdit() {
     params: { id: marchaId.value },
   });
 }
+
+function goToMarchaAdd() {
+  router.push({ name: 'marchaAdd' });
+}
 </script>
 
 <template>
@@ -49,6 +53,12 @@ function goToMarchaEdit() {
       @click="goToMarchaEdit()"
     >
       Ir a edición
+    </button>
+    <button
+      class="btn btn-neutral"
+      @click="goToMarchaAdd()"
+    >
+      Nueva marcha
     </button>
     <button
       class="btn"

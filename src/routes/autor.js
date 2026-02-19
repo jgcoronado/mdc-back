@@ -4,8 +4,50 @@ import { resolveQuery, poolExecute } from '../helpers/index.js';
 export const router = express.Router();
 
 router.get('/', ( _, res) => {
-    const response = 'Allow endpoints are: /all, /:id, /search/:name .';
+    const response = 'Allow endpoints are: /all, /:id, /search/:name, /fastSearch?nombre=... .';
     res.send(response);
+});
+
+router.get('/fastSearch', async (req, res) => {
+  try {
+    const { nombre = '' } = req.query;
+    const trimmed = String(nombre).trim();
+
+    if (trimmed.length < 1) {
+      return res.send({ rowsReturned: 0, data: [] });
+    }
+
+    const prefix = `${trimmed}%`;
+    const contains = `%${trimmed}%`;
+
+    const sql = `
+      SELECT
+        a.ID_AUTOR,
+        a.NOMBRE,
+        a.APELLIDOS,
+        a.NOMBRE_ART,
+        CONCAT(a.NOMBRE, ' ', a.APELLIDOS) AS NOMBRE_COMPLETO
+      FROM autor a
+      WHERE
+        a.APELLIDOS LIKE ? OR
+        a.NOMBRE LIKE ? OR
+        a.NOMBRE_ART LIKE ? OR
+        CONCAT(a.APELLIDOS, ' ', a.NOMBRE) LIKE ? OR
+        CONCAT(a.NOMBRE, ' ', a.APELLIDOS) LIKE ?
+      ORDER BY
+        (a.APELLIDOS LIKE ?) DESC,
+        (a.NOMBRE LIKE ?) DESC,
+        a.APELLIDOS ASC,
+        a.NOMBRE ASC
+      LIMIT 5
+    `;
+    const params = [prefix, prefix, prefix, contains, contains, prefix, prefix];
+    const [rows] = await poolExecute(sql, params);
+    return res.send({ rowsReturned: rows.length, data: rows });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send({ rowsReturned: 0, data: [] });
+  }
 });
 
 router.get('/search', async (req, res) => {
