@@ -13,8 +13,8 @@ onMounted(() => {
   user.value = session?.user || '';
 });
 
-function goToLogout() {
-  logout();
+async function goToLogout() {
+  await logout();
   router.push('/login');
 }
 

@@ -34,14 +34,17 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
-  if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
+router.beforeEach(async (to, from, next) => {
+  const authenticated = await isAuthenticated();
+  if (to.matched.some(record => record.meta.requiresAuth) && !authenticated) {
     next('/login');
-  } else if (to.name === 'login' && isAuthenticated()) {
-    next('/dashboard');
-  } else {
-    next();
+    return;
   }
+  if (to.name === 'login' && authenticated) {
+    next('/dashboard');
+    return;
+  }
+  next();
 });
 
 export { router };

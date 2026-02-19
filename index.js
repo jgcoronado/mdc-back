@@ -18,6 +18,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendDistPath = path.join(__dirname, 'public');
@@ -62,7 +63,26 @@ const buildSitemapEntry = (baseUrl, pathName, changefreq, priority) => {
 };
 
 app.use(express.json());
-app.use(cors());
+if (isProduction && allowedOrigins.length === 0) {
+  throw new Error('CORS_ORIGINS must be configured in production.');
+}
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow same-origin and non-browser requests
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.length === 0 && !isProduction) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS origin not allowed'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use('/api/login', loginRoutes);
 app.use('/api/marcha', marchaRoutes);
 app.use('/api/autor', autorRoutes);
