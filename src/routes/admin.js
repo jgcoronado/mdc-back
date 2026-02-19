@@ -133,21 +133,38 @@ router.post('/addMarcha', async (req, res) => {
     INSERTABLE_MARCHA_FIELDS.forEach((field) => {
       sanitizedMarcha[field] = normalizeValue(marcha[field]);
     });
-    const sanitizedAutores = normalizeValue(autoresIds);
+    const columns = INSERTABLE_MARCHA_FIELDS.join(', ');
+    const placeholders = INSERTABLE_MARCHA_FIELDS.map(() => '?').join(', ');
+    const insertSql = `INSERT INTO marcha (${columns}) VALUES (${placeholders})`;
+    const insertParams = INSERTABLE_MARCHA_FIELDS.map((field) => sanitizedMarcha[field]);
+    const [insertResult] = await poolExecuteAdmin(insertSql, insertParams);
+    const insertId = insertResult.insertId;
 
-    // TODO(add-marcha): Implement manual INSERT SQL here.
-    // Suggested flow:
-    // 1) INSERT into `marcha` with fields in INSERTABLE_MARCHA_FIELDS.
-    // 2) Read inserted ID (result.insertId).
-    // 3) If `sanitizedAutores` has values, split by comma and insert relations in junction table.
-    // 4) Return { code: 'CREATED', msg: 'Marcha created successfully', marchaId: insertId }.
-    return res.status(501).json({
-      code: 'TODO_INSERT_MARCHA',
-      msg: 'Pendiente implementar INSERT manual en backend.',
-      preview: {
-        marcha: sanitizedMarcha,
-        autoresIds: sanitizedAutores,
-      },
+    if (!insertId) {
+      return res.status(500).json({ code: 'INTERNAL_ERROR', msg: 'Could not create marcha' });
+    }
+
+    const normalizedAutoresInput = Array.isArray(autoresIds)
+      ? autoresIds.join(',')
+      : String(autoresIds ?? '');
+    const sanitizedAutores = [...new Set(
+      normalizedAutoresInput
+        .split(',')
+        .map((value) => Number.parseInt(String(value).trim(), 10))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    )];
+
+    if (sanitizedAutores.length > 0) {
+      const relationPlaceholders = sanitizedAutores.map(() => '(?, ?)').join(', ');
+      const relationParams = sanitizedAutores.flatMap((autorId) => [insertId, autorId]);
+      const relationSql = `INSERT INTO marcha_autor (ID_MARCHA, ID_AUTOR) VALUES ${relationPlaceholders}`;
+      await poolExecuteAdmin(relationSql, relationParams);
+    }
+
+    return res.status(201).json({
+      code: 'CREATED',
+      msg: 'Marcha created successfully',
+      marchaId: insertId,
     });
   } catch (err) {
     console.error('POST /api/admin/addMarcha failed:', err);
@@ -156,3 +173,4 @@ router.post('/addMarcha', async (req, res) => {
 });
 
 export default router;
+
