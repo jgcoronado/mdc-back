@@ -37,6 +37,24 @@ const normalizeSiteUrl = (rawUrl) => {
   return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
 };
 
+const slugify = (value) => {
+  if (!value) return '';
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+};
+
+const buildDetailSitemapPath = (entity, id, label) => {
+  const safeId = String(id ?? '').trim();
+  if (!safeId) return `/${entity}`;
+  const slug = slugify(label);
+  return slug ? `/${entity}/${slug}-${safeId}` : `/${entity}/${safeId}`;
+};
+
 const getBaseUrl = (req) => {
   const siteUrl = normalizeSiteUrl(process.env.SITE_URL);
   if (siteUrl) {
@@ -119,17 +137,17 @@ app.get('/sitemap.xml', async (req, res) => {
     ];
 
     const [marchas, autores, bandas, discos] = await Promise.all([
-      db.pool.execute('SELECT ID_MARCHA AS id FROM marcha WHERE ID_MARCHA IS NOT NULL'),
-      db.pool.execute('SELECT ID_AUTOR AS id FROM autor WHERE ID_AUTOR IS NOT NULL'),
-      db.pool.execute('SELECT ID_BANDA AS id FROM banda WHERE ID_BANDA IS NOT NULL'),
-      db.pool.execute('SELECT ID_DISCO AS id FROM disco WHERE ID_DISCO IS NOT NULL')
+      db.pool.execute('SELECT ID_MARCHA AS id, TITULO AS label FROM marcha WHERE ID_MARCHA IS NOT NULL'),
+      db.pool.execute("SELECT ID_AUTOR AS id, CONCAT_WS(' ', NOMBRE, APELLIDOS) AS label FROM autor WHERE ID_AUTOR IS NOT NULL"),
+      db.pool.execute('SELECT ID_BANDA AS id, NOMBRE_BREVE AS label FROM banda WHERE ID_BANDA IS NOT NULL'),
+      db.pool.execute('SELECT ID_DISCO AS id, NOMBRE_CD AS label FROM disco WHERE ID_DISCO IS NOT NULL')
     ]);
 
     const detailRoutes = [
-      ...marchas[0].map((row) => ({ path: `/marcha/${row.id}`, changefreq: 'monthly', priority: '0.7' })),
-      ...autores[0].map((row) => ({ path: `/autor/${row.id}`, changefreq: 'monthly', priority: '0.6' })),
-      ...bandas[0].map((row) => ({ path: `/banda/${row.id}`, changefreq: 'monthly', priority: '0.6' })),
-      ...discos[0].map((row) => ({ path: `/disco/${row.id}`, changefreq: 'monthly', priority: '0.6' }))
+      ...marchas[0].map((row) => ({ path: buildDetailSitemapPath('marcha', row.id, row.label), changefreq: 'monthly', priority: '0.7' })),
+      ...autores[0].map((row) => ({ path: buildDetailSitemapPath('autor', row.id, row.label), changefreq: 'monthly', priority: '0.6' })),
+      ...bandas[0].map((row) => ({ path: buildDetailSitemapPath('banda', row.id, row.label), changefreq: 'monthly', priority: '0.6' })),
+      ...discos[0].map((row) => ({ path: buildDetailSitemapPath('disco', row.id, row.label), changefreq: 'monthly', priority: '0.6' }))
     ];
 
     const xmlBody = [...staticRoutes, ...detailRoutes]
