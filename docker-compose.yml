@@ -1,4 +1,19 @@
 services:
+  nextjs:
+    container_name: mdc-nextjs
+    build:
+      context: ./nextjs
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://app:80
+      SITE_URL: https://marchasdecristo.com
+    depends_on:
+      - app
+    restart: unless-stopped
+
   app:
     container_name: mdc-app
     build: .
