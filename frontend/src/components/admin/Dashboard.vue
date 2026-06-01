@@ -31,6 +31,10 @@ function goToMarchaEdit() {
 function goToMarchaAdd() {
   router.push({ name: 'marchaAdd' });
 }
+
+function goToAutorAdd() {
+  router.push({ name: 'autorAdd' });
+}
 </script>
 
 <template>
@@ -59,6 +63,12 @@ function goToMarchaAdd() {
       @click="goToMarchaAdd()"
     >
       Nueva marcha
+    </button>
+    <button
+      class="btn btn-neutral"
+      @click="goToAutorAdd()"
+    >
+      Nuevo autor
     </button>
     <button
       class="btn"

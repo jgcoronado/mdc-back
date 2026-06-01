@@ -134,7 +134,7 @@ function formatPreviewValue(value) {
 </script>
 
 <template>
-  <div class="md:min-w-4xl">
+  <div>
     <div class="headDetail">Alta de marcha</div>
     <table class="table table-zebra">
       <tbody>

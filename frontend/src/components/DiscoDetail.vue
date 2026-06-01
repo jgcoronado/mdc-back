@@ -34,6 +34,7 @@ function onCoverError(event) {
           :src="getCover(apiData.ID_DISCO)"
           :alt="getAlt(apiData.NOMBRE_CD)"
           @error="onCoverError"
+          @contextmenu.prevent
         />
       </figure>
     <div class="justify-items-center">

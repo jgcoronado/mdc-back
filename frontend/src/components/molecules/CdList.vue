@@ -3,7 +3,7 @@
   <li class="list-row">
     <div class="cursor-pointer">
       <a @click="goToDetail($router, 'disco',disco.ID_DISCO, disco.NOMBRE_CD)">
-        <img class="size-15 rounded-box" :src="srcImg" @error="onCoverError" />
+        <img class="size-15 rounded-box" :src="srcImg" @error="onCoverError" @contextmenu.prevent />
       </a>
     </div>
     <div class="text-xl list-col-grow">
