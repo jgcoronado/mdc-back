@@ -6,20 +6,25 @@
   "scripts": {
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "node scripts/migrate-mysql-to-sqlite.mjs",
+    "snapshot": "node scripts/snapshot-endpoints.mjs",
+    "snapshot:diff": "node scripts/diff-snapshots.mjs",
     "compose:local": "docker-compose -f docker-compose-local.yml up -d",
     "compose:local:build": "docker-compose -f docker-compose-local.yml build",
     "compose:local:stop": "docker-compose -f docker-compose-local.yml stop",
     "compose:local:down": "docker-compose -f docker-compose-local.yml down"
-
   },
   "author": "",
   "type": "module",
   "license": "ISC",
   "dependencies": {
+    "better-sqlite3": "^11.5.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "mysql2": "^3.14.3",
     "nodemon": "^3.1.10"
+  },
+  "devDependencies": {
+    "mysql2": "^3.14.3"
   }
 }
