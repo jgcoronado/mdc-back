@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
+import CoverImage from '@/components/CoverImage';
 import { fetchDisco } from '@/lib/api';
 import { extractId, buildDetailPath } from '@/lib/slugify';
 
@@ -40,11 +41,10 @@ export default async function DiscoDetailPage({ params }: { params: Params }) {
     <div className="grid place-items-center">
       <div className="grid place-items-center xl:join md:join join-vertically">
         <figure className="m-1">
-          <img
+          <CoverImage
             className="shadow-sm"
             src={coverSrc}
             alt={`Portada del disco '${data.NOMBRE_CD}'`}
-            onContextMenu={(e) => e.preventDefault()}
           />
         </figure>
         <div className="justify-items-center">

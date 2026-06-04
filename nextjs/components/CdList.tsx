@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CoverImage from '@/components/CoverImage';
 import { buildDetailPath } from '@/lib/slugify';
 
 interface Disco {
@@ -23,12 +24,10 @@ export default function CdList({ disco }: { disco: Disco }) {
       <li className="list-row">
         <div>
           <Link href={discoPath}>
-            <img
+            <CoverImage
               className="size-15 rounded-box"
               src={coverSrc}
               alt={`Portada del disco '${disco.NOMBRE_CD}'`}
-              onError={undefined}
-              onContextMenu={(e) => e.preventDefault()}
             />
           </Link>
         </div>
