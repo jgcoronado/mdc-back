@@ -4,7 +4,7 @@ Aplicación unificada en un solo proyecto:
 
 - `backend`: Node.js + Express (`/api/*`)
 - `frontend`: Vue + Vite (SPA servida por Express)
-- `db`: MySQL externo (instalado en el VPS)
+- `db`: SQLite embebido (`better-sqlite3`, archivo en volumen Docker)
 
 En producción se ejecuta en **un único contenedor Docker**.  
 La API y la base de datos **no se exponen públicamente** por puertos directos.
@@ -23,23 +23,66 @@ La API y la base de datos **no se exponen públicamente** por puertos directos.
 Configura `.env` (especialmente en VPS):
 
 ```env
-DB_HOST=172.17.0.1
-DB_PORT=3306
-DB_USER=usuario_mysql
-DB_PASSWORD=clave_mysql
-DB_NAME=nombre_bd
+DB_PATH=/app/data/mdc.db
 SECRET_KEY=tu_secret
 APP_PORT=80
 CORS_ORIGINS=https://marchasdecristo.com,http://localhost:8080
 SITE_URL=https://marchasdecristo.com
 ```
 
+Para ejecutar el script de migración desde MySQL (una sola vez) también necesitas:
+
+```env
+DB_HOST=...
+DB_PORT=3306
+DB_USER=...
+DB_PASSWORD=...
+DB_NAME=...
+```
+
 Notas:
 
-- `DB_HOST` debe ser accesible desde el contenedor.
-- El usuario MySQL debe tener permisos para conectarse desde la red Docker.
+- `DB_PATH` apunta al archivo SQLite dentro del contenedor. El volumen `mdc-sqlite-data` lo persiste.
 - `COVER_DIR` se define en el entorno del servidor (no en `.env` de la app) para montar portadas externas.
 - `SITE_URL` define el dominio canónico para `sitemap.xml` y `robots.txt`.
+
+## Migración inicial desde MySQL
+
+Para crear el archivo SQLite a partir del MySQL existente:
+
+```bash
+# Con el .env apuntando al MySQL origen (DB_HOST, DB_USER, etc.)
+npm install
+npm run db:migrate -- --out ./data/mdc.db
+```
+
+El script vuelca todas las tablas (`autor`, `banda`, `disco`, `marcha`, `marcha_autor`, `disco_marcha`, `usuarios`), preserva nombres de columna, y al final aplica `db/schema.sql` para crear las tablas FTS5 (`marcha_fts`, `autor_fts`), sus triggers y los índices que faltaban en MySQL.
+
+Tras generar el `.db`, copia el archivo al volumen Docker del VPS:
+
+```bash
+scp data/mdc.db claude@VPS:/tmp/
+ssh claude@VPS "docker cp /tmp/mdc.db mdc-app:/app/data/mdc.db && docker compose restart app"
+```
+
+## Verificar la migración (snapshot diff)
+
+Para confirmar que SQLite devuelve lo mismo que MySQL, captura las respuestas de los endpoints públicos en ambos backends y haz diff:
+
+```bash
+# 1) Con MySQL aún activo:
+npm run snapshot -- --base http://localhost:8080 --out snapshots/mysql
+
+# 2) Genera el .db, conmuta a SQLite, levanta de nuevo:
+npm run db:migrate -- --out ./data/mdc.db
+docker compose up -d --build app
+npm run snapshot -- --base http://localhost:8080 --out snapshots/sqlite
+
+# 3) Compara:
+npm run snapshot:diff snapshots/mysql snapshots/sqlite
+```
+
+El diff sale 0 si todo coincide, distinto de 0 si hay diferencias (con el primer campo divergente impreso). Sigue los pasos en este orden — no toques el código de las rutas en mitad del proceso.
 
 ## Gestión de portadas (sin rebuild)
 
@@ -142,6 +185,6 @@ location / {
 
 ## Problemas comunes
 
-- `ECONNREFUSED 172.17.0.1:3306`: MySQL no escucha en esa interfaz/puerto.
-- `Host '172.x.x.x' is not allowed`: faltan grants MySQL para red Docker.
-- `ENOTFOUND host.docker.internal` en Linux: requiere `extra_hosts` con `host-gateway` o usar IP del host.
+- `SQLITE_CANTOPEN: unable to open database file`: el directorio `data/` no existe o no tiene permisos; el `Dockerfile` ya lo crea con `chown node:node /app/data`.
+- `no such table: marcha_fts`: el `db/schema.sql` no se ha ejecutado tras la migración. Ejecuta `npm run db:migrate` de nuevo o aplica manualmente: `sqlite3 data/mdc.db < db/schema.sql`.
+- `database is locked`: WAL está activo, pero un proceso de backup puede colisionar con escrituras. Para backup en caliente usa `sqlite3 data/mdc.db ".backup /var/backups/mdc.db"`.

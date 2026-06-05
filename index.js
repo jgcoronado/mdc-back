@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import db from './src/db.js';
+import { poolExecute } from './src/helpers/index.js';
 import loginRoutes from './src/routes/login.js';
 import marchaRoutes from './src/routes/marcha.js';
 import autorRoutes from './src/routes/autor.js';
@@ -137,10 +137,10 @@ app.get('/sitemap.xml', async (req, res) => {
     ];
 
     const [marchas, autores, bandas, discos] = await Promise.all([
-      db.pool.execute('SELECT ID_MARCHA AS id, TITULO AS label FROM marcha WHERE ID_MARCHA IS NOT NULL'),
-      db.pool.execute("SELECT ID_AUTOR AS id, CONCAT_WS(' ', NOMBRE, APELLIDOS) AS label FROM autor WHERE ID_AUTOR IS NOT NULL"),
-      db.pool.execute('SELECT ID_BANDA AS id, NOMBRE_BREVE AS label FROM banda WHERE ID_BANDA IS NOT NULL'),
-      db.pool.execute('SELECT ID_DISCO AS id, NOMBRE_CD AS label FROM disco WHERE ID_DISCO IS NOT NULL')
+      poolExecute('SELECT ID_MARCHA AS id, TITULO AS label FROM marcha WHERE ID_MARCHA IS NOT NULL'),
+      poolExecute("SELECT ID_AUTOR AS id, (NOMBRE || ' ' || APELLIDOS) AS label FROM autor WHERE ID_AUTOR IS NOT NULL"),
+      poolExecute('SELECT ID_BANDA AS id, NOMBRE_BREVE AS label FROM banda WHERE ID_BANDA IS NOT NULL'),
+      poolExecute('SELECT ID_DISCO AS id, NOMBRE_CD AS label FROM disco WHERE ID_DISCO IS NOT NULL')
     ]);
 
     const detailRoutes = [

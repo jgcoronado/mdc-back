@@ -1,25 +1,31 @@
 import 'dotenv/config';
-import { createPool } from 'mysql2/promise';
+import path from 'node:path';
+import fs from 'node:fs';
+import Database from 'better-sqlite3';
 
-const dbHost = process.env.DB_HOST || process.env.HOST;
-const dbPort = Number(process.env.DB_PORT || process.env.PORT || 3306);
-const dbUser = process.env.DB_USER || process.env.USER;
-const dbPassword = process.env.DB_PASSWORD || process.env.PASSWORD;
-const dbName = process.env.DB_NAME || process.env.DATABASE;
+const DEFAULT_DB_PATH = path.resolve(process.cwd(), 'data', 'mdc.db');
 
-const pool = createPool({
-  host: dbHost,
-  port: dbPort,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
-  waitForConnections: true,
-  connectionLimit: 10,
-  maxIdle: 10, // max idle connections, the default value is the same as `connectionLimit`
-  idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
+const resolveDbPath = () => {
+  const fromEnv = process.env.DB_PATH;
+  return fromEnv && fromEnv.trim() ? fromEnv.trim() : DEFAULT_DB_PATH;
+};
+
+const ensureDbDirExists = (dbFilePath) => {
+  const dirName = path.dirname(dbFilePath);
+  fs.mkdirSync(dirName, { recursive: true });
+};
+
+const dbFilePath = resolveDbPath();
+ensureDbDirExists(dbFilePath);
+
+const database = new Database(dbFilePath, {
+  readonly: false,
+  fileMustExist: false,
 });
 
-export default { pool };
+database.pragma('journal_mode = WAL');
+database.pragma('foreign_keys = ON');
+database.pragma('busy_timeout = 5000');
+
+export default { database, dbFilePath };
+export { database, dbFilePath };

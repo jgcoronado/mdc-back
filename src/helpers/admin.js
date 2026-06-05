@@ -1,40 +1,38 @@
-import 'dotenv/config';
-import { createPool } from 'mysql2/promise';
+import { database } from '../db.js';
 
-const dbHost = process.env.DB_HOST
-const dbPort = Number(process.env.DB_PORT || 3306);
-const dbUser = process.env.DB_USER_ADMIN;
-const dbPassword = process.env.DB_PASSWORD_ADMIN;
-const dbName = process.env.DB_NAME;
+const WRITE_STATEMENT_REGEX = /^\s*(INSERT|UPDATE|DELETE|REPLACE)/i;
 
-const poolAdmin = createPool({
-  host: dbHost,
-  port: dbPort,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
-  waitForConnections: true,
-  connectionLimit: 10,
-  maxIdle: 10, // max idle connections, the default value is the same as `connectionLimit`
-  idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
-});
+const isWriteStatement = (sql) => WRITE_STATEMENT_REGEX.test(sql);
 
-const resolveQueryAdmin = async (sql, params) => {
-    const conn = await poolAdmin.getConnection();
-    const [queryResults] = await conn.execute(sql, params);
-    poolAdmin.releaseConnection(conn);
-    const queryRows = queryResults.length;
-    return { rowsReturned: queryRows, data: queryResults };
+const runAdminWrite = (sql, params) => {
+  const statement = database.prepare(sql);
+  const info = statement.run(...params);
+  return {
+    insertId: Number(info.lastInsertRowid),
+    affectedRows: info.changes,
+    changedRows: info.changes,
+  };
+};
+
+const runAdminRead = (sql, params) => {
+  const statement = database.prepare(sql);
+  return statement.all(...params);
+};
+
+const resolveQueryAdmin = async (sql, params = []) => {
+  const safeParams = params || [];
+  const rows = runAdminRead(sql, safeParams);
+  return { rowsReturned: rows.length, data: rows };
 };
 
 const poolExecuteAdmin = async (sql, params = []) => {
-  const conn = await poolAdmin.getConnection();
-  const result = await conn.execute(sql, params);
-  poolAdmin.releaseConnection(conn);
-  return result;  
-}
+  const safeParams = params || [];
+  if (isWriteStatement(sql)) {
+    const writeResult = runAdminWrite(sql, safeParams);
+    return [writeResult];
+  }
+  const rows = runAdminRead(sql, safeParams);
+  return [rows];
+};
 
 export { resolveQueryAdmin, poolExecuteAdmin };

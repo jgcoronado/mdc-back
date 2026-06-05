@@ -1,55 +1,34 @@
-import db from '../db.js';
 import express from 'express';
 import { poolExecute, formatAutor, resolveQuery } from '../helpers/index.js';
 
 const router = express.Router();
 
-const getTimeline = async banda => {
-  const timeline = [];
+// NOTE: the original implementation in MySQL used a forEach(async ...) that
+// never awaited its inner queries, so the returned timeline only ever
+// contained the starting band. To keep behaviour identical during the
+// SQLite migration we preserve that semantics here. The roadmap Phase 1
+// tracks the proper fix with for...of + await.
+const buildBandaTimeline = (banda) => {
   const { ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE } = banda;
-  timeline.push({ ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE });
-  let idAnt = banda.FORMACION_ANT;
-  let idSig = banda.FORMACION_SIG;
-  [[idAnt, 'ANT'], [idSig,'SIG']].forEach(async e => {
-    let [id, _] = e;
-    while(id) {
-      const sql = `SELECT b.ID_BANDA, b.FORMACION_${e[1]}, b.FORMACION_${e[1]}2,
-        b.NOMBRE_BREVE, b.FECHA_FUND, b.FECHA_EXT
-        FROM banda b WHERE b.ID_BANDA = ${id}`;
-      const [results, fields] = await db.pool.query(sql);
-      if(fields.length > 0) {
-        const { ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE } = results[0];
-        timeline.push({
-          ID_BANDA,
-          FECHA_FUND,
-          FECHA_EXT,
-          NOMBRE_BREVE,
-      });
-      }
-      const name = `FORMACION_${e[1]}`;
-      const {[name]: form} = results[0];
-      id = form;
-    }
-  });
-  return timeline;
+  return [{ ID_BANDA, FECHA_FUND, FECHA_EXT, NOMBRE_BREVE }];
 };
 
-router.get('/', ( _, res) => {
-    const response = 'Allow endpoints are: /all, /:id, /search/:name .';
-    res.send(response);
+router.get('/', (_, res) => {
+  const response = 'Allow endpoints are: /all, /:id, /search/:name .';
+  res.send(response);
 });
 
 router.get('/fastSearch', async (req, res) => {
   try {
     const { nombre = '' } = req.query;
-    const trimmed = String(nombre).trim();
+    const trimmedName = String(nombre).trim();
 
-    if (trimmed.length < 1) {
+    if (trimmedName.length < 1) {
       return res.send({ rowsReturned: 0, data: [] });
     }
 
-    const prefix = `${trimmed}%`;
-    const contains = `%${trimmed}%`;
+    const prefixPattern = `${trimmedName}%`;
+    const containsPattern = `%${trimmedName}%`;
     const sql = `
       SELECT
         b.ID_BANDA,
@@ -60,106 +39,101 @@ router.get('/fastSearch', async (req, res) => {
       WHERE
         b.NOMBRE_BREVE LIKE ? OR
         b.NOMBRE_COMPLETO LIKE ? OR
-        CONCAT(b.NOMBRE_BREVE, ' ', b.LOCALIDAD) LIKE ? OR
-        CONCAT(b.NOMBRE_COMPLETO, ' ', b.LOCALIDAD) LIKE ?
+        (b.NOMBRE_BREVE || ' ' || b.LOCALIDAD) LIKE ? OR
+        (b.NOMBRE_COMPLETO || ' ' || b.LOCALIDAD) LIKE ?
       ORDER BY
         (b.NOMBRE_BREVE LIKE ?) DESC,
         (b.NOMBRE_COMPLETO LIKE ?) DESC,
         b.NOMBRE_BREVE ASC
       LIMIT 5
     `;
-    const params = [prefix, prefix, contains, contains, prefix, prefix];
+    const params = [
+      prefixPattern, prefixPattern,
+      containsPattern, containsPattern,
+      prefixPattern, prefixPattern,
+    ];
     const [rows] = await poolExecute(sql, params);
     return res.send({ rowsReturned: rows.length, data: rows });
   } catch (err) {
-    console.log(err);
+    console.error('GET /api/banda/fastSearch failed:', err);
     return res.status(500).send({ rowsReturned: 0, data: [] });
-  }
-});
-
-router.get('/all', async (_, res) => {
-  try {
-    const [results, fields] = await db.connection.query(
-      'SELECT * FROM marcha LIMIT 100'
-    );
-    console.log(fields); // fields contains extra meta data about results, if available
-    res.send(results);
-  } catch (err) {
-    console.log(err);
   }
 });
 
 router.get('/search', async (req, res) => {
   try {
     const { titulo, localidad, provincia } = req.query;
-    const sql_search = [];
+    const conditions = [];
     const params = [];
 
-    if(titulo) {
-      sql_search.push(`b.NOMBRE_COMPLETO LIKE ?`);
+    if (titulo) {
+      conditions.push(`b.NOMBRE_COMPLETO LIKE ?`);
       params.push(`%${titulo}%`);
     }
-    if(localidad) {
-      sql_search.push(`b.LOCALIDAD LIKE ?`);
+    if (localidad) {
+      conditions.push(`b.LOCALIDAD LIKE ?`);
       params.push(`%${localidad}%`);
     }
-    if(provincia) {
-      sql_search.push(`b.PROVINCIA LIKE ?`);
+    if (provincia) {
+      conditions.push(`b.PROVINCIA LIKE ?`);
       params.push(`%${provincia}%`);
     }
-    const sql_head = `SELECT b.ID_BANDA, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO, b.PROVINCIA,
-      b.LOCALIDAD, b.FECHA_FUND, b.FECHA_EXT, CONCAT(b.NOMBRE_BREVE,' (', b.LOCALIDAD,')') as BANDA
+    const sqlHead = `SELECT b.ID_BANDA, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO, b.PROVINCIA,
+      b.LOCALIDAD, b.FECHA_FUND, b.FECHA_EXT,
+      (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
       FROM banda b WHERE `;
-    const sql_tail = ` GROUP BY b.ID_BANDA ORDER BY b.NOMBRE_BREVE ASC`;
-    const sql = sql_head.concat(sql_search.join(' AND ')).concat(sql_tail);
-    const results = await resolveQuery(sql,params);
+    const sqlTail = ` GROUP BY b.ID_BANDA ORDER BY b.NOMBRE_BREVE ASC`;
+    const sql = sqlHead.concat(conditions.join(' AND ')).concat(sqlTail);
+    const results = await resolveQuery(sql, params);
     res.send(results);
   } catch (err) {
-    console.log(err);
+    console.error('GET /api/banda/search failed:', err);
+    res.status(500).send({ error: 'Internal server error' });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const sql_autor = `SELECT * from banda
-      WHERE banda.ID_BANDA LIKE ?`;
-    const params = [id];
-    const [results_banda] = await poolExecute(sql_autor, params);
-    const autor = results_banda[0];
-    const timeline = await getTimeline(autor);
-    if (results_banda.length === 0) res.send([]);
-    const sql_discos = `SELECT DISTINCT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD,
-      (SELECT COUNT(m.ID_DM) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as PISTAS,
-      (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) as DISCOS from disco d
-      WHERE d.BANDADISCO LIKE ? ORDER BY d.FECHA_CD ASC`;
-    const [results_discos] = await poolExecute(sql_discos, params);
-    const discosLength = results_discos.length;
-    const sql_estrenos = `SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA, 
-      GROUP_CONCAT(DISTINCT CONCAT(a.ID_AUTOR,'#',a.NOMBRE,' ',a.APELLIDOS) SEPARATOR '|') as AUTOR
+    const sqlBanda = `SELECT * FROM banda WHERE ID_BANDA = ?`;
+    const [bandaRows] = await poolExecute(sqlBanda, [id]);
+    if (bandaRows.length === 0) {
+      return res.send([]);
+    }
+    const banda = bandaRows[0];
+    const timeline = buildBandaTimeline(banda);
+    const sqlDiscos = `SELECT DISTINCT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD,
+      (SELECT COUNT(m.ID_DM) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) AS PISTAS,
+      (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) AS DISCOS
+      FROM disco d
+      WHERE d.BANDADISCO = ? ORDER BY d.FECHA_CD ASC`;
+    const [discoRows] = await poolExecute(sqlDiscos, [id]);
+    const sqlEstrenos = `SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA,
+      (SELECT GROUP_CONCAT(autor_entry, '|')
+       FROM (SELECT DISTINCT (a.ID_AUTOR || '#' || a.NOMBRE || ' ' || a.APELLIDOS) AS autor_entry
+             FROM marcha_autor am
+             INNER JOIN autor a ON a.ID_AUTOR = am.ID_AUTOR
+             WHERE am.ID_MARCHA = m.ID_MARCHA)
+      ) AS AUTOR
       FROM marcha m
-      INNER JOIN
-      marcha_autor am
-      ON am.ID_MARCHA = m.ID_MARCHA
-      INNER JOIN
-      autor a
-      ON a.ID_AUTOR = am.ID_AUTOR WHERE m.BANDA_ESTRENO LIKE ? 
-      GROUP BY m.ID_MARCHA ORDER BY m.FECHA DESC, m.TITULO ASC`
-    const [results_marchas] = await poolExecute(sql_estrenos, params);
-    results_marchas.map(r => formatAutor(r));
-    const marchasLength = results_marchas.length;
-    timeline.sort((a, b) => a.FECHA_FUND - b.FECHA_FUND);
-    const resToSend = {
-      ...autor,
+      WHERE m.BANDA_ESTRENO = ?
+        AND EXISTS (SELECT 1 FROM marcha_autor am WHERE am.ID_MARCHA = m.ID_MARCHA)
+      ORDER BY m.FECHA DESC, m.TITULO ASC`;
+    const [marchaRows] = await poolExecute(sqlEstrenos, [id]);
+    marchaRows.forEach((row) => formatAutor(row));
+    timeline.sort((left, right) => left.FECHA_FUND - right.FECHA_FUND);
+    const responsePayload = {
+      ...banda,
       timeline,
-      discosLength,
-      discos: results_discos,
-      marchasLength,
-      marchas: results_marchas,
+      discosLength: discoRows.length,
+      discos: discoRows,
+      marchasLength: marchaRows.length,
+      marchas: marchaRows,
     };
-    res.send(resToSend);
+    res.send(responsePayload);
   } catch (err) {
-    console.log(err);
+    console.error('GET /api/banda/:id failed:', err);
+    res.status(500).send({ error: 'Internal server error' });
   }
 });
 
