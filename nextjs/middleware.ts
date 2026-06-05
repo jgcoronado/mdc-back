@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifySession, getAuthCookieName } from '@/lib/auth-session';
 
-export const config = {
-  matcher: ['/dashboard/:path*'],
-};
+// Node.js runtime required — verifySession uses node:crypto.
+export const runtime = 'nodejs';
 
-export async function middleware(request: NextRequest) {
-  const apiUrl = (process.env.INTERNAL_API_URL || 'http://localhost:80').replace(/\/$/, '');
-  const cookie = request.cookies.get('mdc_session');
+export const config = { matcher: ['/dashboard/:path*'] };
 
-  if (!cookie) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  try {
-    const res = await fetch(`${apiUrl}/api/login/verify`, {
-      headers: { Cookie: `mdc_session=${cookie.value}` },
-    });
-    if (!res.ok) return NextResponse.redirect(new URL('/login', request.url));
-  } catch {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get(getAuthCookieName())?.value ?? '';
+  const payload = verifySession(token);
+  if (!payload) return NextResponse.redirect(new URL('/login', request.url));
   return NextResponse.next();
 }
