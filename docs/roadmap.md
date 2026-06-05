@@ -1,24 +1,24 @@
 # Hoja de ruta — marchasdecristo.com
 
-> Generado: 2026-06-01
+> Generado: 2026-06-01 · Última actualización: 2026-06-05
 > Plan secuenciado para resolver la deuda técnica identificada y materializar las decisiones tomadas.
 
 ## Resumen
 
 | Fase | Objetivo | Estado | Riesgo |
 |------|----------|--------|--------|
-| 0 | Limpieza y seguridad inmediata | Pendiente | Bajo |
-| 1 | Bugfix funcionales | Pendiente | Bajo |
+| 0 | Limpieza y seguridad inmediata | ✅ Completada (2026-06-05) | — |
+| 1 | Bugfix funcionales | ✅ Superada (Express eliminado) | — |
 | 2 | Migrar MySQL a Docker en el VPS | ✅ Completada (junio 2026) | — |
 | 3a | Migrar páginas admin a Next.js | ✅ Completada (junio 2026) | — |
-| 3b | Migrar API a Next.js Route Handlers y apagar Express | ⏳ Código listo, pendiente despliegue VPS | Medio-alto |
-| 4 | Endurecimiento de BD (índices, motores, FKs) | Pendiente | Medio |
+| 3b | Migrar API a Next.js Route Handlers y apagar Express | ✅ Completada (2026-06-05) | — |
+| 4 | Endurecimiento de BD (índices, FKs) | Pendiente | Bajo (SQLite) |
 | 5 | Tests, CI/CD, observabilidad | Pendiente | Bajo |
-| 6 | Mejoras opcionales (SQLite, build estático) | Pendiente | — |
+| 6 | Mejoras opcionales (build estático, Zod, Drizzle) | Pendiente | — |
 
 ---
 
-## Fase 0 — Limpieza inmediata (2-4 h)
+## Fase 0 — Limpieza inmediata ✅ Completada (2026-06-05)
 
 Objetivo: cerrar agujeros de seguridad y eliminar fricción operativa **sin tocar lógica de negocio**.
 
@@ -53,9 +53,9 @@ Objetivo: cerrar agujeros de seguridad y eliminar fricción operativa **sin toca
 
 ---
 
-## Fase 1 — Bugfix funcionales (3-5 h)
+## Fase 1 — Bugfix funcionales ✅ Superada (Express eliminado en Fase 3b)
 
-Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
+Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) vivían en el código Express. Al eliminar Express en la Fase 3b, los nuevos Route Handlers se escribieron sin estos antipatrones. No requiere acción.
 
 ### Tareas
 
@@ -197,10 +197,9 @@ Archivos añadidos:
 
 ---
 
-## Fase 3b — Migrar API a Next.js Route Handlers y apagar Express ✅ Código completado (junio 2026)
+## Fase 3b — Migrar API a Next.js Route Handlers y apagar Express ✅ Completada (2026-06-05)
 
-> **Estado**: código listo en rama `main`, **pendiente de desplegar en el VPS**.
-> Ver guía de despliegue completa en [vps-migration-3b.md](vps-migration-3b.md).
+> **Estado**: desplegado en VPS. Express apagado. Ver guía ejecutada en [vps-migration-3b.md](vps-migration-3b.md).
 
 ### Qué se hizo (sesión junio 2026)
 
@@ -231,26 +230,16 @@ Archivos añadidos:
 - `docker-compose.yml` — servicio `app` (Express) eliminado, volumen SQLite en `nextjs`
 - `nginx.conf.example` — simplificado a una sola location (`/cover/` directo + resto a `:3000`)
 
-### Siguiente paso obligatorio: despliegue en VPS
+### Realizado en sesión 2026-06-05
 
-Seguir **en orden** los pasos de [vps-migration-3b.md](vps-migration-3b.md):
-
-1. `git pull` en el VPS.
-2. Backup del volumen SQLite (obligatorio antes de tocar contenedores).
-3. `docker compose stop app && docker compose rm -f app`.
-4. `docker compose build nextjs && docker compose up -d nextjs`.
-5. Verificar endpoints con `curl`.
-6. Actualizar nginx con el nuevo `nginx.conf.example` y recargar.
-7. `docker system prune -f`.
-
-### Pendiente tras el despliegue
-
-- **Eliminar código muerto** del repo (Express ya no se usa pero el código sigue):
-  - `src/`, `frontend/`, `index.js`, `Dockerfile` raíz, `package.json` raíz.
-  - Artefactos legacy: `.htaccess`, `.vercel/`, `vercel.json`, `ecosystem.config.js`.
-- **Actualizar `docs/context.md` y `docs/architecture.md`** para reflejar el stack final (solo Next.js + SQLite).
-- **Fase 0** (seguridad): rotar credenciales, `.env` fuera del repo. Hacerlo antes de compartir el repo públicamente.
-- **Fase 5** (tests + CI/CD): ahora el stack es suficientemente simple para añadir tests con Vitest.
+1. Merge `feat/nextjs-migration` → `main` y despliegue en VPS.
+2. Backup SQLite antes de tocar contenedores (`/var/backups/mdc-backup-fase3b-2026-06-05.db`).
+3. `docker stop mdc-app && docker rm mdc-app` (Express apagado).
+4. `docker compose build nextjs && docker compose up -d nextjs` (Ready in 76ms).
+5. Endpoints verificados vía HTTPS.
+6. Nginx simplificado: todo → `:3000` excepto `/cover/`.
+7. `docker system prune -f` → 1.34 GB liberados.
+8. Código muerto eliminado: `src/`, `frontend/`, `index.js`, `Dockerfile` raíz, artefactos legacy.
 
 ---
 

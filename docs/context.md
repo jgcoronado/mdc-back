@@ -1,230 +1,204 @@
 # Contexto del proyecto — marchasdecristo.com
 
-> Generado: 2026-06-01 · Documento de entrada para nuevas sesiones.
+> Última actualización: 2026-06-05
+> Documento de entrada para nuevas sesiones.
 > Documentos complementarios en esta misma carpeta:
 > - [architecture.md](architecture.md) — diagrama, flujos y decisiones arquitectónicas.
-> - [technical-debt.md](technical-debt.md) — bugs activos, deuda y código muerto.
-> - [redesign-options.md](redesign-options.md) — análisis de cambios profundos (lenguaje, BD, hosting).
+> - [technical-debt.md](technical-debt.md) — deuda pendiente.
 > - [roadmap.md](roadmap.md) — plan de acción priorizado.
-> - [db-analysis.md](db-analysis.md) — auditoría de la base de datos (preexistente).
+> - [db-analysis.md](db-analysis.md) — auditoría de la base de datos.
+
+---
 
 ## 1. Visión general
 
-**Marchas de Cristo** ([marchasdecristo.com](https://marchasdecristo.com)) es una base de datos de **música procesional** española. Permite consultar de forma rápida y eficiente desde navegador (PC, móvil o tablet) cuatro entidades relacionadas:
+**Marchas de Cristo** ([marchasdecristo.com](https://marchasdecristo.com)) es una base de datos de **música procesional** española. Permite consultar cuatro entidades relacionadas:
 
 | Entidad | Volumen | Descripción |
 |---------|---------|-------------|
 | Marchas | 4 212 | Marchas procesionales (título, fecha, dedicatoria, banda de estreno, autores) |
 | Autores | 827 | Compositores |
-| Bandas | 268 | Formaciones musicales (cornetas y tambores, agrupaciones musicales) |
+| Bandas | 268 | Formaciones musicales |
 | Discos | 431 | Grabaciones (CDs) que contienen marchas |
 
-Relaciones:
+Relaciones principales:
 - `marcha_autor` (4 724 filas) — marcha N:N autor.
 - `disco_marcha` (4 478 filas) — disco N:N marcha (con número de pista).
-- `marcha.BANDA_ESTRENO` → `banda.ID_BANDA` (banda que estrenó la marcha).
-- `disco.BANDADISCO` → `banda.ID_BANDA` (banda titular del disco).
+- `marcha.BANDA_ESTRENO` → `banda.ID_BANDA`.
+- `disco.BANDADISCO` → `banda.ID_BANDA`.
 
-**Audiencia**: aficionados a la música cofrade, especialmente en Semana Santa. **Tráfico real: bajo**, con picos previstos en Cuaresma/Semana Santa (febrero-abril).
+**Audiencia**: aficionados a la música cofrade, picos en Cuaresma/Semana Santa.  
+**Mantenedor único**: Javier Guerra ([@JaviWarSVQ](https://x.com/JaviWarSVQ)).
 
-**Autor / mantenedor único**: Javier Guerra ([@JaviWarSVQ](https://x.com/JaviWarSVQ)).
+---
 
-## 2. Stack tecnológico
+## 2. Stack tecnológico (estado actual)
 
-### Backend API
-- **Node.js 22** + **Express 5** (ESM, `"type": "module"`).
-- **mysql2/promise** con pool de conexiones (límite 10).
-- **dos pools separados** — `pool` (usuario `jaguerra27_readonly`) y `poolAdmin` (`jaguerra27_user`) para segregación de privilegios.
-- Sesiones firmadas con **HMAC-SHA256 propio** (no JWT externo). Cookies HttpOnly + `Bearer` fallback.
-- Passwords con **PBKDF2-SHA512 / 210 000 iteraciones**, auto-upgrade desde MD5 legado en primer login.
-- CORS configurable por variable de entorno con allowlist.
-- Rate limiting de login: `Map` en memoria (6 intentos / 15 min).
-
-### Frontend público
+### Aplicación — Next.js 15 (único servicio)
 - **Next.js 15** (App Router) + **React 19** + **TypeScript** + **Tailwind 4** + **DaisyUI 5**.
-- SSR con **ISR** (revalidación periódica): detalles cada hora, estadísticas cada 30 min, búsquedas sin caché.
-- Standalone output (`next.config.ts`) para contenedor Docker minimalista.
-- Las URLs de detalle son `/<entidad>/<slug>-<id>` (SEO-friendly), con redirect 301 desde `/<entidad>/<id>` legado.
+- **Server Components** para todas las páginas públicas — lectura directa a SQLite, sin HTTP round-trip.
+- **Route Handlers** (`app/api/`) para la API REST: login, autocomplete, admin (addMarcha, editMarcha, addAutor).
+- **ISR**: detalles cada hora, estadísticas cada 30 min, búsquedas sin caché.
+- **Standalone output** para imagen Docker minimalista.
+- **Admin**: Client Components protegidos por `middleware.ts` (verifica cookie HMAC inline).
 
-### Frontend admin (legacy + activo)
-- **Vue 3** + **Vite 7** + **Vue Router 4** + **axios** + **Tailwind 4** + **DaisyUI**.
-- Servido como SPA estática desde Express (`/public/index.html`) tras `npm run build` en `frontend/`.
-- Rutas vivas: `/login`, `/dashboard`, `/dashboard/marcha/:id`, `/dashboard/marcha/add`, `/dashboard/autor/add`.
-- **Las rutas públicas (`/marcha`, `/banda`, etc.) están duplicadas como restos de la migración**. Nginx ya no las sirve, pero el código sigue compilando en el bundle (ver [technical-debt.md](technical-debt.md)).
+### Base de datos — SQLite embebido
+- **SQLite** vía **better-sqlite3** (síncrono, sin pool).
+- Singleton lazy en `lib/db.ts` — no abre la BD en `next build`.
+- Volumen Docker `mdc-back_mdc-sqlite-data` montado en `/app/data/mdc.db`.
+- FTS5 (`marcha_fts`, `autor_fts`) para búsqueda full-text.
+- **Sin ORM** — SQL crudo en `lib/api.ts` y Route Handlers.
 
-### Base de datos
-- **MySQL** alojado en el VPS (en el host, no en contenedor). Accesible desde Docker en `172.17.0.1:3306`.
-- Motor mixto: **MyISAM** (marcha, autor, banda, marcha_autor, videos) e **InnoDB** (disco, disco_marcha, usuarios, login_autor, users).
-- Collation principalmente `utf8_spanish_ci` con excepciones (ver [db-analysis.md](db-analysis.md)).
-- **No hay foreign keys**, no hay migraciones, no hay ORM. SQL crudo en cada ruta.
+### Auth/sesiones
+- **HMAC-SHA256 propio** implementado en `lib/auth-session.ts` (sin dependencias externas).
+- Cookies **HttpOnly + Secure + SameSite=lax**.
+- Passwords: **PBKDF2-SHA512 / 210 000 iteraciones** (`pbkdf2$sha512$iters$salt$derived`).
+- Rate limiting de login: `Map` en memoria (6 intentos / 15 min, ventana y bloqueo de 15 min).
 
 ### Infraestructura
-- **VPS**: 104.245.245.27, Ubuntu 22.04, 1 vCPU, 1 GB RAM, 15 GB disco, 2 GB swap.
-- **Nginx** como reverse proxy con TLS (Let's Encrypt).
-- **Docker Compose** en `/var/www/mdc-back/` con dos servicios:
-  - `mdc-app` (Express + admin Vue) → `127.0.0.1:8080`.
-  - `mdc-nextjs` (público SSR) → `127.0.0.1:3000`.
-- **Imágenes de portada** (`/cover/*.png`): volumen montado desde `/var/www/mdc-assets/cover/` (no se empaquetan en la imagen). Nginx las sirve directamente con cache `Cache-Control: public, immutable`.
-- **Acceso SSH**: clave en `~/.ssh/mdc_vps`, usuario `claude` con sudo sin contraseña.
+- **VPS**: 104.245.245.27, Ubuntu 22.04, 1 vCPU, 1 GB RAM, 15 GB disco.
+- **Nginx** como reverse proxy con TLS (Let's Encrypt). Config en `/etc/nginx/sites-enabled/default`.
+- **Docker Compose** en `/var/www/mdc-back/` con un único servicio: `mdc-nextjs` → `127.0.0.1:3000`.
+- **Portadas** (`/cover/*.png`): volumen host `/var/www/mdc-assets/cover/` montado como `:ro`. Nginx las sirve directamente.
+- **Backup**: cron diario a las 3:00 AM copia `mdc.db` a `/var/backups/`, retención 14 días.
+- **Acceso SSH**: usuario `claude` con sudo, desde la máquina local con sshpass.
 
-### Hosting alternativo desactivado
-- Existe `.vercel/` y `vercel.json` — abandonados.
-- `ecosystem.config.js` de **PM2** — abandonado (sustituido por Docker).
-- `.htaccess` para **Apache** — abandonado (era de la era de hosting compartido en helioho.st). La BD sigue accesible públicamente en `jaguerra27.helioho.st:3306` como herencia.
+---
 
 ## 3. Estructura del repositorio
 
 ```
-mysql-simple/
-├── index.js                    # Bootstrap Express (sirve API, SPA admin, sitemap, robots)
-├── package.json                # Backend deps (express, mysql2, cors, dotenv, nodemon)
-├── Dockerfile                  # Multi-stage: build Vue + runtime Node
-├── docker-compose.yml          # Producción: app + nextjs
-├── docker-compose-local.yml    # Local: solo app
-├── nginx.conf.example          # Ejemplo de configuración del reverse proxy
-├── .env                        # Credenciales (¡versionado, ver deuda!)
+mdc-back/
+├── .env.example                # Plantilla de variables de entorno (sin secretos)
+├── .gitignore
+├── docker-compose.yml          # Un solo servicio: nextjs
+├── nginx.conf.example          # Config nginx actual (todo → :3000 excepto /cover/)
 ├── README.md
 │
-├── src/                        # Backend
-│   ├── db.js                   # Pool readonly
-│   ├── helpers/
-│   │   ├── index.js            # resolveQuery, poolExecute, formatAutor
-│   │   ├── admin.js            # Pool de escritura (poolAdmin)
-│   │   └── authSession.js      # Firma HMAC-SHA256, cookies, getTokenFromRequest
-│   └── routes/
-│       ├── login.js            # POST /, GET /verify, POST /logout
-│       ├── marcha.js           # GET /search, /:id, /:id/disco
-│       ├── autor.js            # GET /fastSearch, /search, /:id
-│       ├── banda.js            # GET /fastSearch, /all (roto), /search, /:id
-│       ├── disco.js            # GET /all (roto), /search, /:id
-│       ├── stats.js            # GET /masAutor, /masDedica, /masEstreno, /masGrabada, /estado
-│       ├── admin.js            # Monta los dos sub-routers admin
-│       ├── adminMarcha.js      # POST /editMarcha, /addMarcha
-│       └── adminAutor.js       # POST /addAutor
+├── db/
+│   └── schema.sql              # Esquema de referencia: tablas, FTS5, índices
 │
-├── frontend/                   # Vue admin SPA (con código público legacy)
-│   ├── package.json
-│   ├── vite.config.js
-│   └── src/
-│       ├── App.vue
-│       ├── main.js
-│       ├── router/
-│       │   ├── index.js        # Rutas admin con guard requiresAuth
-│       │   └── viewPages.js    # Rutas públicas legacy (sin uso real)
-│       ├── components/
-│       │   ├── admin/          # Login, Dashboard, MarchaEdit, MarchaAdd, AutorAdd, Autocomplete*
-│       │   ├── molecules/      # CdList, CdCard, DbCount, Timeline (legacy)
-│       │   └── *.vue           # Public legacy: Home, *Detail, *List, *Search, Stats
-│       ├── services/
-│       │   ├── authService.js  # login/logout/isAuthenticated
-│       │   ├── edits.js        # buildMarchaUpdatePayload, executeMarchaUpdate, etc.
-│       │   ├── getData.js      # Helpers axios para rutas públicas (legacy)
-│       │   ├── autor.js
-│       │   ├── goTo.js
-│       │   └── admin.js
-│       └── composables/
-│           └── useAutocompleteSelect.js
+├── scripts/                    # Utilidades de migración y verificación
+│   ├── migrate-mysql-to-sqlite.mjs
+│   ├── snapshot-endpoints.mjs
+│   ├── diff-snapshots.mjs
+│   ├── run-migration-on-vps.sh
+│   └── verify-utf8.sh
 │
-├── nextjs/                     # Frontend público SSR
-│   ├── package.json
-│   ├── next.config.ts          # Standalone + rewrites /api → INTERNAL_API_URL
-│   ├── Dockerfile              # Multi-stage standalone
+├── nextjs/                     # Toda la aplicación
+│   ├── Dockerfile              # Multi-stage: builder (compila better-sqlite3) + runtime Alpine
+│   ├── package.json            # next, react, better-sqlite3, daisyui, tailwind
+│   ├── next.config.ts          # standalone, serverExternalPackages: ['better-sqlite3']
+│   ├── middleware.ts           # Auth guard: protege /dashboard/* verificando cookie HMAC
 │   ├── tsconfig.json
 │   ├── public/
 │   │   └── banner_mdc.png
 │   ├── app/
-│   │   ├── layout.tsx          # Nav + footer con conteos
+│   │   ├── layout.tsx          # Nav + footer con conteos de BD
 │   │   ├── page.tsx            # Home
 │   │   ├── globals.css
 │   │   ├── robots.ts
+│   │   ├── sitemap.ts          # Sitemap generado desde BD, ISR 1h
 │   │   ├── marcha/
 │   │   │   ├── page.tsx                # Formulario búsqueda
-│   │   │   ├── search/page.tsx         # Resultados (SSR)
+│   │   │   ├── search/page.tsx         # Resultados (SSR, sin caché)
 │   │   │   └── [slugAndId]/page.tsx    # Detalle (ISR 1h)
-│   │   ├── autor/  (misma estructura)
-│   │   ├── banda/  (misma estructura)
-│   │   ├── disco/  (misma estructura)
-│   │   └── estadisticas/page.tsx       # ISR 30 min
+│   │   ├── autor/              (misma estructura)
+│   │   ├── banda/              (misma estructura)
+│   │   ├── disco/              (misma estructura)
+│   │   ├── estadisticas/page.tsx       # ISR 30 min
+│   │   ├── login/page.tsx      # Client Component
+│   │   ├── dashboard/          # Admin — Client Components
+│   │   │   ├── page.tsx
+│   │   │   ├── marcha/[id]/page.tsx
+│   │   │   ├── marcha/add/page.tsx
+│   │   │   └── autor/add/page.tsx
+│   │   └── api/
+│   │       ├── login/route.ts          # POST login (rate limit + PBKDF2 + MD5 upgrade)
+│   │       ├── login/verify/route.ts   # GET verify sesión
+│   │       ├── login/logout/route.ts   # POST logout
+│   │       ├── autor/fastSearch/route.ts
+│   │       ├── banda/fastSearch/route.ts
+│   │       └── admin/
+│   │           ├── editMarcha/route.ts  # POST (auth + allowlist campos)
+│   │           ├── addMarcha/route.ts   # POST (auth + transacción)
+│   │           └── addAutor/route.ts    # POST (auth)
 │   ├── components/
 │   │   ├── CdList.tsx
 │   │   └── Timeline.tsx
+│   ├── hooks/
+│   │   └── useAutocompleteSelect.ts
 │   └── lib/
-│       ├── api.ts              # fetchMarcha, fetchAutor, etc. con ISR
-│       ├── auth.ts             # login/logout/verifySession (no usado aún — el admin sigue en Vue)
-│       ├── adminApi.ts         # buildMarchaUpdatePayload, etc. (preparado para migrar admin)
+│       ├── db.ts               # Singleton SQLite lazy (no abre BD en build)
+│       ├── api.ts              # fetchMarcha, fetchAutor, etc. — lectura directa SQLite
+│       ├── auth-session.ts     # signSession, verifySession (HMAC-SHA256)
+│       ├── adminApi.ts         # buildMarchaUpdatePayload, tipos admin
 │       └── slugify.ts          # slugify, buildDetailPath, extractId
 │
-└── docs/                       # Esta carpeta
+└── docs/
     ├── context.md              # Este documento
     ├── architecture.md
     ├── technical-debt.md
-    ├── redesign-options.md
     ├── roadmap.md
-    └── db-analysis.md
+    ├── db-analysis.md
+    ├── redesign-options.md
+    └── vps-migration-3b.md     # Guía de despliegue Fase 3b (ejecutada 2026-06-05)
 ```
 
-## 4. Convenciones y patrones detectados
+---
 
-### Buenos patrones que conviene mantener
-- **Segregación de privilegios de BD** (`readonly` + `user`) — defensa en profundidad real.
-- **Allowlist explícita de campos editables/insertables** (`EDITABLE_MARCHA_FIELDS`, `INSERTABLE_MARCHA_FIELDS`) — previene mass-assignment.
-- **Prepared statements** uniformes (`pool.execute(sql, params)`).
-- **Slug + ID en URLs** (`/marcha/consuelo-gitano-330`) — SEO-friendly, robusto frente a renames porque el ID es la verdad.
-- **ISR con revalidación corta para detalles, sin caché para búsqueda** — buen equilibrio para datos casi inmutables.
-- **`SITE_URL` canónica + `metadataBase`** — emite siempre URLs absolutas correctas.
-- **Helpers de auth puros sin estado** (`signSession`/`verifySession`) — fáciles de testear.
-- **Reverse proxy con TLS terminado en nginx + cabeceras `X-Forwarded-*` correctas + `trust proxy`** — bien hecho.
-- **Imágenes servidas como volumen, no empaquetadas** — permite añadir portadas sin rebuild.
+## 4. Variables de entorno (`.env` en VPS)
 
-### Antipatrones y vicios recurrentes
-- **`LIKE ?` sobre claves primarias enteras** — funciona pero confunde y es ligeramente más lento que `=`.
-- **`%termino%` pasado a `MATCH(...) AGAINST(?)`** — los `%` son sintaxis LIKE, irrelevantes en FULLTEXT, degradan los resultados.
-- **`WHERE ` vacío** — si no hay filtros, los endpoints `/search` generan SQL inválido (debería iniciarse con `1=1`).
-- **`db.connection.query` en `banda.js` y `disco.js`** — `db.js` solo expone `pool`. Estas rutas crashean (ver [technical-debt.md](technical-debt.md)).
-- **`forEach` con función `async`** — usado en `getTimeline` y rompe la lógica (la función vuelve antes de que terminen los awaits).
-- **Sin transacciones** en altas que tocan dos tablas (`addMarcha` inserta en `marcha` y luego en `marcha_autor`).
-- **Catches que silencian errores con `console.log(err)`** y no devuelven respuesta — el cliente se queda colgado.
-- **Configuración duplicada** (`router/index.js` en Vue + `app/*/page.tsx` en Next.js + `.htaccess`).
-- **`.env` con credenciales reales en el repo**.
+```env
+SECRET_KEY='...'                # HMAC key — 48+ bytes random, rotar si se compromete
+AUTH_COOKIE_NAME=mdc_session
+LOGIN_TTL_MS=28800000           # 8 horas
+COOKIE_SECURE=true
 
-## 5. Entornos
-
-### Local (desarrollo)
-- `docker-compose-local.yml` levanta solo el contenedor `app` (Express + admin Vue + Next.js no incluido).
-- Vue admin desarrollo: `cd frontend && npm run dev` (Vite en `:5173`).
-- Next.js desarrollo: `cd nextjs && npm run dev` (en `:3000`).
-- Backend desarrollo: `npm start` en raíz (nodemon).
-- Variable `VITE_BASE_URL` y `INTERNAL_API_URL` apuntan a la API según contexto.
-
-### Producción
-- VPS con docker compose ejecutando `mdc-app` + `mdc-nextjs`.
-- Despliegue: `tar+scp` de los archivos modificados, luego `docker compose build && docker compose up -d`.
-- Después de build: `docker system prune -f` (el disco se llena rápido con 15 GB).
-
-### Variables de entorno (`.env`)
-```
-DB_HOST=jaguerra27.helioho.st       # Aún externo, no en el VPS
-DB_PORT=3306
-DB_USER=jaguerra27_readonly
-DB_PASSWORD=...                     # Versionado, debe rotarse
-DB_NAME=jaguerra27_mdc
-DB_USER_ADMIN=jaguerra27_user
-DB_PASSWORD_ADMIN=...               # Versionado, debe rotarse
-CORS_ORIGINS=https://marchasdecristo.com,http://localhost:8080,http://localhost:5173
-SECRET_KEY=...                      # 40 chars random, OK
-COOKIE_SECURE=false                 # ⚠ Debería ser true en producción
 LOGIN_MAX_ATTEMPTS=6
-LOGIN_WINDOW_MS=900000
-LOGIN_LOCK_MS=900000
+LOGIN_WINDOW_MS=900000          # 15 min
+LOGIN_LOCK_MS=900000            # 15 min
 PASSWORD_PBKDF2_ITERATIONS=210000
 ```
 
+`DB_PATH=/app/data/mdc.db` y `NODE_ENV=production` se inyectan desde `docker-compose.yml`.
+
+---
+
+## 5. Patrones y convenciones
+
+### Buenos patrones a mantener
+- **Server Components leen SQLite directamente** — sin HTTP round-trip, sin over-fetching.
+- **Allowlist explícita** de campos editables (`EDITABLE_MARCHA_FIELDS`) — previene mass-assignment.
+- **Prepared statements** siempre (`dbAll(sql, params)`, `dbRun(sql, params)`).
+- **Slug + ID en URLs** (`/marcha/consuelo-gitano-330`) — SEO-friendly, robusto frente a renombres.
+- **ISR diferenciado**: detalles 1h, estadísticas 30min, búsquedas sin caché.
+- **Helpers de auth puros** (`signSession`/`verifySession`) — sin estado, fáciles de testear.
+- **Cookies HttpOnly + Secure + SameSite=lax**.
+- **Timing-safe compare** en verificación de passwords y tokens.
+- **Auto-upgrade** de contraseñas MD5 → PBKDF2 en primer login.
+- **Rate limiting** de login en memoria (aceptable para un solo proceso).
+- **Portadas como volumen** — se añaden sin rebuild de imagen.
+- **`serverExternalPackages: ['better-sqlite3']`** — evita bundling de módulo nativo.
+
+### Antipatrones pendientes (ver technical-debt.md)
+- Sin tests automatizados.
+- Sin CI/CD — despliegue manual.
+- Sin observabilidad (solo `docker logs`).
+- BD sin foreign keys ni índices completos (ver db-analysis.md).
+
+---
+
 ## 6. Estado actual (junio 2026)
 
-- **Migración a Next.js SSR completada** el 2026-05-20 — Google Search Console ya puede indexar correctamente.
-- **Frontend Vue público es código muerto** servido junto al admin — se decidió migrar también el admin a Next.js (ver [roadmap.md](roadmap.md)).
-- **Bugs activos** en `/api/banda/all`, `/api/disco/all`, búsquedas sin parámetros y `getTimeline` (ver [technical-debt.md](technical-debt.md)).
-- **2 usuarios de admin aún con MD5** en `usuarios` (auto-upgrade pendiente de su próximo login).
-- **Sin tests** automatizados.
-- **Sin CI/CD** — despliegue manual.
-- **Sin monitoring** — logs vía `docker logs`, sin alertas.
+| Aspecto | Estado |
+|---------|--------|
+| Stack | Next.js 15 + SQLite — un solo contenedor Docker |
+| Express | ✅ Eliminado (Fase 3b desplegada 2026-06-05) |
+| Vue SPA | ✅ Eliminada (código muerto borrado 2026-06-05) |
+| Seguridad básica | ✅ COOKIE_SECURE, SECRET_KEY rotada, usuarios MD5 reseteados |
+| Backups | ✅ Cron diario en VPS |
+| Tests | ❌ Ninguno |
+| CI/CD | ❌ Despliegue manual |
+| Observabilidad | ❌ Solo docker logs |
+| BD — índices/FKs | ❌ Pendiente (Fase 4) |
