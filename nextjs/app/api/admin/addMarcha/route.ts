@@ -33,6 +33,11 @@ export async function POST(req: NextRequest) {
   const safeFields = safeEntries.map(([f]) => f);
   const safeValues = safeEntries.map(([, v]) => normalize(v));
 
+  const fechaIdx = safeFields.indexOf('FECHA');
+  if (fechaIdx !== -1 && safeValues[fechaIdx] !== null && !/^\d{4}$/.test(String(safeValues[fechaIdx]))) {
+    return Response.json({ code: 'INVALID_FECHA', msg: 'FECHA debe ser un año de 4 dígitos o vacío' }, { status: 400 });
+  }
+
   const autoresRaw = body.autoresIds;
   const rawStr = Array.isArray(autoresRaw) ? autoresRaw.join(',') : String(autoresRaw ?? '');
   const ids = [...new Set(

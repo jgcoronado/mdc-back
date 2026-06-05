@@ -30,6 +30,7 @@ export default function MarchaAddPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<MarchaInsertDraft>({ ...initialDraft });
   const [state, setState] = useState<RequestState>({ status: 'idle', code: '', msg: '' });
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
   const autorSelector = useAutocompleteSelect<AutorRow>({ fetchFn: searchAutores, idKey: 'ID_AUTOR', minChars: 6, limit: 8, multiple: true });
   const bandaSelector = useAutocompleteSelect<BandaRow>({ fetchFn: searchBandas, idKey: 'ID_BANDA', minChars: 6, limit: 5, multiple: false });
@@ -51,6 +52,7 @@ export default function MarchaAddPage() {
     try {
       const result = await executeMarchaInsert(pending);
       setState({ status: result.code === 'CREATED' ? 'success' : 'error', code: result.code ?? 'UNKNOWN', msg: result.msg ?? '' });
+      if (result.code === 'CREATED') setCreatedId(result.marchaId ?? null);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { code?: string; msg?: string } } };
       setState({ status: 'error', code: e?.response?.data?.code ?? 'REQUEST_ERROR', msg: e?.response?.data?.msg ?? 'No se pudo crear la marcha.' });
@@ -62,6 +64,7 @@ export default function MarchaAddPage() {
     autorSelector.reset();
     bandaSelector.reset();
     setState({ status: 'idle', code: '', msg: '' });
+    setCreatedId(null);
   }
 
   const textField = (label: string, key: keyof MarchaInsertDraft, placeholder = '') => (
@@ -135,16 +138,17 @@ export default function MarchaAddPage() {
         </table>
       </div>
 
-      <div className="mt-4">
-        <p className="font-semibold">SQL preparada:</p>
-        <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{pending.sqlPreview}</pre>
-        <p className="font-semibold mt-2">Parámetros:</p>
-        <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{JSON.stringify(pending.valuesToInsert)}</pre>
-      </div>
-
       {state.status !== 'idle' && (
         <div className={`alert mt-3 ${state.status === 'success' ? 'alert-success' : state.status === 'saving' ? 'alert-info' : 'alert-error'}`}>
           <span>{state.code} - {state.msg}</span>
+        </div>
+      )}
+
+      {createdId && (
+        <div className="flex gap-2 mt-3 items-center flex-wrap">
+          <span className="font-semibold">Marcha #{createdId} creada.</span>
+          <button className="btn btn-sm btn-neutral" onClick={() => router.push(`/dashboard/marcha/${createdId}`)}>Ir a editar</button>
+          <button className="btn btn-sm" onClick={() => window.open(`/marcha/${createdId}`, '_blank')}>Ver en público</button>
         </div>
       )}
 

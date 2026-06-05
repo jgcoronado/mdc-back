@@ -90,7 +90,7 @@ const buildFtsQuery = (raw: string): string | null => {
 };
 
 const normalizeFecha = <T extends { FECHA?: unknown }>(row: T): T => {
-  if (row.FECHA === 0 || row.FECHA === '') row.FECHA = 's/f';
+  if (row.FECHA === null || row.FECHA === '') row.FECHA = 's/f';
   return row;
 };
 

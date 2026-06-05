@@ -175,15 +175,6 @@ export default function MarchaEditPage() {
         </div>
       ) : <div className="alert">No hay cambios pendientes.</div>}
 
-      {pending?.sqlPreview && (
-        <div className="mt-4">
-          <p className="font-semibold">SQL preparada:</p>
-          <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{pending.sqlPreview}</pre>
-          <p className="font-semibold mt-2">Parámetros:</p>
-          <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{JSON.stringify(pending.params)}</pre>
-        </div>
-      )}
-
       {state.status !== 'idle' && (
         <div className={`alert mt-3 ${state.status === 'success' ? 'alert-success' : state.status === 'saving' ? 'alert-info' : 'alert-error'}`}>
           <span>{state.code} - {state.msg}</span>

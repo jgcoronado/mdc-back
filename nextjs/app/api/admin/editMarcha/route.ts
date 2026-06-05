@@ -1,5 +1,6 @@
 import 'server-only';
 import { type NextRequest } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { dbRun, logAdmin } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
@@ -32,11 +33,17 @@ export async function POST(req: NextRequest) {
 
   if (safeKeys.length === 0) return Response.json({ code: 'INVALID_FIELDS', msg: 'No editable fields' }, { status: 400 });
 
+  const fechaIdx = safeKeys.indexOf('FECHA');
+  if (fechaIdx !== -1 && safeVals[fechaIdx] !== null && !/^\d{4}$/.test(String(safeVals[fechaIdx]))) {
+    return Response.json({ code: 'INVALID_FECHA', msg: 'FECHA debe ser un año de 4 dígitos o vacío' }, { status: 400 });
+  }
+
   const sql = `UPDATE marcha SET ${safeKeys.map((k) => `${k} = ?`).join(', ')} WHERE ID_MARCHA = ?`;
   const info = dbRun(sql, [...safeVals, marchaId]);
 
   if (info.changes === 0) return Response.json({ code: 'NOT_FOUND', msg: 'Marcha not found', affectedRows: 0 }, { status: 404 });
 
   logAdmin('UPDATE', 'marcha', Number(marchaId), { campos: safeKeys });
+  revalidatePath('/marcha', 'layout');
   return Response.json({ code: 'UPDATED', msg: 'Marcha updated', changedRows: info.changes, affectedRows: info.changes });
 }

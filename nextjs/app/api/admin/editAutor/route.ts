@@ -1,5 +1,6 @@
 import 'server-only';
 import { type NextRequest } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { dbRun, logAdmin } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
@@ -29,6 +30,6 @@ export async function POST(req: NextRequest) {
   const setClauses = keysToUpdate.map((k) => `${k} = ?`).join(', ');
   dbRun(`UPDATE autor SET ${setClauses} WHERE ID_AUTOR = ?`, [...valuesToUpdate, autorId]);
   logAdmin('UPDATE', 'autor', autorId, { keysToUpdate, valuesToUpdate });
-
+  revalidatePath('/autor', 'layout');
   return Response.json({ code: 'UPDATED', msg: 'Autor updated' });
 }
