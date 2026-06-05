@@ -1,6 +1,6 @@
 import 'server-only';
 import { type NextRequest } from 'next/server';
-import { dbRun } from '@/lib/db';
+import { dbRun, logAdmin } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
 const EDITABLE_FIELDS = new Set([
@@ -37,5 +37,6 @@ export async function POST(req: NextRequest) {
 
   if (info.changes === 0) return Response.json({ code: 'NOT_FOUND', msg: 'Marcha not found', affectedRows: 0 }, { status: 404 });
 
+  logAdmin('UPDATE', 'marcha', Number(marchaId), { campos: safeKeys });
   return Response.json({ code: 'UPDATED', msg: 'Marcha updated', changedRows: info.changes, affectedRows: info.changes });
 }

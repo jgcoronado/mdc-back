@@ -1,6 +1,6 @@
 import 'server-only';
 import { type NextRequest } from 'next/server';
-import { dbRun } from '@/lib/db';
+import { dbRun, logAdmin } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
 const INSERTABLE_FIELDS = ['NOMBRE', 'APELLIDOS', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO'] as const;
@@ -28,5 +28,6 @@ export async function POST(req: NextRequest) {
   const autorId = Number(info.lastInsertRowid);
   if (!autorId) return Response.json({ code: 'INTERNAL_ERROR', msg: 'Could not create autor' }, { status: 500 });
 
+  logAdmin('INSERT', 'autor', autorId);
   return Response.json({ code: 'CREATED', msg: 'Autor created', autorId }, { status: 201 });
 }

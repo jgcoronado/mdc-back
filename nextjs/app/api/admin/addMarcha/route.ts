@@ -1,6 +1,6 @@
 import 'server-only';
 import { type NextRequest } from 'next/server';
-import { dbAll, dbRun, dbTransaction } from '@/lib/db';
+import { dbAll, dbRun, dbTransaction, logAdmin } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
 const INSERTABLE_FIELDS = new Set([
@@ -65,5 +65,6 @@ export async function POST(req: NextRequest) {
     return newId;
   });
 
+  logAdmin('INSERT', 'marcha', marchaId, { campos: safeFields, autores: ids });
   return Response.json({ code: 'CREATED', msg: 'Marcha created', marchaId }, { status: 201 });
 }
