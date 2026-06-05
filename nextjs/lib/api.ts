@@ -99,7 +99,7 @@ const normalizeFecha = <T extends { FECHA?: unknown }>(row: T): T => {
 export async function fetchMarcha(id: string): Promise<MarchaDetail | null> {
   const rows = dbAll<MarchaDetail>(`
     SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA,
-      (SELECT json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', a.NOMBRE || ' ' || a.APELLIDOS))
+      (SELECT json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))
        FROM (SELECT DISTINCT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
              FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
              WHERE ma.ID_MARCHA = m.ID_MARCHA ORDER BY a.APELLIDOS)
@@ -138,7 +138,7 @@ export async function searchMarchas(query: string): Promise<SearchResult<MarchaR
   const where = conditions.length ? conditions.join(' AND ') : '1=1';
   const rows = dbAll<MarchaRow>(`
     SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA,
-      (SELECT json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', a.NOMBRE || ' ' || a.APELLIDOS))
+      (SELECT json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))
        FROM (SELECT DISTINCT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
              FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
              WHERE ma.ID_MARCHA = m.ID_MARCHA ORDER BY a.APELLIDOS)
@@ -193,7 +193,7 @@ export async function fetchBanda(id: string): Promise<BandaDetail | null> {
     FROM disco d WHERE d.BANDADISCO = ? ORDER BY d.FECHA_CD ASC`, [id]);
   const marchas = dbAll<BandaMarchaItem>(`
     SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA,
-      (SELECT json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', a.NOMBRE || ' ' || a.APELLIDOS))
+      (SELECT json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))
        FROM (SELECT DISTINCT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
              FROM marcha_autor am INNER JOIN autor a ON a.ID_AUTOR = am.ID_AUTOR
              WHERE am.ID_MARCHA = m.ID_MARCHA ORDER BY a.APELLIDOS)
@@ -237,7 +237,7 @@ export async function fetchDisco(id: string): Promise<DiscoDetail | null> {
   if (!discos.length) return null;
   const marchas = dbAll<DiscoMarchaItem>(`
     SELECT dm.N_DISCO, dm.NUMEROMARCHA, m.ID_MARCHA, m.TITULO, m.FECHA,
-      (SELECT json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', a.NOMBRE || ' ' || a.APELLIDOS))
+      (SELECT json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))
        FROM (SELECT DISTINCT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
              FROM marcha_autor am INNER JOIN autor a ON a.ID_AUTOR = am.ID_AUTOR
              WHERE am.ID_MARCHA = m.ID_MARCHA ORDER BY a.APELLIDOS)
@@ -309,7 +309,7 @@ export async function fetchMasEstreno(): Promise<StatsEstrenoRow[]> {
 export async function fetchMasGrabada(): Promise<StatsGrabadaRow[]> {
   const rows = dbAll<StatsGrabadaRow>(`
     SELECT COUNT(dm.IDMARCHA) AS GRABACIONES, m.ID_MARCHA, m.TITULO,
-      (SELECT json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', a.NOMBRE || ' ' || a.APELLIDOS))
+      (SELECT json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))
        FROM (SELECT DISTINCT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
              FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
              WHERE ma.ID_MARCHA = m.ID_MARCHA ORDER BY a.APELLIDOS)
