@@ -1,6 +1,6 @@
 # Contexto del proyecto — marchasdecristo.com
 
-> Última actualización: 2026-06-05 (panel + BD analizados en sesión 2)
+> Última actualización: 2026-06-05 (Bloque 4 completado — panel admin completo, FECHA normalizada)
 > Documento de entrada para nuevas sesiones.
 > Documentos complementarios en esta misma carpeta:
 > - [architecture.md](architecture.md) — diagrama, flujos y decisiones arquitectónicas.
@@ -37,7 +37,7 @@ Relaciones principales:
 ### Aplicación — Next.js 15 (único servicio)
 - **Next.js 15** (App Router) + **React 19** + **TypeScript** + **Tailwind 4** + **DaisyUI 5**.
 - **Server Components** para todas las páginas públicas — lectura directa a SQLite, sin HTTP round-trip.
-- **Route Handlers** (`app/api/`) para la API REST: login, autocomplete, admin (addMarcha, editMarcha, addAutor).
+- **Route Handlers** (`app/api/`) para la API REST: login, autocomplete, admin (addMarcha, editMarcha, addAutor, editAutor, editMarchaAutores, searchMarchas, searchAutores).
 - **ISR**: detalles cada hora, estadísticas cada 30 min, búsquedas sin caché.
 - **Standalone output** para imagen Docker minimalista.
 - **Admin**: Client Components protegidos por `middleware.ts` (verifica cookie HMAC inline). Ver [admin-panel.md](admin-panel.md) para análisis completo.
@@ -82,7 +82,10 @@ mdc-back/
 │   ├── snapshot-endpoints.mjs
 │   ├── diff-snapshots.mjs
 │   ├── run-migration-on-vps.sh
-│   └── verify-utf8.sh
+│   ├── verify-utf8.sh
+│   ├── clean-orphans.sql           # Eliminó 43 huérfanos (Bloque 2)
+│   ├── add-fk-constraints.sql      # FK ON DELETE CASCADE + tabla admin_log (Bloque 2)
+│   └── normalize-fecha.sql         # Migró FECHA=0 → NULL (Bloque 4, 245 filas)
 │
 ├── nextjs/                     # Toda la aplicación
 │   ├── Dockerfile              # Multi-stage: builder (compila better-sqlite3) + runtime Alpine
@@ -108,20 +111,27 @@ mdc-back/
 │   │   ├── estadisticas/page.tsx       # ISR 30 min
 │   │   ├── login/page.tsx      # Client Component
 │   │   ├── dashboard/          # Admin — Client Components
-│   │   │   ├── page.tsx
-│   │   │   ├── marcha/[id]/page.tsx
-│   │   │   ├── marcha/add/page.tsx
-│   │   │   └── autor/add/page.tsx
+│   │   │   ├── page.tsx                # Buscador FTS de marchas/autores + nav por ID
+│   │   │   ├── marcha/[id]/page.tsx    # Edición de marcha + AutocompleteMulti de autores
+│   │   │   ├── marcha/add/page.tsx     # Alta de marcha con nav post-creación
+│   │   │   ├── autor/[id]/page.tsx     # Edición de autor
+│   │   │   └── autor/add/page.tsx      # Alta de autor con nav post-creación
 │   │   └── api/
 │   │       ├── login/route.ts          # POST login (rate limit + PBKDF2 + MD5 upgrade)
 │   │       ├── login/verify/route.ts   # GET verify sesión
 │   │       ├── login/logout/route.ts   # POST logout
+│   │       ├── autor/[id]/route.ts     # GET autor por ID (auth)
 │   │       ├── autor/fastSearch/route.ts
 │   │       ├── banda/fastSearch/route.ts
+│   │       ├── marcha/[id]/route.ts    # GET marcha por ID (auth)
 │   │       └── admin/
-│   │           ├── editMarcha/route.ts  # POST (auth + allowlist campos)
-│   │           ├── addMarcha/route.ts   # POST (auth + transacción)
-│   │           └── addAutor/route.ts    # POST (auth)
+│   │           ├── editMarcha/route.ts         # POST (auth + allowlist + validación FECHA + revalidatePath)
+│   │           ├── addMarcha/route.ts           # POST (auth + transacción + validación FECHA)
+│   │           ├── editAutor/route.ts           # POST (auth + allowlist + revalidatePath)
+│   │           ├── addAutor/route.ts            # POST (auth + NOMBRE_ART)
+│   │           ├── editMarchaAutores/route.ts   # POST (auth + transacción DELETE+INSERT)
+│   │           ├── searchMarchas/route.ts       # GET (auth + FTS, máx. 15)
+│   │           └── searchAutores/route.ts       # GET (auth + FTS, máx. 15)
 │   ├── components/
 │   │   ├── CdList.tsx
 │   │   └── Timeline.tsx
@@ -186,7 +196,8 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 - Sin observabilidad (solo `docker logs`).
 - ~~BD sin FK constraints~~ ✅ Corregido 2026-06-05 (Bloque 2, `marcha_autor`/`disco_marcha`).
 - ~~`addMarcha` sin transacción~~ ✅ Corregido 2026-06-05 (Bloque 1).
-- Panel admin incompleto: faltan editAutor, editMarchaAutores, buscador. Ver [admin-panel.md](admin-panel.md).
+- ~~Panel admin incompleto~~ ✅ Completado 2026-06-05 (Bloques 3+4): editAutor, editMarchaAutores, buscador FTS, nav post-creación.
+- Tablas muertas en BD: `videos` (357 filas) y `users` (0 filas) — baja prioridad.
 
 ---
 
@@ -206,6 +217,9 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 | BD — FK constraints | ✅ marcha_autor y disco_marcha con REFERENCES + ON DELETE CASCADE (Bloque 2) |
 | BD — huérfanos | ✅ Eliminados 2026-06-05 (Bloque 2) |
 | BD — serialización autores | ✅ json_group_array en lugar de GROUP_CONCAT (Bloque 2) |
+| BD — FECHA=0 normalizada | ✅ 245 filas → NULL, normalizeFecha simplificada (Bloque 4) |
 | Panel admin — cobertura básica | ✅ Marcha (add/edit), Autor (add) |
-| Panel admin — cobertura completa | ❌ Faltan editAutor, editMarchaAutores, buscador |
-| Panel admin — audit log | ✅ Tabla admin_log + logAdmin en addMarcha/editMarcha/addAutor (Bloque 2) |
+| Panel admin — cobertura completa | ✅ editAutor, editMarchaAutores, buscador FTS, nav post-creación (Bloques 3+4) |
+| Panel admin — audit log | ✅ admin_log + logAdmin en addMarcha/editMarcha/addAutor/editAutor/editMarchaAutores |
+| Panel admin — validación FECHA | ✅ Rechaza FECHA que no sea año de 4 dígitos (Bloque 4) |
+| revalidatePath | ✅ editMarcha invalida /marcha, editAutor invalida /autor (Bloque 4) |

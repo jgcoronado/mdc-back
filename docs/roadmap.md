@@ -1,6 +1,6 @@
 # Hoja de ruta — marchasdecristo.com
 
-> Generado: 2026-06-01 · Última actualización: 2026-06-05 (Bloque 2 completado)
+> Generado: 2026-06-01 · Última actualización: 2026-06-05 (Bloque 4 completado — panel admin completo)
 > Plan secuenciado para resolver la deuda técnica identificada y materializar las decisiones tomadas.
 
 ## Resumen
@@ -12,7 +12,7 @@
 | 2 | Migrar MySQL a Docker en el VPS | ✅ Completada (junio 2026) | — |
 | 3a | Migrar páginas admin a Next.js | ✅ Completada (junio 2026) | — |
 | 3b | Migrar API a Next.js Route Handlers y apagar Express | ✅ Completada (2026-06-05) | — |
-| 4 | Integridad BD + panel admin completo | Pendiente | Bajo (SQLite) |
+| 4 | Integridad BD + panel admin completo | ✅ Completada (2026-06-05) | — |
 | 5 | Tests, CI/CD, observabilidad | Pendiente | Bajo |
 | 6 | Mejoras opcionales (build estático, Zod, Drizzle) | Pendiente | — |
 
@@ -273,22 +273,17 @@ Archivos añadidos:
 - `admin_log` creada en el mismo script. FK check PRAGMA devuelve 0 violaciones.
 - Nota: `marcha.BANDA_ESTRENO` y `disco.BANDADISCO` no incluidos (valor 0 = sentinel, requeriría valor NULL).
 
-**A2 — `PROVINCIA` en formulario de edición de marcha**
-- Fichero: `nextjs/app/dashboard/marcha/[id]/page.tsx:56`
-- Cambio: añadir `{ label: 'Provincia', key: 'PROVINCIA' }` al array `fields`.
+**A2 — `PROVINCIA` en formulario de edición de marcha** ✅ Completado (Bloque 3, 2026-06-05)
 
-**A3 — `NOMBRE_ART` en alta y edición de autor**
-- Ficheros: `nextjs/app/api/admin/addAutor/route.ts` y futuro `editAutor/route.ts`
-- Cambio: añadir `NOMBRE_ART` a `INSERTABLE_FIELDS` y al formulario `dashboard/autor/add/page.tsx`.
+**A3 — `NOMBRE_ART` en alta y edición de autor** ✅ Completado (Bloque 3, 2026-06-05)
 
-**A4 — `editAutor`: edición de autores existentes**
-- Crear `nextjs/app/dashboard/autor/[id]/page.tsx` (Client Component, mismo patrón que `marcha/[id]`).
-- Crear `nextjs/app/api/admin/editAutor/route.ts` con allowlist de campos editables.
-- Campos editables: `NOMBRE`, `APELLIDOS`, `NOMBRE_ART`, `F_NAC`, `LUGAR_NAC`, `F_DEF`, `BIO`.
+**A4 — `editAutor`: edición de autores existentes** ✅ Completado (Bloque 3, 2026-06-05)
+- `GET /api/autor/[id]`, `POST /api/admin/editAutor`, `/dashboard/autor/[id]/page.tsx`.
+- `buildAutorUpdatePayload` / `executeAutorUpdate` en `adminApi.ts`. `logAdmin` incluido.
 
-**A5 — Editar autores de una marcha existente**
-- Modificar `nextjs/app/dashboard/marcha/[id]/page.tsx`: añadir `AutocompleteMulti` para autores (igual que en el alta).
-- Crear `nextjs/app/api/admin/editMarchaAutores/route.ts`: recibe `marchaId` + `autoresIds` nuevos, hace DELETE + INSERT en `marcha_autor` dentro de una transacción.
+**A5 — Editar autores de una marcha existente** ✅ Completado (Bloque 3, 2026-06-05)
+- `POST /api/admin/editMarchaAutores`: transacción atómica DELETE+INSERT en `marcha_autor`.
+- `AutocompleteMulti` en `marcha/[id]/page.tsx` pre-cargado con los autores actuales.
 
 ---
 
@@ -304,17 +299,18 @@ Archivos añadidos:
 - `nextjs/lib/db.ts`: `formatAutor` simplificado a `JSON.parse`.
 - Elimina el riesgo de corrupción si un nombre contiene `#` o `|`.
 
-**M3 — Validación de `FECHA` en Route Handlers**
-- `addMarcha/route.ts` y `editMarcha/route.ts`: rechazar `FECHA` que no sea vacío ni número de 4 dígitos (`/^\d{4}$/`).
+**M3 — Validación de `FECHA` en Route Handlers** ✅ Completado (Bloque 4, 2026-06-05)
+- `addMarcha` y `editMarcha` rechazan `FECHA` que no sea vacío ni año de 4 dígitos (INVALID_FECHA 400).
 
-**M4 — Buscador de marchas/autores en el dashboard**
-- Añadir en `/dashboard/page.tsx` un campo de búsqueda por título que consulte `marcha_fts` y devuelva resultados con enlace directo a `/dashboard/marcha/[id]`.
+**M4 — Buscador de marchas/autores en el dashboard** ✅ Completado (Bloque 3, 2026-06-05)
+- `GET /api/admin/searchMarchas` y `/api/admin/searchAutores` con auth + FTS, máx. 15 resultados.
+- `/dashboard/page.tsx`: buscador de texto libre (mín. 3 chars) con resultados clickables.
 
-**M5 — Navegación post-creación**
-- En `marcha/add` y `autor/add`: tras `status === 'success'`, mostrar el ID creado con botones "Ir a editar" y "Ver en público".
+**M5 — Navegación post-creación** ✅ Completado (Bloque 4, 2026-06-05)
+- `marcha/add` y `autor/add`: tras éxito muestran el ID creado con botones "Ir a editar" y "Ver en público".
 
-**M6 — Eliminar SQL preview de la UI**
-- En `marcha/add/page.tsx:139-143` y `autor/add/page.tsx:71-75`: eliminar los bloques `<pre>` con SQL y parámetros, o ponerlos tras un toggle `[modo debug]`.
+**M6 — Eliminar SQL preview de la UI** ✅ Completado (Bloque 4, 2026-06-05)
+- Bloques `<pre>` con SQL y parámetros eliminados de `marcha/add`, `autor/add` y `marcha/[id]`.
 
 ---
 
@@ -324,9 +320,9 @@ Archivos añadidos:
 - `videos` (357 filas, nunca consultada): backup previo, luego `DROP TABLE videos`.
 - `users` (0 filas): `DROP TABLE users`.
 
-**B2 — Normalizar `FECHA` a `INTEGER NULL`**
-- Script: `UPDATE marcha SET FECHA = NULL WHERE FECHA = 0`.
-- Simplificar `normalizeFecha` en `lib/api.ts`.
+**B2 — Normalizar `FECHA` a `INTEGER NULL`** ✅ Completado (Bloque 4, 2026-06-05)
+- 245 filas migradas a `NULL` vía Node.js + better-sqlite3 en contenedor.
+- `normalizeFecha` en `lib/api.ts` simplificada: comprueba `null` en lugar de `0`.
 
 **B3 — Gestión de bandas desde el panel**
 - `/dashboard/banda/add` y `/dashboard/banda/[id]` con los campos: `NOMBRE_BREVE`, `NOMBRE_COMPLETO`, `LOCALIDAD`, `PROVINCIA`, `FECHA_FUND`, `FECHA_EXT`.
