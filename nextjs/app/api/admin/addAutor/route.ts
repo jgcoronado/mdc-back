@@ -3,7 +3,7 @@ import { type NextRequest } from 'next/server';
 import { dbRun, logAdmin } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
-const INSERTABLE_FIELDS = ['NOMBRE', 'APELLIDOS', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO'] as const;
+const INSERTABLE_FIELDS = ['NOMBRE', 'APELLIDOS', 'NOMBRE_ART', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO'] as const;
 
 const normalize = (v: unknown): unknown => {
   if (v === undefined) return null;

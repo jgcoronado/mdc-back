@@ -1,18 +1,23 @@
-import type { MarchaDetail } from './api';
+import type { MarchaDetail, AutorDetail } from './api';
 
 const EDITABLE_MARCHA_FIELDS = [
-  'TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'AUDIO', 'BANDA_ESTRENO', 'DETALLES_MARCHA',
+  'TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'AUDIO', 'BANDA_ESTRENO', 'DETALLES_MARCHA',
 ] as const;
 
 const INSERTABLE_MARCHA_FIELDS = [
   'TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'DETALLES_MARCHA',
 ] as const;
 
+const EDITABLE_AUTOR_FIELDS = [
+  'NOMBRE', 'APELLIDOS', 'NOMBRE_ART', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO',
+] as const;
+
 const INSERTABLE_AUTOR_FIELDS = [
-  'NOMBRE', 'APELLIDOS', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO',
+  'NOMBRE', 'APELLIDOS', 'NOMBRE_ART', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO',
 ] as const;
 
 type EditableMarchaField = typeof EDITABLE_MARCHA_FIELDS[number];
+type EditableAutorField = typeof EDITABLE_AUTOR_FIELDS[number];
 type InsertableAutorField = typeof INSERTABLE_AUTOR_FIELDS[number];
 
 const normalize = (v: unknown): unknown => {
@@ -71,6 +76,32 @@ export function buildAutorInsertPayload(draft: AutorInsertDraft) {
   return { autor: Object.fromEntries(fields.map((k, i) => [k, valuesToInsert[i]])), fieldsToInsert: fields, valuesToInsert, sqlPreview, previewFields };
 }
 
+export interface AutorUpdatePayload {
+  autorId: number;
+  keysToUpdate: string[];
+  valuesToUpdate: unknown[];
+  params: unknown[];
+  sqlPreview: string;
+  changedFields: { key: string; previousValue: unknown; newValue: unknown }[];
+}
+
+export function buildAutorUpdatePayload(original: Partial<AutorDetail>, draft: Partial<AutorDetail>): AutorUpdatePayload {
+  const autorId = draft.ID_AUTOR as number;
+  const keysToUpdate = EDITABLE_AUTOR_FIELDS.filter(
+    (k) => normalize(original[k as EditableAutorField]) !== normalize(draft[k as EditableAutorField])
+  );
+  const valuesToUpdate = keysToUpdate.map((k) => normalize(draft[k as EditableAutorField]));
+  const sqlPreview = keysToUpdate.length > 0
+    ? `UPDATE autor SET ${keysToUpdate.map((k) => `${k} = ?`).join(', ')} WHERE ID_AUTOR = ?`
+    : '';
+  const changedFields = keysToUpdate.map((k, i) => ({
+    key: k,
+    previousValue: normalize(original[k as EditableAutorField]),
+    newValue: valuesToUpdate[i],
+  }));
+  return { autorId, keysToUpdate, valuesToUpdate, params: keysToUpdate.length > 0 ? [...valuesToUpdate, autorId] : [], sqlPreview, changedFields };
+}
+
 const apiPost = async (path: string, body: unknown) => {
   const res = await fetch(path, {
     method: 'POST',
@@ -84,6 +115,8 @@ const apiPost = async (path: string, body: unknown) => {
 export const executeMarchaUpdate = (payload: MarchaUpdatePayload) => apiPost('/api/admin/editMarcha', payload);
 export const executeMarchaInsert = (payload: ReturnType<typeof buildMarchaInsertPayload>) => apiPost('/api/admin/addMarcha', payload);
 export const executeAutorInsert = (payload: ReturnType<typeof buildAutorInsertPayload>) => apiPost('/api/admin/addAutor', payload);
+export const executeAutorUpdate = (payload: AutorUpdatePayload) => apiPost('/api/admin/editAutor', payload);
+export const executeEditMarchaAutores = (payload: { marchaId: number; autoresIds: number[] }) => apiPost('/api/admin/editMarchaAutores', payload);
 
 export const searchAutores = async (nombre: string) => {
   const res = await fetch(`/api/autor/fastSearch?nombre=${encodeURIComponent(nombre)}`);

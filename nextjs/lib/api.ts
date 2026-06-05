@@ -7,7 +7,7 @@ export interface AutorRef { autorId: string; nombre: string; }
 
 export interface MarchaDetail {
   ID_MARCHA: number; TITULO: string; FECHA: string | number;
-  DEDICATORIA: string; LOCALIDAD: string; AUDIO: string;
+  DEDICATORIA: string; LOCALIDAD: string; PROVINCIA: string; AUDIO: string;
   AUTOR: AutorRef[]; BANDA_ESTRENO: number; BANDA: string;
   DETALLES_MARCHA: string; discosLength: number; discos: DiscoRef[];
 }
@@ -17,8 +17,8 @@ export interface DiscoRef {
 }
 
 export interface AutorDetail {
-  ID_AUTOR: number; NOMBRE: string; APELLIDOS: string;
-  F_NAC: string; LUGAR_NAC: string; BIO: string;
+  ID_AUTOR: number; NOMBRE: string; APELLIDOS: string; NOMBRE_ART: string;
+  F_NAC: string; LUGAR_NAC: string; F_DEF: string; BIO: string;
   marchasLength: number; marchas: MarchaRef[];
 }
 
@@ -98,7 +98,7 @@ const normalizeFecha = <T extends { FECHA?: unknown }>(row: T): T => {
 
 export async function fetchMarcha(id: string): Promise<MarchaDetail | null> {
   const rows = dbAll<MarchaDetail>(`
-    SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA,
+    SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.PROVINCIA, m.AUDIO, m.FECHA,
       (SELECT json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))
        FROM (SELECT DISTINCT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
              FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR

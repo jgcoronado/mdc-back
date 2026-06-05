@@ -5,7 +5,7 @@ import { buildAutorInsertPayload, executeAutorInsert, type AutorInsertDraft } fr
 
 type RequestState = { status: 'idle' | 'saving' | 'success' | 'error'; code: string; msg: string };
 
-const initialDraft: AutorInsertDraft = { NOMBRE: '', APELLIDOS: '', F_NAC: '', LUGAR_NAC: '', F_DEF: '', BIO: '' };
+const initialDraft: AutorInsertDraft = { NOMBRE: '', APELLIDOS: '', NOMBRE_ART: '', F_NAC: '', LUGAR_NAC: '', F_DEF: '', BIO: '' };
 const fmt = (v: unknown) => (v === null || v === undefined || v === '') ? '(vacío)' : String(v);
 
 export default function AutorAddPage() {
@@ -44,6 +44,7 @@ export default function AutorAddPage() {
           {([
             ['Nombre', 'NOMBRE', 'Nombre'],
             ['Apellidos', 'APELLIDOS', 'Apellidos'],
+            ['Nombre artístico', 'NOMBRE_ART', 'Opcional'],
             ['Fecha de nacimiento', 'F_NAC', 'Ej: 05/12/1982'],
             ['Lugar de nacimiento', 'LUGAR_NAC', 'Localidad o ciudad'],
             ['Fecha de defunción', 'F_DEF', 'Opcional'],
