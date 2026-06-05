@@ -1,6 +1,6 @@
 # Hoja de ruta — marchasdecristo.com
 
-> Generado: 2026-06-01 · Última actualización: 2026-06-05
+> Generado: 2026-06-01 · Última actualización: 2026-06-05 (sesión 2 — plan acción panel + BD)
 > Plan secuenciado para resolver la deuda técnica identificada y materializar las decisiones tomadas.
 
 ## Resumen
@@ -12,7 +12,7 @@
 | 2 | Migrar MySQL a Docker en el VPS | ✅ Completada (junio 2026) | — |
 | 3a | Migrar páginas admin a Next.js | ✅ Completada (junio 2026) | — |
 | 3b | Migrar API a Next.js Route Handlers y apagar Express | ✅ Completada (2026-06-05) | — |
-| 4 | Endurecimiento de BD (índices, FKs) | Pendiente | Bajo (SQLite) |
+| 4 | Integridad BD + panel admin completo | Pendiente | Bajo (SQLite) |
 | 5 | Tests, CI/CD, observabilidad | Pendiente | Bajo |
 | 6 | Mejoras opcionales (build estático, Zod, Drizzle) | Pendiente | — |
 
@@ -243,36 +243,95 @@ Archivos añadidos:
 
 ---
 
-## Fase 4 — Endurecer la BD (4-6 h)
+## Fase 4 — Integridad de BD + panel admin completo
 
-Objetivo: corregir motores, collation, índices, integridad referencial.
+> Análisis completo en [db-analysis.md](db-analysis.md) y [admin-panel.md](admin-panel.md).  
+> Separado en bloques de prioridad para poder hacer commits independientes.
 
-Detalle en [db-analysis.md](db-analysis.md). Resumen:
+### Bloque U — Urgente (bugs que generan datos corruptos) ✅ Completado (2026-06-05)
 
-1. **Migrar a InnoDB**:
-   ```sql
-   ALTER TABLE marcha ENGINE=InnoDB;
-   ALTER TABLE autor ENGINE=InnoDB;
-   ALTER TABLE banda ENGINE=InnoDB;
-   ALTER TABLE marcha_autor ENGINE=InnoDB;
-   ```
+**U1 — Transacción en `addMarcha`** ✅
+- INSERT marcha + INSERT marcha_autor ahora en `dbTransaction()` de better-sqlite3.
+- También corregido bug previo: el Route Handler leía `body.marcha` (undefined) en lugar de `body.fieldsToInsert/valuesToInsert`.
+- Alineados campos insert entre cliente (`INSERTABLE_MARCHA_FIELDS` en adminApi.ts) y servidor.
 
-2. **Añadir índices**:
-   ```sql
-   ALTER TABLE disco_marcha ADD INDEX idx_dm_disco (ID_DISCO);
-   ALTER TABLE disco_marcha ADD INDEX idx_dm_marcha (IDMARCHA);
-   ALTER TABLE disco ADD INDEX idx_disco_banda (BANDADISCO);
-   ALTER TABLE marcha ADD INDEX idx_marcha_banda_estreno (BANDA_ESTRENO);
-   ALTER TABLE marcha_autor ADD INDEX idx_ma_autor (ID_AUTOR);
-   ```
+**U2 — Validar existencia de autoresIds** ✅
+- `SELECT COUNT(*) FROM autor WHERE ID_AUTOR IN (...)` antes del INSERT; devuelve 400 `INVALID_AUTHORS` si alguno falta.
+- También devuelve 400 `AUTHORS_REQUIRED` si no se envía ningún autor.
 
-3. **Limpiar huérfanos** (queries en db-analysis.md), añadir **foreign keys** después.
+**U3 — Advertir en UI al guardar sin autores** ✅
+- Botón "Crear marcha" deshabilitado cuando `AUTORES_IDS` está vacío.
+- Alert `alert-warning` visible mientras no haya autores seleccionados.
 
-4. **Unificar collation a `utf8mb4_spanish_ci`** en todas las tablas (cuidado con índices FULLTEXT — habrá que recrearlos).
+---
 
-5. **Eliminar tablas muertas**: `users`, `videos` (si confirmado), `login_autor`.
+### Bloque A — Alta prioridad (integridad + cobertura funcional crítica)
 
-6. **`FECHA` a `SMALLINT UNSIGNED NULL`** sustituyendo el `0` por `NULL` semántico.
+**A1 — FK constraints en schema SQLite**
+- Limpiar los 43 huérfanos heredados de la migración (script en `scripts/clean-orphans.sql`).
+- Añadir `FOREIGN KEY` en `CREATE TABLE` de `marcha_autor`, `disco_marcha`, `marcha.BANDA_ESTRENO`, `disco.BANDADISCO`.
+- Recrear las tablas afectadas con el nuevo schema (SQLite no permite ALTER TABLE ADD FK).
+
+**A2 — `PROVINCIA` en formulario de edición de marcha**
+- Fichero: `nextjs/app/dashboard/marcha/[id]/page.tsx:56`
+- Cambio: añadir `{ label: 'Provincia', key: 'PROVINCIA' }` al array `fields`.
+
+**A3 — `NOMBRE_ART` en alta y edición de autor**
+- Ficheros: `nextjs/app/api/admin/addAutor/route.ts` y futuro `editAutor/route.ts`
+- Cambio: añadir `NOMBRE_ART` a `INSERTABLE_FIELDS` y al formulario `dashboard/autor/add/page.tsx`.
+
+**A4 — `editAutor`: edición de autores existentes**
+- Crear `nextjs/app/dashboard/autor/[id]/page.tsx` (Client Component, mismo patrón que `marcha/[id]`).
+- Crear `nextjs/app/api/admin/editAutor/route.ts` con allowlist de campos editables.
+- Campos editables: `NOMBRE`, `APELLIDOS`, `NOMBRE_ART`, `F_NAC`, `LUGAR_NAC`, `F_DEF`, `BIO`.
+
+**A5 — Editar autores de una marcha existente**
+- Modificar `nextjs/app/dashboard/marcha/[id]/page.tsx`: añadir `AutocompleteMulti` para autores (igual que en el alta).
+- Crear `nextjs/app/api/admin/editMarchaAutores/route.ts`: recibe `marchaId` + `autoresIds` nuevos, hace DELETE + INSERT en `marcha_autor` dentro de una transacción.
+
+---
+
+### Bloque M — Media prioridad (operabilidad diaria)
+
+**M1 — Audit log**
+- Crear tabla `admin_log (id INTEGER PRIMARY KEY, accion TEXT, tabla TEXT, id_registro INTEGER, usuario TEXT, ts INTEGER, payload TEXT)`.
+- Añadir INSERT en cada Route Handler de escritura (addMarcha, editMarcha, addAutor, editAutor, editMarchaAutores).
+
+**M2 — Serialización JSON de autores**
+- Fichero: `nextjs/lib/api.ts` — sustituir `GROUP_CONCAT(... '#' ... '|')` por `json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', ...))`.
+- Fichero: `nextjs/lib/db.ts` — simplificar `formatAutor` a `JSON.parse`.
+- Elimina el riesgo de corrupción si un nombre contiene `#` o `|`.
+
+**M3 — Validación de `FECHA` en Route Handlers**
+- `addMarcha/route.ts` y `editMarcha/route.ts`: rechazar `FECHA` que no sea vacío ni número de 4 dígitos (`/^\d{4}$/`).
+
+**M4 — Buscador de marchas/autores en el dashboard**
+- Añadir en `/dashboard/page.tsx` un campo de búsqueda por título que consulte `marcha_fts` y devuelva resultados con enlace directo a `/dashboard/marcha/[id]`.
+
+**M5 — Navegación post-creación**
+- En `marcha/add` y `autor/add`: tras `status === 'success'`, mostrar el ID creado con botones "Ir a editar" y "Ver en público".
+
+**M6 — Eliminar SQL preview de la UI**
+- En `marcha/add/page.tsx:139-143` y `autor/add/page.tsx:71-75`: eliminar los bloques `<pre>` con SQL y parámetros, o ponerlos tras un toggle `[modo debug]`.
+
+---
+
+### Bloque B — Baja prioridad (deuda diferible)
+
+**B1 — Eliminar tablas muertas**
+- `videos` (357 filas, nunca consultada): backup previo, luego `DROP TABLE videos`.
+- `users` (0 filas): `DROP TABLE users`.
+
+**B2 — Normalizar `FECHA` a `INTEGER NULL`**
+- Script: `UPDATE marcha SET FECHA = NULL WHERE FECHA = 0`.
+- Simplificar `normalizeFecha` en `lib/api.ts`.
+
+**B3 — Gestión de bandas desde el panel**
+- `/dashboard/banda/add` y `/dashboard/banda/[id]` con los campos: `NOMBRE_BREVE`, `NOMBRE_COMPLETO`, `LOCALIDAD`, `PROVINCIA`, `FECHA_FUND`, `FECHA_EXT`.
+- Autocomplete de banda en edición de marcha en lugar del campo numérico actual.
+
+**B4 — Gestión de discos y relaciones disco_marcha**
+- `/dashboard/disco/add` y `/dashboard/disco/[id]` con gestión de la lista de pistas.
 
 ---
 

@@ -148,8 +148,14 @@ export default function MarchaAddPage() {
         </div>
       )}
 
+      {!draft.AUTORES_IDS && (
+        <div className="alert alert-warning mt-3">
+          <span>Debes añadir al menos un autor antes de crear la marcha.</span>
+        </div>
+      )}
+
       <div className="flex gap-2 mt-4">
-        <button className="btn btn-neutral" disabled={state.status === 'saving'} onClick={handleSubmit}>Crear marcha</button>
+        <button className="btn btn-neutral" disabled={state.status === 'saving' || !draft.AUTORES_IDS} onClick={handleSubmit}>Crear marcha</button>
         <button className="btn" disabled={state.status === 'saving'} onClick={resetForm}>Limpiar formulario</button>
         <button className="btn btn-ghost" onClick={() => router.push('/dashboard')}>← Dashboard</button>
       </div>

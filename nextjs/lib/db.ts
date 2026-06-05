@@ -25,6 +25,10 @@ export function dbRun(sql: string, params: unknown[] = []) {
   return getDb().prepare(sql).run(...params);
 }
 
+export function dbTransaction<T>(fn: () => T): T {
+  return getDb().transaction(fn)();
+}
+
 export function formatAutor<T extends { AUTOR?: unknown }>(row: T): T {
   if (row.AUTOR == null) { row.AUTOR = []; return row; }
   const entries = String(row.AUTOR).split('|');

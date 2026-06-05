@@ -4,6 +4,10 @@ const EDITABLE_MARCHA_FIELDS = [
   'TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'AUDIO', 'BANDA_ESTRENO', 'DETALLES_MARCHA',
 ] as const;
 
+const INSERTABLE_MARCHA_FIELDS = [
+  'TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'DETALLES_MARCHA',
+] as const;
+
 const INSERTABLE_AUTOR_FIELDS = [
   'NOMBRE', 'APELLIDOS', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO',
 ] as const;
@@ -49,7 +53,7 @@ export interface MarchaInsertDraft {
 }
 
 export function buildMarchaInsertPayload(draft: MarchaInsertDraft) {
-  const fields = [...EDITABLE_MARCHA_FIELDS];
+  const fields = [...INSERTABLE_MARCHA_FIELDS];
   const valuesToInsert = fields.map((k) => normalize(draft[k as keyof MarchaInsertDraft]));
   const autoresIds = normalize(draft.AUTORES_IDS);
   const sqlPreview = `INSERT INTO marcha (${fields.join(', ')}) VALUES (${fields.map(() => '?').join(', ')})`;

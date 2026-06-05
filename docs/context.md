@@ -1,6 +1,6 @@
 # Contexto del proyecto — marchasdecristo.com
 
-> Última actualización: 2026-06-05
+> Última actualización: 2026-06-05 (panel + BD analizados en sesión 2)
 > Documento de entrada para nuevas sesiones.
 > Documentos complementarios en esta misma carpeta:
 > - [architecture.md](architecture.md) — diagrama, flujos y decisiones arquitectónicas.
@@ -40,7 +40,7 @@ Relaciones principales:
 - **Route Handlers** (`app/api/`) para la API REST: login, autocomplete, admin (addMarcha, editMarcha, addAutor).
 - **ISR**: detalles cada hora, estadísticas cada 30 min, búsquedas sin caché.
 - **Standalone output** para imagen Docker minimalista.
-- **Admin**: Client Components protegidos por `middleware.ts` (verifica cookie HMAC inline).
+- **Admin**: Client Components protegidos por `middleware.ts` (verifica cookie HMAC inline). Ver [admin-panel.md](admin-panel.md) para análisis completo.
 
 ### Base de datos — SQLite embebido
 - **SQLite** vía **better-sqlite3** (síncrono, sin pool).
@@ -184,7 +184,9 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 - Sin tests automatizados.
 - Sin CI/CD — despliegue manual.
 - Sin observabilidad (solo `docker logs`).
-- BD sin foreign keys ni índices completos (ver db-analysis.md).
+- BD sin FK constraints declaradas (PRAGMA ON pero sin definición en tablas).
+- ~~`addMarcha` sin transacción~~ ✅ Corregido 2026-06-05 (Bloque 1).
+- Panel admin incompleto: faltan editar autores, editar autores de marcha, buscador, audit log. Ver [admin-panel.md](admin-panel.md).
 
 ---
 
@@ -200,4 +202,9 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 | Tests | ❌ Ninguno |
 | CI/CD | ❌ Despliegue manual |
 | Observabilidad | ❌ Solo docker logs |
-| BD — índices/FKs | ❌ Pendiente (Fase 4) |
+| BD — índices | ✅ Creados en schema.sql (Fase 3b) |
+| BD — FK constraints | ❌ PRAGMA ON pero sin definición en tablas |
+| BD — huérfanos | ❌ 43 registros heredados de la migración MySQL |
+| Panel admin — cobertura básica | ✅ Marcha (add/edit), Autor (add) |
+| Panel admin — cobertura completa | ❌ Faltan editAutor, editBanda, editDisco, addBanda, addDisco, buscador |
+| Panel admin — audit log | ❌ Sin registro de cambios |

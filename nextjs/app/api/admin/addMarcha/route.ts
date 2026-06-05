@@ -1,9 +1,11 @@
 import 'server-only';
 import { type NextRequest } from 'next/server';
-import { dbRun } from '@/lib/db';
+import { dbAll, dbRun, dbTransaction } from '@/lib/db';
 import { verifySession, getTokenFromRequest } from '@/lib/auth-session';
 
-const INSERTABLE_FIELDS = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'DETALLES_MARCHA'] as const;
+const INSERTABLE_FIELDS = new Set([
+  'TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'DETALLES_MARCHA',
+]);
 
 const normalize = (v: unknown): unknown => {
   if (v === undefined) return null;
@@ -17,28 +19,51 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
-  const marcha = (body.marcha ?? {}) as Record<string, unknown>;
-  const autoresIds = body.autoresIds;
+  const fieldsRaw = Array.isArray(body.fieldsToInsert) ? body.fieldsToInsert as string[] : [];
+  const valuesRaw = Array.isArray(body.valuesToInsert) ? body.valuesToInsert : [];
 
-  const values = INSERTABLE_FIELDS.map((f) => normalize(marcha[f]));
-  const placeholders = INSERTABLE_FIELDS.map(() => '?').join(', ');
-  const insertInfo = dbRun(
-    `INSERT INTO marcha (${INSERTABLE_FIELDS.join(', ')}) VALUES (${placeholders})`,
-    values
-  );
-  const marchaId = Number(insertInfo.lastInsertRowid);
-  if (!marchaId) return Response.json({ code: 'INTERNAL_ERROR', msg: 'Could not create marcha' }, { status: 500 });
+  const safeEntries = fieldsRaw
+    .map((f, i) => [f, valuesRaw[i]] as [string, unknown])
+    .filter(([f]) => INSERTABLE_FIELDS.has(f));
 
-  const raw = Array.isArray(autoresIds) ? autoresIds.join(',') : String(autoresIds ?? '');
+  if (safeEntries.length === 0) {
+    return Response.json({ code: 'INVALID_PAYLOAD', msg: 'No valid fields to insert' }, { status: 400 });
+  }
+
+  const safeFields = safeEntries.map(([f]) => f);
+  const safeValues = safeEntries.map(([, v]) => normalize(v));
+
+  const autoresRaw = body.autoresIds;
+  const rawStr = Array.isArray(autoresRaw) ? autoresRaw.join(',') : String(autoresRaw ?? '');
   const ids = [...new Set(
-    raw.split(',').map((v) => parseInt(v.trim(), 10)).filter((n) => Number.isInteger(n) && n > 0)
+    rawStr.split(',').map((v) => parseInt(v.trim(), 10)).filter((n) => Number.isInteger(n) && n > 0)
   )];
-  if (ids.length > 0) {
+
+  if (ids.length === 0) {
+    return Response.json({ code: 'AUTHORS_REQUIRED', msg: 'Al menos un autor es obligatorio' }, { status: 400 });
+  }
+
+  const found = dbAll<{ c: number }>(
+    `SELECT COUNT(*) AS c FROM autor WHERE ID_AUTOR IN (${ids.map(() => '?').join(',')})`,
+    ids
+  );
+  if (found[0].c !== ids.length) {
+    return Response.json({ code: 'INVALID_AUTHORS', msg: 'Uno o más IDs de autor no existen' }, { status: 400 });
+  }
+
+  const marchaId = dbTransaction<number>(() => {
+    const info = dbRun(
+      `INSERT INTO marcha (${safeFields.join(', ')}) VALUES (${safeFields.map(() => '?').join(', ')})`,
+      safeValues
+    );
+    const newId = Number(info.lastInsertRowid);
+    if (!newId) throw new Error('Could not create marcha');
     dbRun(
       `INSERT INTO marcha_autor (ID_MARCHA, ID_AUTOR) VALUES ${ids.map(() => '(?, ?)').join(', ')}`,
-      ids.flatMap((id) => [marchaId, id])
+      ids.flatMap((id) => [newId, id])
     );
-  }
+    return newId;
+  });
 
   return Response.json({ code: 'CREATED', msg: 'Marcha created', marchaId }, { status: 201 });
 }
