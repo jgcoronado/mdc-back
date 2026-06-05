@@ -11,7 +11,7 @@
 | 1 | Bugfix funcionales | Pendiente | Bajo |
 | 2 | Migrar MySQL a Docker en el VPS | ✅ Completada (junio 2026) | — |
 | 3a | Migrar páginas admin a Next.js | ✅ Completada (junio 2026) | — |
-| 3b | Migrar API a Next.js Route Handlers y apagar Express | Pendiente | Medio-alto |
+| 3b | Migrar API a Next.js Route Handlers y apagar Express | ⏳ Código listo, pendiente despliegue VPS | Medio-alto |
 | 4 | Endurecimiento de BD (índices, motores, FKs) | Pendiente | Medio |
 | 5 | Tests, CI/CD, observabilidad | Pendiente | Bajo |
 | 6 | Mejoras opcionales (SQLite, build estático) | Pendiente | — |
@@ -197,51 +197,60 @@ Archivos añadidos:
 
 ---
 
-## Fase 3b — Migrar API a Next.js Route Handlers y apagar Express
+## Fase 3b — Migrar API a Next.js Route Handlers y apagar Express ✅ Código completado (junio 2026)
 
-Objetivo: eliminar Vue y Express del stack, dejar solo Next.js + MySQL.
+> **Estado**: código listo en rama `main`, **pendiente de desplegar en el VPS**.
+> Ver guía de despliegue completa en [vps-migration-3b.md](vps-migration-3b.md).
 
-### Plan
+### Qué se hizo (sesión junio 2026)
 
-1. **Mover auth a Next.js middleware**:
-   - `nextjs/middleware.ts` que valide cookie `mdc_session` con HMAC para rutas `/admin/*` y `/api/admin/*`.
-   - Si no autenticado → redirect a `/login`.
+**Decisiones de diseño tomadas:**
+- Los Server Components leen la BD directamente (sin HTTP round-trip a Route Handlers).
+- El middleware verifica la cookie HMAC inline (`node:crypto`), sin llamar a Express.
+- `better-sqlite3` instalado en `nextjs/` con `serverExternalPackages` para evitar bundling.
+- El volumen SQLite `mdc-sqlite-data` se reasigna de `app` a `nextjs` en `docker-compose.yml`.
 
-2. **Crear `nextjs/lib/db.ts`** (server-only):
-   - Pool readonly y pool admin replicando `src/db.js` y `src/helpers/admin.js`.
-   - Tipado con TypeScript.
+**Ficheros creados en `nextjs/`:**
+- `lib/db.ts` — singleton SQLite lazy (no abre la BD en `next build`)
+- `lib/auth-session.ts` — port TypeScript de `authSession.js` (HMAC sign/verify)
+- `app/api/login/route.ts` — POST login con rate limiting en memoria y upgrade MD5→PBKDF2
+- `app/api/login/verify/route.ts` — GET verify sesión
+- `app/api/login/logout/route.ts` — POST logout
+- `app/api/autor/fastSearch/route.ts` — GET autocomplete autores
+- `app/api/banda/fastSearch/route.ts` — GET autocomplete bandas
+- `app/api/admin/editMarcha/route.ts` — POST editar marcha (auth + allowlist campos)
+- `app/api/admin/addMarcha/route.ts` — POST añadir marcha + relaciones marcha_autor
+- `app/api/admin/addAutor/route.ts` — POST añadir autor
+- `app/sitemap.ts` — sitemap generado desde BD, ISR 1h
 
-3. **Migrar endpoints como Route Handlers**:
-   - `nextjs/app/api/marcha/[id]/route.ts` reemplaza `src/routes/marcha.js`.
-   - Idem para `autor`, `banda`, `disco`, `stats`, `admin/*`, `login`.
-   - Mantener exactamente el mismo contrato JSON para no romper el frontend mientras se migra paso a paso.
+**Ficheros modificados:**
+- `lib/api.ts` — eliminado fetch HTTP, todas las funciones leen SQLite directamente
+- `middleware.ts` — verifica HMAC inline (`runtime = 'nodejs'`), sin red
+- `next.config.ts` — `serverExternalPackages: ['better-sqlite3']`, sin rewrites Express
+- `Dockerfile` — añade `python3 make g++` en builder y `libstdc++` en runtime (necesario para compilar `better-sqlite3` en Alpine)
+- `docker-compose.yml` — servicio `app` (Express) eliminado, volumen SQLite en `nextjs`
+- `nginx.conf.example` — simplificado a una sola location (`/cover/` directo + resto a `:3000`)
 
-4. **Migrar páginas admin**:
-   - `nextjs/app/login/page.tsx` con `<form>` server action.
-   - `nextjs/app/dashboard/page.tsx` (Server Component) con estado de la BD.
-   - `nextjs/app/dashboard/marcha/[id]/page.tsx` con `MarchaEdit.tsx` (Client Component) que reutiliza `buildMarchaUpdatePayload` (ya está portado en `lib/adminApi.ts`).
-   - Similares para `marcha/add` y `autor/add`.
+### Siguiente paso obligatorio: despliegue en VPS
 
-5. **Sitemap y robots a Next.js**:
-   - `nextjs/app/sitemap.ts` reemplaza la implementación en `index.js`.
-   - `robots.ts` ya existe — bien.
+Seguir **en orden** los pasos de [vps-migration-3b.md](vps-migration-3b.md):
 
-6. **Apagar Express**:
-   - Borrar `docker-compose.yml: services.app` y dependencias relacionadas.
-   - Borrar `index.js`, `src/`, `package.json` raíz, `frontend/`, `Dockerfile` raíz.
-   - Mantener `docker-compose.yml` solo con `nextjs` y `mysql`.
+1. `git pull` en el VPS.
+2. Backup del volumen SQLite (obligatorio antes de tocar contenedores).
+3. `docker compose stop app && docker compose rm -f app`.
+4. `docker compose build nextjs && docker compose up -d nextjs`.
+5. Verificar endpoints con `curl`.
+6. Actualizar nginx con el nuevo `nginx.conf.example` y recargar.
+7. `docker system prune -f`.
 
-7. **Actualizar nginx**:
-   - Borrar las locations específicas de `/login`, `/dashboard`, `/sitemap.xml`, `/api/`.
-   - Solo `/cover/` directo + el resto a `127.0.0.1:3000`.
+### Pendiente tras el despliegue
 
-8. **Rate limiting** se queda en memoria del proceso Next.js o pasa a tabla MySQL si quieres robustez. Para tráfico bajo, en memoria es suficiente.
-
-### Riesgos
-- **RAM**: Next.js consume más que Express. Vigilar tras consolidar.
-- **Rate limit**: si pones Next.js en standalone con varios workers, la `Map` deja de ser global. Usar tabla MySQL.
-- **Cookies**: que `NextResponse.cookies.set` y `cookies().get()` mantengan el mismo nombre/options.
-- **Cache de Next.js**: tras un edit, llamar `revalidatePath('/marcha/[slugAndId]', 'page')` para invalidar la página detalle (mejora respecto al estado actual donde hay que esperar 1 h).
+- **Eliminar código muerto** del repo (Express ya no se usa pero el código sigue):
+  - `src/`, `frontend/`, `index.js`, `Dockerfile` raíz, `package.json` raíz.
+  - Artefactos legacy: `.htaccess`, `.vercel/`, `vercel.json`, `ecosystem.config.js`.
+- **Actualizar `docs/context.md` y `docs/architecture.md`** para reflejar el stack final (solo Next.js + SQLite).
+- **Fase 0** (seguridad): rotar credenciales, `.env` fuera del repo. Hacerlo antes de compartir el repo públicamente.
+- **Fase 5** (tests + CI/CD): ahora el stack es suficientemente simple para añadir tests con Vitest.
 
 ---
 
