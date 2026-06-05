@@ -1,6 +1,6 @@
 # Hoja de ruta — marchasdecristo.com
 
-> Generado: 2026-06-01 · Última actualización: 2026-06-05 (sesión 2 — plan acción panel + BD)
+> Generado: 2026-06-01 · Última actualización: 2026-06-05 (Bloque 2 completado)
 > Plan secuenciado para resolver la deuda técnica identificada y materializar las decisiones tomadas.
 
 ## Resumen
@@ -267,10 +267,11 @@ Archivos añadidos:
 
 ### Bloque A — Alta prioridad (integridad + cobertura funcional crítica)
 
-**A1 — FK constraints en schema SQLite**
-- Limpiar los 43 huérfanos heredados de la migración (script en `scripts/clean-orphans.sql`).
-- Añadir `FOREIGN KEY` en `CREATE TABLE` de `marcha_autor`, `disco_marcha`, `marcha.BANDA_ESTRENO`, `disco.BANDADISCO`.
-- Recrear las tablas afectadas con el nuevo schema (SQLite no permite ALTER TABLE ADD FK).
+**A1 — FK constraints en schema SQLite** ✅ Completado (2026-06-05)
+- 43 huérfanos eliminados con `scripts/clean-orphans.sql` (27 dm→m, 2 dm→d solapados, 4 ma→m, 10 ma→a).
+- `marcha_autor` y `disco_marcha` recreadas con `REFERENCES ... ON DELETE CASCADE` vía `scripts/add-fk-constraints.sql`.
+- `admin_log` creada en el mismo script. FK check PRAGMA devuelve 0 violaciones.
+- Nota: `marcha.BANDA_ESTRENO` y `disco.BANDADISCO` no incluidos (valor 0 = sentinel, requeriría valor NULL).
 
 **A2 — `PROVINCIA` en formulario de edición de marcha**
 - Fichero: `nextjs/app/dashboard/marcha/[id]/page.tsx:56`
@@ -293,13 +294,14 @@ Archivos añadidos:
 
 ### Bloque M — Media prioridad (operabilidad diaria)
 
-**M1 — Audit log**
-- Crear tabla `admin_log (id INTEGER PRIMARY KEY, accion TEXT, tabla TEXT, id_registro INTEGER, usuario TEXT, ts INTEGER, payload TEXT)`.
-- Añadir INSERT en cada Route Handler de escritura (addMarcha, editMarcha, addAutor, editAutor, editMarchaAutores).
+**M1 — Audit log** ✅ Completado (2026-06-05)
+- Tabla `admin_log` creada vía `scripts/add-fk-constraints.sql` y documentada en `db/schema.sql`.
+- `logAdmin()` helper en `lib/db.ts`. Llamado en addMarcha, editMarcha, addAutor.
+- Pendiente: editAutor y editMarchaAutores (se añadirán al crear esos Route Handlers en Bloque 3).
 
-**M2 — Serialización JSON de autores**
-- Fichero: `nextjs/lib/api.ts` — sustituir `GROUP_CONCAT(... '#' ... '|')` por `json_group_array(json_object('autorId', a.ID_AUTOR, 'nombre', ...))`.
-- Fichero: `nextjs/lib/db.ts` — simplificar `formatAutor` a `JSON.parse`.
+**M2 — Serialización JSON de autores** ✅ Completado (2026-06-05)
+- `nextjs/lib/api.ts`: los 5 `GROUP_CONCAT('#'/'|')` sustituidos por `json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))`.
+- `nextjs/lib/db.ts`: `formatAutor` simplificado a `JSON.parse`.
 - Elimina el riesgo de corrupción si un nombre contiene `#` o `|`.
 
 **M3 — Validación de `FECHA` en Route Handlers**

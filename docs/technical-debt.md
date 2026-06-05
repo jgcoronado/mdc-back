@@ -52,14 +52,14 @@
 
 ## 2. Base de datos (SQLite)
 
-### 2.1 FK constraints declaradas ausentes 🟠
-- `lib/db.ts:16` activa `PRAGMA foreign_keys = ON`, pero las tablas no tienen `FOREIGN KEY` en sus `CREATE TABLE`. El PRAGMA no tiene nada que verificar: la integridad referencial no está siendo forzada en tiempo real.
-- Hay 43 huérfanos heredados de la migración MySQL (ver [db-analysis.md](db-analysis.md)).
-- **Fix**: (1) limpiar los 43 huérfanos con script, (2) añadir FK constraints en el schema, (3) migrar la BD con script ALTER o recreación de tablas.
+### ~~2.1 FK constraints declaradas ausentes~~ ✅ Resuelto (Bloque 2, 2026-06-05)
+- `marcha_autor` y `disco_marcha` recreadas con `REFERENCES ... ON DELETE CASCADE`.
+- 43 huérfanos eliminados con `scripts/clean-orphans.sql`. PRAGMA FK check: 0 violaciones.
+- Nota: `marcha.BANDA_ESTRENO` y `disco.BANDADISCO` no tienen FK declarada porque usan `0` como sentinel.
 
-### 2.2 Serialización `GROUP_CONCAT` de autores frágil 🟠
-- `lib/api.ts` recupera los autores como `"1#Nombre Apellido|2#Otro"` y `lib/db.ts:formatAutor` los parsea por `|` y `#`. Si un nombre contiene alguno de esos caracteres, el parseo se corrompe silenciosamente.
-- **Fix**: sustituir `GROUP_CONCAT` por `json_group_array(json_object(...))` en SQLite. `better-sqlite3` devuelve el JSON como string y se parsea con `JSON.parse`.
+### ~~2.2 Serialización `GROUP_CONCAT` de autores frágil~~ ✅ Resuelto (Bloque 2, 2026-06-05)
+- Sustituido por `json_group_array(json_object('autorId', ID_AUTOR, 'nombre', ...))` en 5 queries de `lib/api.ts`.
+- `formatAutor` en `lib/db.ts` simplificado a `JSON.parse`.
 
 ### 2.3 `autor.NOMBRE_ART` indexado en FTS5 pero no gestionable 🟠
 - `schema.sql:56-60` sincroniza `NOMBRE_ART` al índice FTS5. `addAutor/route.ts:6` no incluye `NOMBRE_ART` en `INSERTABLE_FIELDS`. Los compositores con nombre artístico no se pueden registrar correctamente desde el panel.
@@ -81,9 +81,9 @@
 - Los formularios de alta (`marcha/add`, `autor/add`) y edición muestran la SQL preparada y los parámetros en pantalla. Información innecesaria que puede quedar en capturas de pantalla.
 - **Fix**: eliminar el bloque de previsualización SQL o ponerlo detrás de un toggle oculto por defecto.
 
-### 3.2 Sin audit log 🟠
-- No hay registro de qué cambió, cuándo y con qué valor anterior. Si algo se corrompe en la BD, no hay trazabilidad.
-- **Fix**: tabla `admin_log (id, accion, tabla, id_registro, usuario, ts, payload_json)` + INSERT en cada Route Handler de escritura.
+### ~~3.2 Sin audit log~~ ✅ Resuelto (Bloque 2, 2026-06-05)
+- Tabla `admin_log` creada. `logAdmin()` llamado en addMarcha, editMarcha, addAutor.
+- Pendiente: editAutor y editMarchaAutores (se añaden en Bloque 3 junto a esos handlers).
 
 ### 3.3 Funciones de edición incompletas 🟠
 - **`PROVINCIA` falta en edición de marcha**: el campo está en la BD y en el alta, pero no en `dashboard/marcha/[id]/page.tsx:56-63`.

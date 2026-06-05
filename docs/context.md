@@ -184,9 +184,9 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 - Sin tests automatizados.
 - Sin CI/CD — despliegue manual.
 - Sin observabilidad (solo `docker logs`).
-- BD sin FK constraints declaradas (PRAGMA ON pero sin definición en tablas).
+- ~~BD sin FK constraints~~ ✅ Corregido 2026-06-05 (Bloque 2, `marcha_autor`/`disco_marcha`).
 - ~~`addMarcha` sin transacción~~ ✅ Corregido 2026-06-05 (Bloque 1).
-- Panel admin incompleto: faltan editar autores, editar autores de marcha, buscador, audit log. Ver [admin-panel.md](admin-panel.md).
+- Panel admin incompleto: faltan editAutor, editMarchaAutores, buscador. Ver [admin-panel.md](admin-panel.md).
 
 ---
 
@@ -203,8 +203,9 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 | CI/CD | ❌ Despliegue manual |
 | Observabilidad | ❌ Solo docker logs |
 | BD — índices | ✅ Creados en schema.sql (Fase 3b) |
-| BD — FK constraints | ❌ PRAGMA ON pero sin definición en tablas |
-| BD — huérfanos | ❌ 43 registros heredados de la migración MySQL |
+| BD — FK constraints | ✅ marcha_autor y disco_marcha con REFERENCES + ON DELETE CASCADE (Bloque 2) |
+| BD — huérfanos | ✅ Eliminados 2026-06-05 (Bloque 2) |
+| BD — serialización autores | ✅ json_group_array en lugar de GROUP_CONCAT (Bloque 2) |
 | Panel admin — cobertura básica | ✅ Marcha (add/edit), Autor (add) |
-| Panel admin — cobertura completa | ❌ Faltan editAutor, editBanda, editDisco, addBanda, addDisco, buscador |
-| Panel admin — audit log | ❌ Sin registro de cambios |
+| Panel admin — cobertura completa | ❌ Faltan editAutor, editMarchaAutores, buscador |
+| Panel admin — audit log | ✅ Tabla admin_log + logAdmin en addMarcha/editMarcha/addAutor (Bloque 2) |
