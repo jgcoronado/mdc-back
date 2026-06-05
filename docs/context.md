@@ -56,12 +56,11 @@ Relaciones principales:
 - Rate limiting de login: `Map` en memoria (6 intentos / 15 min, ventana y bloqueo de 15 min).
 
 ### Infraestructura
-- **VPS**: 104.245.245.27, Ubuntu 22.04, 1 vCPU, 1 GB RAM, 15 GB disco.
+- **VPS**: Ubuntu 22.04, 1 vCPU, 1 GB RAM, 15 GB disco.
 - **Nginx** como reverse proxy con TLS (Let's Encrypt). Config en `/etc/nginx/sites-enabled/default`.
 - **Docker Compose** en `/var/www/mdc-back/` con un único servicio: `mdc-nextjs` → `127.0.0.1:3000`.
 - **Portadas** (`/cover/*.png`): volumen host `/var/www/mdc-assets/cover/` montado como `:ro`. Nginx las sirve directamente.
 - **Backup**: cron diario a las 3:00 AM copia `mdc.db` a `/var/backups/`, retención 14 días.
-- **Acceso SSH**: usuario `claude` con sudo, desde la máquina local con sshpass.
 
 ---
 

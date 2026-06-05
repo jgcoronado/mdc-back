@@ -69,7 +69,7 @@ PASSWORD_PBKDF2_ITERATIONS=210000
 git push origin main
 
 # 2. En el VPS
-ssh claude@104.245.245.27
+ssh <usuario>@<vps-ip>
 cd /var/www/mdc-back
 git fetch origin main && git checkout FETCH_HEAD -- .
 
@@ -97,7 +97,7 @@ npm run dev                       # http://localhost:3000
 ```
 
 La BD SQLite en local debe estar en la ruta indicada en `DB_PATH`.  
-Para obtenerla desde producción: `scp claude@104.245.245.27:/var/lib/docker/volumes/mdc-back_mdc-sqlite-data/_data/mdc.db ./data/mdc.db`
+Para obtenerla desde producción: `scp <usuario>@<vps-ip>:/var/lib/docker/volumes/mdc-back_mdc-sqlite-data/_data/mdc.db ./data/mdc.db`
 
 ---
 
@@ -111,7 +111,7 @@ volumes:
   - ${COVER_DIR:-/var/www/mdc-assets/cover}:/app/public/cover:ro
 ```
 
-Para añadir una portada: `scp imagen.png claude@VPS:/var/www/mdc-assets/cover/<ID_DISCO>.png`
+Para añadir una portada: `scp imagen.png <usuario>@<vps-ip>:/var/www/mdc-assets/cover/<ID_DISCO>.png`
 
 Nginx las sirve directamente con `Cache-Control: public, immutable; expires 30d`.
 

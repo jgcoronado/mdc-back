@@ -1,4 +1,4 @@
-# Análisis de base de datos `jaguerra27_mdc`
+# Análisis de base de datos `<db_name>`
 
 > Generado: 2026-06-01
 
@@ -22,7 +22,7 @@
 ## Puntos fuertes
 
 - Pool de conexiones bien configurado (límite 10, keepAlive), dos pools separados readonly/admin.
-- Segregación de privilegios: `jaguerra27_readonly` para lectura, `jaguerra27_user` para escritura.
+- Segregación de privilegios: `<db_readonly>` para lectura, `<db_user>` para escritura.
 - FULLTEXT indexes en `marcha.TITULO`, `marcha.DEDICATORIA`, `autor.APELLIDOS/NOMBRE/NOMBRE_ART`.
 - Collation `utf8_spanish_ci` en tablas principales — maneja ñ, tildes y orden español correctamente.
 - Prepared statements generalizados (`pool.execute(sql, params)`).
@@ -79,7 +79,7 @@ Las queries más frecuentes de la API hacen JOINs en columnas sin índice:
 | `ID_AUTOR` | `marcha_autor` | Solo hay índice compuesto (ID_MARCHA, ID_AUTOR); buscar por autor solo es lento |
 
 ```sql
--- Ejecutar con usuario jaguerra27_user:
+-- Ejecutar con usuario <db_user>:
 ALTER TABLE disco_marcha ADD INDEX idx_dm_disco (ID_DISCO);
 ALTER TABLE disco_marcha ADD INDEX idx_dm_marcha (IDMARCHA);
 ALTER TABLE disco ADD INDEX idx_disco_banda (BANDADISCO);

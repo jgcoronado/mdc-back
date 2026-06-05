@@ -126,7 +126,7 @@ Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) 
 
 ~~Objetivo: cortar dependencia con helioho.st sin tocar la app.~~
 
-**Realizado**: contenedor `mdc-mysql` (MySQL 8.0) levantado en el VPS con volumen persistente `mdc-back_mysql_data`. Dump importado desde HelioHost. Usuarios `jaguerra27_readonly` y `jaguerra27_user` creados. `DB_HOST=mysql` en `.env` del VPS. Ver ADR-002 en [architecture.md](architecture.md).
+**Realizado**: contenedor `mdc-mysql` (MySQL 8.0) levantado en el VPS con volumen persistente `mdc-back_mysql_data`. Dump importado desde HelioHost. Usuarios readonly y admin creados. `DB_HOST=mysql` en `.env` del VPS. Ver ADR-002 en [architecture.md](architecture.md).
 
 ---
 
@@ -142,8 +142,8 @@ Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) 
      restart: unless-stopped
      environment:
        MARIADB_ROOT_PASSWORD: ...
-       MARIADB_DATABASE: jaguerra27_mdc
-       MARIADB_USER: jaguerra27_user
+       MARIADB_DATABASE: <db_name>
+       MARIADB_USER: <db_user>
        MARIADB_PASSWORD: ...
      volumes:
        - mdc-db-data:/var/lib/mysql
@@ -156,9 +156,9 @@ Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) 
 2. **Dump y restore**:
    ```bash
    # Local
-   mysqldump -h jaguerra27.helioho.st -u jaguerra27_user -p jaguerra27_mdc > mdc.sql
+   mysqldump -h <db_host> -u <db_user> -p <db_name> > mdc.sql
    # Subir mdc.sql al VPS
-   scp mdc.sql claude@104.245.245.27:/var/www/mdc-back/db/init.sql
+   scp mdc.sql <usuario>@<vps-ip>:/var/www/mdc-back/db/init.sql
    # En el VPS
    docker compose down
    docker volume rm mdc-back_mdc-db-data
@@ -168,8 +168,8 @@ Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) 
 
 3. **Crear usuario readonly**:
    ```sql
-   CREATE USER 'jaguerra27_readonly'@'%' IDENTIFIED BY '...';
-   GRANT SELECT ON jaguerra27_mdc.* TO 'jaguerra27_readonly'@'%';
+   CREATE USER '<db_readonly_user>'@'%' IDENTIFIED BY '...';
+   GRANT SELECT ON <db_name>.* TO '<db_readonly_user>'@'%';
    ```
 
 4. **Cambiar `.env`** para apuntar a `DB_HOST=mysql` (nombre del servicio Docker).
@@ -178,7 +178,7 @@ Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) 
 
 6. **Cron de backup en el VPS**:
    ```bash
-   0 3 * * * docker exec mdc-mysql mysqldump -u root -p${MARIADB_ROOT_PASSWORD} jaguerra27_mdc | gzip > /var/backups/mdc-$(date +\%F).sql.gz
+   0 3 * * * docker exec mdc-mysql mysqldump -u root -p${MARIADB_ROOT_PASSWORD} <db_name> | gzip > /var/backups/mdc-$(date +\%F).sql.gz
    ```
 
 ---
