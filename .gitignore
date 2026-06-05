@@ -1,4 +1,5 @@
 /.env
 /snapshots
+/docs/session-*.md
 nextjs/.next
 nextjs/node_modules
