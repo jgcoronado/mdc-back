@@ -5,6 +5,7 @@ import CdList from '@/components/CdList';
 import Timeline from '@/components/Timeline';
 import { fetchBanda } from '@/lib/api';
 import { extractId, buildDetailPath } from '@/lib/slugify';
+import { generateBandaSchema, generateBreadcrumbs } from '@/lib/schema';
 
 export const revalidate = 3600;
 
@@ -16,9 +17,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!id) return {};
   const data = await fetchBanda(id).catch(() => null);
   if (!data) return {};
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${buildDetailPath('banda', data.ID_BANDA, data.NOMBRE_COMPLETO)}`;
   return {
     title: `${data.NOMBRE_BREVE} — Marchas de Cristo`,
     description: `${data.NOMBRE_COMPLETO}, banda de ${data.LOCALIDAD}. Ha grabado ${data.discosLength} discos y estrenado ${data.marchasLength} marchas.`,
+    openGraph: {
+      type: 'music.playlist',
+      title: data.NOMBRE_BREVE,
+      description: `Banda de música procesional de ${data.LOCALIDAD}`,
+      url,
+    },
   };
 }
 
@@ -35,7 +43,18 @@ export default async function BandaDetailPage({ params }: { params: Params }) {
     redirect(canonical);
   }
 
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${canonical}`;
+  const bandaSchema = generateBandaSchema(data, url);
+  const breadcrumbsSchema = generateBreadcrumbs([
+    { name: 'Inicio', url: process.env.SITE_URL || 'https://marchasdecristo.com' },
+    { name: 'Bandas', url: `${process.env.SITE_URL || 'https://marchasdecristo.com'}/banda` },
+    { name: data.NOMBRE_BREVE, url },
+  ]);
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bandaSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsSchema) }} />
     <div>
       <div className="headDetail">{data.NOMBRE_BREVE}</div>
       <div className="tableList">
@@ -106,6 +125,7 @@ export default async function BandaDetailPage({ params }: { params: Params }) {
         </table>
       </div>
       <br />
-    </div>
+      </div>
+    </>
   );
 }
