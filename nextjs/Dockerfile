@@ -27,6 +27,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:3000/api/health || exit 1
+
 USER node
 
 CMD ["node", "server.js"]
