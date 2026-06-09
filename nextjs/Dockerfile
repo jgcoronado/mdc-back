@@ -16,6 +16,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 # better-sqlite3 needs native libs at runtime.
 RUN apk add --no-cache libstdc++ gcompat
