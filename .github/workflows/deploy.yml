@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_DEPLOY_KEY }}
+          script: |
+            set -e
+            git -C /var/www/mdc-back pull
+            docker compose -f /var/www/mdc-back/docker-compose.yml build nextjs
+            docker compose -f /var/www/mdc-back/docker-compose.yml up -d nextjs
+            docker system prune -f
