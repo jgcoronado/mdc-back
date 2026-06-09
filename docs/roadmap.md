@@ -1,24 +1,24 @@
 # Hoja de ruta — marchasdecristo.com
 
-> Generado: 2026-06-01
+> Generado: 2026-06-01 · Última actualización: 2026-06-05 (Bloque 4 completado — panel admin completo)
 > Plan secuenciado para resolver la deuda técnica identificada y materializar las decisiones tomadas.
 
 ## Resumen
 
 | Fase | Objetivo | Estado | Riesgo |
 |------|----------|--------|--------|
-| 0 | Limpieza y seguridad inmediata | Pendiente | Bajo |
-| 1 | Bugfix funcionales | Pendiente | Bajo |
+| 0 | Limpieza y seguridad inmediata | ✅ Completada (2026-06-05) | — |
+| 1 | Bugfix funcionales | ✅ Superada (Express eliminado) | — |
 | 2 | Migrar MySQL a Docker en el VPS | ✅ Completada (junio 2026) | — |
 | 3a | Migrar páginas admin a Next.js | ✅ Completada (junio 2026) | — |
-| 3b | Migrar API a Next.js Route Handlers y apagar Express | ⏳ Código listo, pendiente despliegue VPS | Medio-alto |
-| 4 | Endurecimiento de BD (índices, motores, FKs) | Pendiente | Medio |
+| 3b | Migrar API a Next.js Route Handlers y apagar Express | ✅ Completada (2026-06-05) | — |
+| 4 | Integridad BD + panel admin completo | ✅ Completada (2026-06-05) | — |
 | 5 | Tests, CI/CD, observabilidad | Pendiente | Bajo |
-| 6 | Mejoras opcionales (SQLite, build estático) | Pendiente | — |
+| 6 | Mejoras opcionales (build estático, Zod, Drizzle) | Pendiente | — |
 
 ---
 
-## Fase 0 — Limpieza inmediata (2-4 h)
+## Fase 0 — Limpieza inmediata ✅ Completada (2026-06-05)
 
 Objetivo: cerrar agujeros de seguridad y eliminar fricción operativa **sin tocar lógica de negocio**.
 
@@ -53,9 +53,9 @@ Objetivo: cerrar agujeros de seguridad y eliminar fricción operativa **sin toca
 
 ---
 
-## Fase 1 — Bugfix funcionales (3-5 h)
+## Fase 1 — Bugfix funcionales ✅ Superada (Express eliminado en Fase 3b)
 
-Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
+Los bugs documentados (db.connection, WHERE vacío, getTimeline, catches mudos) vivían en el código Express. Al eliminar Express en la Fase 3b, los nuevos Route Handlers se escribieron sin estos antipatrones. No requiere acción.
 
 ### Tareas
 
@@ -126,7 +126,7 @@ Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
 
 ~~Objetivo: cortar dependencia con helioho.st sin tocar la app.~~
 
-**Realizado**: contenedor `mdc-mysql` (MySQL 8.0) levantado en el VPS con volumen persistente `mdc-back_mysql_data`. Dump importado desde HelioHost. Usuarios `jaguerra27_readonly` y `jaguerra27_user` creados. `DB_HOST=mysql` en `.env` del VPS. Ver ADR-002 en [architecture.md](architecture.md).
+**Realizado**: contenedor `mdc-mysql` (MySQL 8.0) levantado en el VPS con volumen persistente `mdc-back_mysql_data`. Dump importado desde HelioHost. Usuarios readonly y admin creados. `DB_HOST=mysql` en `.env` del VPS. Ver ADR-002 en [architecture.md](architecture.md).
 
 ---
 
@@ -142,8 +142,8 @@ Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
      restart: unless-stopped
      environment:
        MARIADB_ROOT_PASSWORD: ...
-       MARIADB_DATABASE: jaguerra27_mdc
-       MARIADB_USER: jaguerra27_user
+       MARIADB_DATABASE: <db_name>
+       MARIADB_USER: <db_user>
        MARIADB_PASSWORD: ...
      volumes:
        - mdc-db-data:/var/lib/mysql
@@ -156,9 +156,9 @@ Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
 2. **Dump y restore**:
    ```bash
    # Local
-   mysqldump -h jaguerra27.helioho.st -u jaguerra27_user -p jaguerra27_mdc > mdc.sql
+   mysqldump -h <db_host> -u <db_user> -p <db_name> > mdc.sql
    # Subir mdc.sql al VPS
-   scp mdc.sql claude@104.245.245.27:/var/www/mdc-back/db/init.sql
+   scp mdc.sql <usuario>@<vps-ip>:/var/www/mdc-back/db/init.sql
    # En el VPS
    docker compose down
    docker volume rm mdc-back_mdc-db-data
@@ -168,8 +168,8 @@ Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
 
 3. **Crear usuario readonly**:
    ```sql
-   CREATE USER 'jaguerra27_readonly'@'%' IDENTIFIED BY '...';
-   GRANT SELECT ON jaguerra27_mdc.* TO 'jaguerra27_readonly'@'%';
+   CREATE USER '<db_readonly_user>'@'%' IDENTIFIED BY '...';
+   GRANT SELECT ON <db_name>.* TO '<db_readonly_user>'@'%';
    ```
 
 4. **Cambiar `.env`** para apuntar a `DB_HOST=mysql` (nombre del servicio Docker).
@@ -178,7 +178,7 @@ Objetivo: que los endpoints **funcionen** sin tocar arquitectura.
 
 6. **Cron de backup en el VPS**:
    ```bash
-   0 3 * * * docker exec mdc-mysql mysqldump -u root -p${MARIADB_ROOT_PASSWORD} jaguerra27_mdc | gzip > /var/backups/mdc-$(date +\%F).sql.gz
+   0 3 * * * docker exec mdc-mysql mysqldump -u root -p${MARIADB_ROOT_PASSWORD} <db_name> | gzip > /var/backups/mdc-$(date +\%F).sql.gz
    ```
 
 ---
@@ -197,10 +197,9 @@ Archivos añadidos:
 
 ---
 
-## Fase 3b — Migrar API a Next.js Route Handlers y apagar Express ✅ Código completado (junio 2026)
+## Fase 3b — Migrar API a Next.js Route Handlers y apagar Express ✅ Completada (2026-06-05)
 
-> **Estado**: código listo en rama `main`, **pendiente de desplegar en el VPS**.
-> Ver guía de despliegue completa en [vps-migration-3b.md](vps-migration-3b.md).
+> **Estado**: desplegado en VPS. Express apagado. Ver guía ejecutada en [vps-migration-3b.md](vps-migration-3b.md).
 
 ### Qué se hizo (sesión junio 2026)
 
@@ -231,59 +230,106 @@ Archivos añadidos:
 - `docker-compose.yml` — servicio `app` (Express) eliminado, volumen SQLite en `nextjs`
 - `nginx.conf.example` — simplificado a una sola location (`/cover/` directo + resto a `:3000`)
 
-### Siguiente paso obligatorio: despliegue en VPS
+### Realizado en sesión 2026-06-05
 
-Seguir **en orden** los pasos de [vps-migration-3b.md](vps-migration-3b.md):
-
-1. `git pull` en el VPS.
-2. Backup del volumen SQLite (obligatorio antes de tocar contenedores).
-3. `docker compose stop app && docker compose rm -f app`.
-4. `docker compose build nextjs && docker compose up -d nextjs`.
-5. Verificar endpoints con `curl`.
-6. Actualizar nginx con el nuevo `nginx.conf.example` y recargar.
-7. `docker system prune -f`.
-
-### Pendiente tras el despliegue
-
-- **Eliminar código muerto** del repo (Express ya no se usa pero el código sigue):
-  - `src/`, `frontend/`, `index.js`, `Dockerfile` raíz, `package.json` raíz.
-  - Artefactos legacy: `.htaccess`, `.vercel/`, `vercel.json`, `ecosystem.config.js`.
-- **Actualizar `docs/context.md` y `docs/architecture.md`** para reflejar el stack final (solo Next.js + SQLite).
-- **Fase 0** (seguridad): rotar credenciales, `.env` fuera del repo. Hacerlo antes de compartir el repo públicamente.
-- **Fase 5** (tests + CI/CD): ahora el stack es suficientemente simple para añadir tests con Vitest.
+1. Merge `feat/nextjs-migration` → `main` y despliegue en VPS.
+2. Backup SQLite antes de tocar contenedores (`/var/backups/mdc-backup-fase3b-2026-06-05.db`).
+3. `docker stop mdc-app && docker rm mdc-app` (Express apagado).
+4. `docker compose build nextjs && docker compose up -d nextjs` (Ready in 76ms).
+5. Endpoints verificados vía HTTPS.
+6. Nginx simplificado: todo → `:3000` excepto `/cover/`.
+7. `docker system prune -f` → 1.34 GB liberados.
+8. Código muerto eliminado: `src/`, `frontend/`, `index.js`, `Dockerfile` raíz, artefactos legacy.
 
 ---
 
-## Fase 4 — Endurecer la BD (4-6 h)
+## Fase 4 — Integridad de BD + panel admin completo
 
-Objetivo: corregir motores, collation, índices, integridad referencial.
+> Análisis completo en [db-analysis.md](db-analysis.md) y [admin-panel.md](admin-panel.md).  
+> Separado en bloques de prioridad para poder hacer commits independientes.
 
-Detalle en [db-analysis.md](db-analysis.md). Resumen:
+### Bloque U — Urgente (bugs que generan datos corruptos) ✅ Completado (2026-06-05)
 
-1. **Migrar a InnoDB**:
-   ```sql
-   ALTER TABLE marcha ENGINE=InnoDB;
-   ALTER TABLE autor ENGINE=InnoDB;
-   ALTER TABLE banda ENGINE=InnoDB;
-   ALTER TABLE marcha_autor ENGINE=InnoDB;
-   ```
+**U1 — Transacción en `addMarcha`** ✅
+- INSERT marcha + INSERT marcha_autor ahora en `dbTransaction()` de better-sqlite3.
+- También corregido bug previo: el Route Handler leía `body.marcha` (undefined) en lugar de `body.fieldsToInsert/valuesToInsert`.
+- Alineados campos insert entre cliente (`INSERTABLE_MARCHA_FIELDS` en adminApi.ts) y servidor.
 
-2. **Añadir índices**:
-   ```sql
-   ALTER TABLE disco_marcha ADD INDEX idx_dm_disco (ID_DISCO);
-   ALTER TABLE disco_marcha ADD INDEX idx_dm_marcha (IDMARCHA);
-   ALTER TABLE disco ADD INDEX idx_disco_banda (BANDADISCO);
-   ALTER TABLE marcha ADD INDEX idx_marcha_banda_estreno (BANDA_ESTRENO);
-   ALTER TABLE marcha_autor ADD INDEX idx_ma_autor (ID_AUTOR);
-   ```
+**U2 — Validar existencia de autoresIds** ✅
+- `SELECT COUNT(*) FROM autor WHERE ID_AUTOR IN (...)` antes del INSERT; devuelve 400 `INVALID_AUTHORS` si alguno falta.
+- También devuelve 400 `AUTHORS_REQUIRED` si no se envía ningún autor.
 
-3. **Limpiar huérfanos** (queries en db-analysis.md), añadir **foreign keys** después.
+**U3 — Advertir en UI al guardar sin autores** ✅
+- Botón "Crear marcha" deshabilitado cuando `AUTORES_IDS` está vacío.
+- Alert `alert-warning` visible mientras no haya autores seleccionados.
 
-4. **Unificar collation a `utf8mb4_spanish_ci`** en todas las tablas (cuidado con índices FULLTEXT — habrá que recrearlos).
+---
 
-5. **Eliminar tablas muertas**: `users`, `videos` (si confirmado), `login_autor`.
+### Bloque A — Alta prioridad (integridad + cobertura funcional crítica)
 
-6. **`FECHA` a `SMALLINT UNSIGNED NULL`** sustituyendo el `0` por `NULL` semántico.
+**A1 — FK constraints en schema SQLite** ✅ Completado (2026-06-05)
+- 43 huérfanos eliminados con `scripts/clean-orphans.sql` (27 dm→m, 2 dm→d solapados, 4 ma→m, 10 ma→a).
+- `marcha_autor` y `disco_marcha` recreadas con `REFERENCES ... ON DELETE CASCADE` vía `scripts/add-fk-constraints.sql`.
+- `admin_log` creada en el mismo script. FK check PRAGMA devuelve 0 violaciones.
+- Nota: `marcha.BANDA_ESTRENO` y `disco.BANDADISCO` no incluidos (valor 0 = sentinel, requeriría valor NULL).
+
+**A2 — `PROVINCIA` en formulario de edición de marcha** ✅ Completado (Bloque 3, 2026-06-05)
+
+**A3 — `NOMBRE_ART` en alta y edición de autor** ✅ Completado (Bloque 3, 2026-06-05)
+
+**A4 — `editAutor`: edición de autores existentes** ✅ Completado (Bloque 3, 2026-06-05)
+- `GET /api/autor/[id]`, `POST /api/admin/editAutor`, `/dashboard/autor/[id]/page.tsx`.
+- `buildAutorUpdatePayload` / `executeAutorUpdate` en `adminApi.ts`. `logAdmin` incluido.
+
+**A5 — Editar autores de una marcha existente** ✅ Completado (Bloque 3, 2026-06-05)
+- `POST /api/admin/editMarchaAutores`: transacción atómica DELETE+INSERT en `marcha_autor`.
+- `AutocompleteMulti` en `marcha/[id]/page.tsx` pre-cargado con los autores actuales.
+
+---
+
+### Bloque M — Media prioridad (operabilidad diaria)
+
+**M1 — Audit log** ✅ Completado (2026-06-05)
+- Tabla `admin_log` creada vía `scripts/add-fk-constraints.sql` y documentada en `db/schema.sql`.
+- `logAdmin()` helper en `lib/db.ts`. Llamado en addMarcha, editMarcha, addAutor.
+- Pendiente: editAutor y editMarchaAutores (se añadirán al crear esos Route Handlers en Bloque 3).
+
+**M2 — Serialización JSON de autores** ✅ Completado (2026-06-05)
+- `nextjs/lib/api.ts`: los 5 `GROUP_CONCAT('#'/'|')` sustituidos por `json_group_array(json_object('autorId', ID_AUTOR, 'nombre', NOMBRE || ' ' || APELLIDOS))`.
+- `nextjs/lib/db.ts`: `formatAutor` simplificado a `JSON.parse`.
+- Elimina el riesgo de corrupción si un nombre contiene `#` o `|`.
+
+**M3 — Validación de `FECHA` en Route Handlers** ✅ Completado (Bloque 4, 2026-06-05)
+- `addMarcha` y `editMarcha` rechazan `FECHA` que no sea vacío ni año de 4 dígitos (INVALID_FECHA 400).
+
+**M4 — Buscador de marchas/autores en el dashboard** ✅ Completado (Bloque 3, 2026-06-05)
+- `GET /api/admin/searchMarchas` y `/api/admin/searchAutores` con auth + FTS, máx. 15 resultados.
+- `/dashboard/page.tsx`: buscador de texto libre (mín. 3 chars) con resultados clickables.
+
+**M5 — Navegación post-creación** ✅ Completado (Bloque 4, 2026-06-05)
+- `marcha/add` y `autor/add`: tras éxito muestran el ID creado con botones "Ir a editar" y "Ver en público".
+
+**M6 — Eliminar SQL preview de la UI** ✅ Completado (Bloque 4, 2026-06-05)
+- Bloques `<pre>` con SQL y parámetros eliminados de `marcha/add`, `autor/add` y `marcha/[id]`.
+
+---
+
+### Bloque B — Baja prioridad (deuda diferible)
+
+**B1 — Eliminar tablas muertas**
+- `videos` (357 filas, nunca consultada): backup previo, luego `DROP TABLE videos`.
+- `users` (0 filas): `DROP TABLE users`.
+
+**B2 — Normalizar `FECHA` a `INTEGER NULL`** ✅ Completado (Bloque 4, 2026-06-05)
+- 245 filas migradas a `NULL` vía Node.js + better-sqlite3 en contenedor.
+- `normalizeFecha` en `lib/api.ts` simplificada: comprueba `null` en lugar de `0`.
+
+**B3 — Gestión de bandas desde el panel**
+- `/dashboard/banda/add` y `/dashboard/banda/[id]` con los campos: `NOMBRE_BREVE`, `NOMBRE_COMPLETO`, `LOCALIDAD`, `PROVINCIA`, `FECHA_FUND`, `FECHA_EXT`.
+- Autocomplete de banda en edición de marcha en lugar del campo numérico actual.
+
+**B4 — Gestión de discos y relaciones disco_marcha**
+- `/dashboard/disco/add` y `/dashboard/disco/[id]` con gestión de la lista de pistas.
 
 ---
 

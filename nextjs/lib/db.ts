@@ -25,9 +25,19 @@ export function dbRun(sql: string, params: unknown[] = []) {
   return getDb().prepare(sql).run(...params);
 }
 
+export function dbTransaction<T>(fn: () => T): T {
+  return getDb().transaction(fn)();
+}
+
+export function logAdmin(accion: string, tabla: string, id_registro: number | null, payload?: unknown) {
+  dbRun(
+    'INSERT INTO admin_log (accion, tabla, id_registro, usuario, ts, payload) VALUES (?, ?, ?, ?, ?, ?)',
+    [accion, tabla, id_registro, 'admin', Math.floor(Date.now() / 1000), payload != null ? JSON.stringify(payload) : null]
+  );
+}
+
 export function formatAutor<T extends { AUTOR?: unknown }>(row: T): T {
   if (row.AUTOR == null) { row.AUTOR = []; return row; }
-  const entries = String(row.AUTOR).split('|');
-  row.AUTOR = entries.map((e) => { const [autorId, nombre] = e.split('#'); return { autorId, nombre }; });
+  row.AUTOR = JSON.parse(row.AUTOR as string);
   return row;
 }

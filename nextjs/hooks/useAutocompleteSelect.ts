@@ -70,5 +70,9 @@ export function useAutocompleteSelect<T extends Record<string, unknown>>({
     setSelected(multiple ? [] : null);
   }, [multiple]);
 
-  return { query, setQuery, suggestions, loading, selected, selectItem, removeItem, reset };
+  const setInitialItems = useCallback((items: T[]) => {
+    setSelected(multiple ? items : (items[0] ?? null));
+  }, [multiple]);
+
+  return { query, setQuery, suggestions, loading, selected, selectItem, removeItem, reset, setInitialItems };
 }

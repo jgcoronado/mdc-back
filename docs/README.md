@@ -9,14 +9,17 @@ Esta carpeta contiene la documentación viva del proyecto, escrita para que cual
 3. **[technical-debt.md](technical-debt.md)** — Bugs activos, vulnerabilidades, código muerto y deuda priorizada.
 4. **[redesign-options.md](redesign-options.md)** — Reflexión sobre alternativas de fondo: lenguaje, framework, BD, hosting, arquitectura. Con veredictos.
 5. **[roadmap.md](roadmap.md)** — Plan secuenciado en 6 fases para resolver la deuda y materializar las decisiones tomadas.
-6. **[db-analysis.md](db-analysis.md)** — Auditoría detallada del esquema MySQL (preexistente).
+6. **[db-analysis.md](db-analysis.md)** — Auditoría del esquema SQLite (actualizado 2026-06-05; el análisis MySQL original es histórico).
+7. **[admin-panel.md](admin-panel.md)** — Estado del panel de administración: URL, acceso, funcionalidades existentes, problemas de seguridad y funciones faltantes.
 
 ## Cómo mantener estos docs
 
 - Si cambias arquitectura → actualiza `architecture.md` (sección de ADRs si es una decisión nueva).
 - Si encuentras un bug → añádelo a `technical-debt.md`.
 - Si completas una fase del roadmap → marca la fase como hecha en `roadmap.md`.
-- El resto (context.md, redesign-options.md, db-analysis.md) cambia menos.
+- Si añades o cambias funcionalidad del panel admin → actualiza `admin-panel.md`.
+- Si cambias el schema de BD → actualiza `db-analysis.md`.
+- El resto (context.md, redesign-options.md) cambia menos.
 
 ## Convenciones de los docs
 

@@ -70,21 +70,21 @@ export async function POST(req: NextRequest) {
     return Response.json({ msg: `Too many attempts. Retry in ${retry}s.` }, { status: 429, headers });
   }
 
-  const rows = dbAll<{ USUARIO: string; CLAVE: string }>(`SELECT USUARIO, CLAVE FROM usuarios WHERE USUARIO = ? LIMIT 1`, [username.trim()]);
+  const rows = dbAll<{ usuario: string; clave: string }>(`SELECT usuario, clave FROM usuarios WHERE usuario = ? LIMIT 1`, [username.trim()]);
   const user = rows[0];
 
-  if (!user || !verifyPassword(password, user.CLAVE)) {
+  if (!user || !verifyPassword(password, user.clave)) {
     fail(key);
     return Response.json({ msg: 'Invalid credentials' }, { status: 401, headers });
   }
   attempts.delete(key);
 
-  if (/^[a-f0-9]{32}$/i.test(user.CLAVE)) {
-    dbRun(`UPDATE usuarios SET CLAVE = ? WHERE USUARIO = ?`, [hashPassword(password), user.USUARIO]);
+  if (/^[a-f0-9]{32}$/i.test(user.clave)) {
+    dbRun(`UPDATE usuarios SET clave = ? WHERE usuario = ?`, [hashPassword(password), user.usuario]);
   }
 
   const expiresAt = Date.now() + TTL_MS;
-  const token = signSession({ user: user.USUARIO, iat: Date.now(), exp: expiresAt, jti: crypto.randomUUID() });
+  const token = signSession({ user: user.usuario, iat: Date.now(), exp: expiresAt, jti: crypto.randomUUID() });
   const opts = getSessionCookieOptions();
   const cookieValue = [
     `${getAuthCookieName()}=${token}`,
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     `SameSite=${opts.sameSite}`,
   ].filter(Boolean).join('; ');
 
-  return Response.json({ login: true, user: user.USUARIO, expiresAt }, {
+  return Response.json({ login: true, user: user.usuario, expiresAt }, {
     status: 200,
     headers: { ...headers, 'Set-Cookie': cookieValue },
   });

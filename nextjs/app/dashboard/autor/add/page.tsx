@@ -5,13 +5,14 @@ import { buildAutorInsertPayload, executeAutorInsert, type AutorInsertDraft } fr
 
 type RequestState = { status: 'idle' | 'saving' | 'success' | 'error'; code: string; msg: string };
 
-const initialDraft: AutorInsertDraft = { NOMBRE: '', APELLIDOS: '', F_NAC: '', LUGAR_NAC: '', F_DEF: '', BIO: '' };
+const initialDraft: AutorInsertDraft = { NOMBRE: '', APELLIDOS: '', NOMBRE_ART: '', F_NAC: '', LUGAR_NAC: '', F_DEF: '', BIO: '' };
 const fmt = (v: unknown) => (v === null || v === undefined || v === '') ? '(vacío)' : String(v);
 
 export default function AutorAddPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<AutorInsertDraft>({ ...initialDraft });
   const [state, setState] = useState<RequestState>({ status: 'idle', code: '', msg: '' });
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
   const pending = buildAutorInsertPayload(draft);
 
@@ -25,6 +26,7 @@ export default function AutorAddPage() {
     try {
       const result = await executeAutorInsert(pending);
       setState({ status: result.code === 'CREATED' ? 'success' : 'error', code: result.code ?? 'UNKNOWN', msg: result.msg ?? '' });
+      if (result.code === 'CREATED') setCreatedId(result.autorId ?? null);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { code?: string; msg?: string } } };
       setState({ status: 'error', code: e?.response?.data?.code ?? 'REQUEST_ERROR', msg: e?.response?.data?.msg ?? 'No se pudo crear el autor.' });
@@ -34,6 +36,7 @@ export default function AutorAddPage() {
   function resetForm() {
     setDraft({ ...initialDraft });
     setState({ status: 'idle', code: '', msg: '' });
+    setCreatedId(null);
   }
 
   return (
@@ -44,6 +47,7 @@ export default function AutorAddPage() {
           {([
             ['Nombre', 'NOMBRE', 'Nombre'],
             ['Apellidos', 'APELLIDOS', 'Apellidos'],
+            ['Nombre artístico', 'NOMBRE_ART', 'Opcional'],
             ['Fecha de nacimiento', 'F_NAC', 'Ej: 05/12/1982'],
             ['Lugar de nacimiento', 'LUGAR_NAC', 'Localidad o ciudad'],
             ['Fecha de defunción', 'F_DEF', 'Opcional'],
@@ -68,16 +72,17 @@ export default function AutorAddPage() {
         </table>
       </div>
 
-      <div className="mt-4">
-        <p className="font-semibold">SQL preparada:</p>
-        <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{pending.sqlPreview}</pre>
-        <p className="font-semibold mt-2">Parámetros:</p>
-        <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{JSON.stringify(pending.valuesToInsert)}</pre>
-      </div>
-
       {state.status !== 'idle' && (
         <div className={`alert mt-3 ${state.status === 'success' ? 'alert-success' : state.status === 'saving' ? 'alert-info' : 'alert-error'}`}>
           <span>{state.code} - {state.msg}</span>
+        </div>
+      )}
+
+      {createdId && (
+        <div className="flex gap-2 mt-3 items-center flex-wrap">
+          <span className="font-semibold">Autor #{createdId} creado.</span>
+          <button className="btn btn-sm btn-neutral" onClick={() => router.push(`/dashboard/autor/${createdId}`)}>Ir a editar</button>
+          <button className="btn btn-sm" onClick={() => window.open(`/autor/${createdId}`, '_blank')}>Ver en público</button>
         </div>
       )}
 

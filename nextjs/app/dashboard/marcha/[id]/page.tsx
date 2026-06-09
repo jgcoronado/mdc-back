@@ -2,9 +2,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import type { MarchaDetail } from '@/lib/api';
-import { buildMarchaUpdatePayload, executeMarchaUpdate } from '@/lib/adminApi';
+import { buildMarchaUpdatePayload, executeMarchaUpdate, executeEditMarchaAutores, searchAutores } from '@/lib/adminApi';
+import AutocompleteMulti from '@/components/admin/AutocompleteMulti';
+import { useAutocompleteSelect } from '@/hooks/useAutocompleteSelect';
+
+type AutorRow = { ID_AUTOR: number; NOMBRE: string; APELLIDOS: string; NOMBRE_COMPLETO: string; NOMBRE_ART: string | null };
 
 type RequestState = { status: 'idle' | 'saving' | 'success' | 'error' | 'no_changes'; code: string; msg: string };
+type AutoresState = { status: 'idle' | 'saving' | 'success' | 'error'; code: string; msg: string };
+
+const autorLabel = (a: AutorRow) => `${(a.APELLIDOS ?? '').trim()} ${(a.NOMBRE ?? '').trim()}`.trim() || a.NOMBRE_COMPLETO || '';
 
 const fmt = (v: unknown) => (v === null || v === undefined || v === '') ? '(vacío)' : String(v);
 
@@ -14,12 +21,25 @@ export default function MarchaEditPage() {
   const [apiData, setApiData] = useState<Partial<MarchaDetail> | null>(null);
   const [oldData, setOldData] = useState<Partial<MarchaDetail> | null>(null);
   const [state, setState] = useState<RequestState>({ status: 'idle', code: '', msg: '' });
+  const [autoresState, setAutoresState] = useState<AutoresState>({ status: 'idle', code: '', msg: '' });
+
+  const autorSelector = useAutocompleteSelect<AutorRow>({ fetchFn: searchAutores, idKey: 'ID_AUTOR', minChars: 4, limit: 8, multiple: true });
 
   useEffect(() => {
     fetch(`/api/marcha/${id}`).then((r) => r.json()).then((data) => {
       setApiData({ ...data });
       setOldData({ ...data });
+      if (Array.isArray(data.AUTOR)) {
+        autorSelector.setInitialItems(data.AUTOR.map((a: { autorId: string; nombre: string }) => ({
+          ID_AUTOR: Number(a.autorId),
+          NOMBRE: '',
+          APELLIDOS: '',
+          NOMBRE_COMPLETO: a.nombre,
+          NOMBRE_ART: null,
+        })));
+      }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const pending = apiData && oldData ? buildMarchaUpdatePayload(oldData, apiData) : null;
@@ -51,6 +71,24 @@ export default function MarchaEditPage() {
     setState({ status: 'idle', code: '', msg: '' });
   }
 
+  async function saveAutores() {
+    const selectedAutores = autorSelector.selected as AutorRow[];
+    if (selectedAutores.length === 0) {
+      setAutoresState({ status: 'error', code: 'EMPTY', msg: 'Debe haber al menos un autor.' });
+      return;
+    }
+    setAutoresState({ status: 'saving', code: '', msg: '' });
+    try {
+      const result = await executeEditMarchaAutores({
+        marchaId: apiData!.ID_MARCHA as number,
+        autoresIds: selectedAutores.map((a) => a.ID_AUTOR),
+      });
+      setAutoresState({ status: result.code === 'UPDATED' ? 'success' : 'error', code: result.code ?? 'UNKNOWN', msg: result.msg ?? '' });
+    } catch {
+      setAutoresState({ status: 'error', code: 'REQUEST_ERROR', msg: 'No se pudieron actualizar los autores.' });
+    }
+  }
+
   if (!apiData) return <p>Cargando...</p>;
 
   const fields: { label: string; key: keyof MarchaDetail; type?: string }[] = [
@@ -58,6 +96,7 @@ export default function MarchaEditPage() {
     { label: 'Fecha', key: 'FECHA' },
     { label: 'Dedicatoria', key: 'DEDICATORIA' },
     { label: 'Localidad', key: 'LOCALIDAD' },
+    { label: 'Provincia', key: 'PROVINCIA' },
     { label: 'Audio', key: 'AUDIO' },
     { label: 'ID banda estreno', key: 'BANDA_ESTRENO', type: 'number' },
   ];
@@ -91,8 +130,33 @@ export default function MarchaEditPage() {
             </td>
           </tr>
           <tr>
-            <th>Autor</th>
-            <td>{(apiData.AUTOR ?? []).map((a) => <div key={a.autorId}>{a.nombre}</div>)}</td>
+            <th>Autor(es)</th>
+            <td>
+              <AutocompleteMulti<AutorRow>
+                selectedItems={autorSelector.selected as AutorRow[]}
+                query={autorSelector.query}
+                suggestions={autorSelector.suggestions}
+                loading={autorSelector.loading}
+                idKey="ID_AUTOR"
+                minChars={4}
+                placeholder="Escribe apellido/nombre (min. 4 caracteres)"
+                loadingText="Buscando autores..."
+                labelBuilder={autorLabel}
+                onQueryChange={autorSelector.setQuery}
+                onSelect={autorSelector.selectItem}
+                onRemove={autorSelector.removeItem}
+              />
+              <div className="flex gap-2 mt-2 items-center">
+                <button className="btn btn-sm btn-neutral" disabled={autoresState.status === 'saving'} onClick={saveAutores}>
+                  Guardar autores
+                </button>
+                {autoresState.status !== 'idle' && (
+                  <span className={`text-sm ${autoresState.status === 'success' ? 'text-success' : autoresState.status === 'saving' ? 'text-info' : 'text-error'}`}>
+                    {autoresState.code} - {autoresState.msg}
+                  </span>
+                )}
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -110,15 +174,6 @@ export default function MarchaEditPage() {
           </table>
         </div>
       ) : <div className="alert">No hay cambios pendientes.</div>}
-
-      {pending?.sqlPreview && (
-        <div className="mt-4">
-          <p className="font-semibold">SQL preparada:</p>
-          <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{pending.sqlPreview}</pre>
-          <p className="font-semibold mt-2">Parámetros:</p>
-          <pre className="bg-base-200 p-3 rounded-box overflow-x-auto">{JSON.stringify(pending.params)}</pre>
-        </div>
-      )}
 
       {state.status !== 'idle' && (
         <div className={`alert mt-3 ${state.status === 'success' ? 'alert-success' : state.status === 'saving' ? 'alert-info' : 'alert-error'}`}>

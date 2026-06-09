@@ -1,190 +1,161 @@
-# Marchas de Cristo - Proyecto Unificado
+# Marchas de Cristo — Backend
 
-Aplicación unificada en un solo proyecto:
+Aplicación web de música procesional española ([marchasdecristo.com](https://marchasdecristo.com)).
 
-- `backend`: Node.js + Express (`/api/*`)
-- `frontend`: Vue + Vite (SPA servida por Express)
-- `db`: SQLite embebido (`better-sqlite3`, archivo en volumen Docker)
+**Stack actual (junio 2026):** Next.js 15 · SQLite (better-sqlite3) · Docker · Nginx
 
-En producción se ejecuta en **un único contenedor Docker**.  
-La API y la base de datos **no se exponen públicamente** por puertos directos.
+---
 
-## Estructura
+## Estructura del repositorio
 
-- `index.js`: servidor Express principal
-- `src/`: rutas y lógica backend
-- `frontend/`: código Vue
-- `Dockerfile`: build multi-stage (frontend + backend)
-- `docker-compose.yml`: despliegue servidor
-- `docker-compose-local.yml`: despliegue local
+```
+mdc-back/
+├── nextjs/                     # Toda la aplicación
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── next.config.ts
+│   ├── app/
+│   │   ├── api/                # Route Handlers (API)
+│   │   │   ├── login/          # POST /api/login, GET /verify, POST /logout
+│   │   │   ├── autor/fastSearch
+│   │   │   ├── banda/fastSearch
+│   │   │   └── admin/          # editMarcha, addMarcha, addAutor
+│   │   ├── marcha/             # Páginas públicas SSR/ISR
+│   │   ├── autor/
+│   │   ├── banda/
+│   │   ├── disco/
+│   │   ├── dashboard/          # Admin (protegido por middleware)
+│   │   └── login/
+│   ├── lib/
+│   │   ├── db.ts               # Singleton SQLite (better-sqlite3)
+│   │   ├── api.ts              # Lecturas directas a SQLite para Server Components
+│   │   ├── auth-session.ts     # HMAC-SHA256 sign/verify
+│   │   └── adminApi.ts         # Helpers admin (buildMarchaUpdatePayload, etc.)
+│   └── middleware.ts           # Guard de /dashboard/* (verifica cookie HMAC)
+├── db/
+│   └── schema.sql              # Esquema de referencia + FTS5 + índices
+├── scripts/                    # Utilidades de migración y snapshot
+├── docker-compose.yml
+├── nginx.conf.example
+└── .env.example
+```
+
+---
 
 ## Variables de entorno
 
-Configura `.env` (especialmente en VPS):
+Copia `.env.example` a `.env` y rellena los valores:
 
 ```env
-DB_PATH=/app/data/mdc.db
-SECRET_KEY=tu_secret
-APP_PORT=80
-CORS_ORIGINS=https://marchasdecristo.com,http://localhost:8080
-SITE_URL=https://marchasdecristo.com
+SECRET_KEY='genera con: openssl rand -base64 48'
+AUTH_COOKIE_NAME=mdc_session
+LOGIN_TTL_MS=28800000
+COOKIE_SECURE=true
+
+LOGIN_MAX_ATTEMPTS=6
+LOGIN_WINDOW_MS=900000
+LOGIN_LOCK_MS=900000
+PASSWORD_PBKDF2_ITERATIONS=210000
 ```
 
-Para ejecutar el script de migración desde MySQL (una sola vez) también necesitas:
+`DB_PATH` y `NODE_ENV` se inyectan desde `docker-compose.yml`.
 
-```env
-DB_HOST=...
-DB_PORT=3306
-DB_USER=...
-DB_PASSWORD=...
-DB_NAME=...
-```
+---
 
-Notas:
-
-- `DB_PATH` apunta al archivo SQLite dentro del contenedor. El volumen `mdc-sqlite-data` lo persiste.
-- `COVER_DIR` se define en el entorno del servidor (no en `.env` de la app) para montar portadas externas.
-- `SITE_URL` define el dominio canónico para `sitemap.xml` y `robots.txt`.
-
-## Migración inicial desde MySQL
-
-Para crear el archivo SQLite a partir del MySQL existente:
+## Desplegar en el VPS
 
 ```bash
-# Con el .env apuntando al MySQL origen (DB_HOST, DB_USER, etc.)
+# 1. Subir cambios
+git push origin main
+
+# 2. En el VPS
+ssh <usuario>@<vps-ip>
+cd /var/www/mdc-back
+git fetch origin main && git checkout FETCH_HEAD -- .
+
+# 3. Reconstruir y reiniciar
+sudo docker compose build nextjs
+sudo docker compose up -d nextjs
+sudo docker logs --tail=20 mdc-nextjs
+
+# 4. Verificar
+curl -s http://localhost:3000/api/login/verify   # → {"authenticated":false}
+
+# 5. Limpiar
+sudo docker system prune -f
+```
+
+---
+
+## Desarrollo local
+
+```bash
+cd nextjs
+cp ../.env.example .env.local    # ajusta COOKIE_SECURE=false y DB_PATH
 npm install
-npm run db:migrate -- --out ./data/mdc.db
+npm run dev                       # http://localhost:3000
 ```
 
-El script vuelca todas las tablas (`autor`, `banda`, `disco`, `marcha`, `marcha_autor`, `disco_marcha`, `usuarios`), preserva nombres de columna, y al final aplica `db/schema.sql` para crear las tablas FTS5 (`marcha_fts`, `autor_fts`), sus triggers y los índices que faltaban en MySQL.
+La BD SQLite en local debe estar en la ruta indicada en `DB_PATH`.  
+Para obtenerla desde producción: `scp <usuario>@<vps-ip>:/var/lib/docker/volumes/mdc-back_mdc-sqlite-data/_data/mdc.db ./data/mdc.db`
 
-Tras generar el `.db`, copia el archivo al volumen Docker del VPS:
+---
 
-```bash
-scp data/mdc.db claude@VPS:/tmp/
-ssh claude@VPS "docker cp /tmp/mdc.db mdc-app:/app/data/mdc.db && docker compose restart app"
-```
+## Gestión de portadas
 
-## Verificar la migración (snapshot diff)
-
-Para confirmar que SQLite devuelve lo mismo que MySQL, captura las respuestas de los endpoints públicos en ambos backends y haz diff:
-
-```bash
-# 1) Con MySQL aún activo:
-npm run snapshot -- --base http://localhost:8080 --out snapshots/mysql
-
-# 2) Genera el .db, conmuta a SQLite, levanta de nuevo:
-npm run db:migrate -- --out ./data/mdc.db
-docker compose up -d --build app
-npm run snapshot -- --base http://localhost:8080 --out snapshots/sqlite
-
-# 3) Compara:
-npm run snapshot:diff snapshots/mysql snapshots/sqlite
-```
-
-El diff sale 0 si todo coincide, distinto de 0 si hay diferencias (con el primer campo divergente impreso). Sigue los pasos en este orden — no toques el código de las rutas en mitad del proceso.
-
-## Gestión de portadas (sin rebuild)
-
-Las portadas de discos no se empaquetan en la imagen Docker.  
-Se sirven desde un directorio del host montado en `/app/public/cover`.
-
-En `docker-compose.yml`:
+Las portadas (`/cover/*.png`) no se empaquetan en la imagen. Se sirven desde el host:
 
 ```yaml
+# docker-compose.yml
 volumes:
   - ${COVER_DIR:-/var/www/mdc-assets/cover}:/app/public/cover:ro
 ```
 
-En VPS:
+Para añadir una portada: `scp imagen.png <usuario>@<vps-ip>:/var/www/mdc-assets/cover/<ID_DISCO>.png`
+
+Nginx las sirve directamente con `Cache-Control: public, immutable; expires 30d`.
+
+---
+
+## Backups
+
+Cron configurado en el VPS (3:00 AM diario, retención 14 días):
+
+```
+0 3 * * * cp /var/lib/docker/volumes/mdc-back_mdc-sqlite-data/_data/mdc.db \
+  /var/backups/mdc-$(date +%F).db && \
+  find /var/backups -name "mdc-*.db" -mtime +14 -delete
+```
+
+Backup manual:
+```bash
+sudo cp /var/lib/docker/volumes/mdc-back_mdc-sqlite-data/_data/mdc.db \
+  /var/backups/mdc-manual-$(date +%F-%H%M).db
+```
+
+---
+
+## Rollback rápido
 
 ```bash
-sudo mkdir -p /var/www/mdc-assets/cover
-# opcional: imagen por defecto
-sudo cp /ruta/default.png /var/www/mdc-assets/cover/default.png
+# Restaurar backup de BD
+sudo docker compose stop nextjs
+sudo cp /var/backups/mdc-backup-YYYY-MM-DD.db \
+  /var/lib/docker/volumes/mdc-back_mdc-sqlite-data/_data/mdc.db
+sudo docker compose up -d nextjs
+
+# Restaurar nginx
+sudo cp /etc/nginx/sites-available/default.bak /etc/nginx/sites-available/default
+sudo systemctl reload nginx
 ```
 
-Y exporta `COVER_DIR` antes de levantar contenedor (si quieres otra ruta):
-
-```bash
-export COVER_DIR=/var/www/mdc-assets/cover
-docker compose up -d --build
-```
-
-El frontend carga las imágenes en `/cover/{ID_DISCO}.png`.
-
-## SEO técnico
-
-La app publica automáticamente:
-
-- `/sitemap.xml`: incluye solo URLs públicas (home, listados públicos y detalles de marcha/autor/banda/disco).
-- `/robots.txt`: permite indexación general y bloquea zona privada:
-  - `/login`
-  - `/dashboard`
-
-Recomendación:
-
-- configura `SITE_URL` con tu dominio HTTPS final para que el sitemap use URLs canónicas correctas.
-
-## Ejecutar en local
-
-Requisitos:
-
-- Docker + Docker Compose
-
-Comandos:
-
-```bash
-git checkout unified-single-container
-docker compose -f docker-compose-local.yml up -d --build
-```
-
-Acceso:
-
-- `http://localhost:8080`
-
-Parar:
-
-```bash
-docker compose -f docker-compose-local.yml down
-```
-
-## Desplegar en servidor (VPS)
-
-```bash
-git fetch origin
-git checkout unified-single-container
-git pull
-docker compose down
-docker compose up -d --build
-```
-
-Verificación:
-
-```bash
-docker ps
-docker logs --tail 200 mdc-app
-curl -i http://127.0.0.1:8080/
-curl -i "http://127.0.0.1:8080/api/marcha/search?titulo=cristo"
-```
-
-## Nginx (recomendado)
-
-Publicar solo por Nginx (HTTPS), proxy al contenedor local:
-
-```nginx
-location / {
-  proxy_pass http://127.0.0.1:8080;
-  proxy_http_version 1.1;
-  proxy_set_header Host $host;
-  proxy_set_header X-Real-IP $remote_addr;
-  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
+---
 
 ## Problemas comunes
 
-- `SQLITE_CANTOPEN: unable to open database file`: el directorio `data/` no existe o no tiene permisos; el `Dockerfile` ya lo crea con `chown node:node /app/data`.
-- `no such table: marcha_fts`: el `db/schema.sql` no se ha ejecutado tras la migración. Ejecuta `npm run db:migrate` de nuevo o aplica manualmente: `sqlite3 data/mdc.db < db/schema.sql`.
-- `database is locked`: WAL está activo, pero un proceso de backup puede colisionar con escrituras. Para backup en caliente usa `sqlite3 data/mdc.db ".backup /var/backups/mdc.db"`.
+| Síntoma | Causa probable | Solución |
+|---------|---------------|----------|
+| `SQLITE_CANTOPEN` | Volumen no montado o permisos | Verificar `docker inspect mdc-nextjs` → Mounts |
+| `no such table: marcha_fts` | `db/schema.sql` no aplicado | Ejecutar schema contra la BD |
+| `database is locked` | Proceso de backup simultáneo | Esperar o usar `.backup` de sqlite3 |
+| 502 en nginx | Contenedor caído | `sudo docker compose up -d nextjs` |

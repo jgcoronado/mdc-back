@@ -21,7 +21,7 @@
 git push origin main
 
 # En el VPS
-ssh claude@104.245.245.27
+ssh <usuario>@<vps-ip>
 cd /var/www/mdc-back
 git pull origin main
 ```

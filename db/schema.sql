@@ -1,7 +1,8 @@
--- SQLite schema extras: FTS5 virtual tables, sync triggers and indexes.
+-- SQLite schema extras: FTS5 virtual tables, sync triggers, indexes and admin_log.
 -- This file is run AFTER the migration script has created and populated
--- the base tables (marcha, autor, banda, disco, marcha_autor, disco_marcha,
--- usuarios) from MySQL. See scripts/migrate-mysql-to-sqlite.mjs.
+-- the base tables (marcha, autor, banda, disco, marcha_autor, disco_marcha)
+-- from MySQL. See scripts/migrate-mysql-to-sqlite.mjs.
+-- FK constraints on marcha_autor/disco_marcha are added via scripts/add-fk-constraints.sql.
 
 -- ============================================================
 -- FTS5: marchas (full-text on TITULO)
@@ -84,3 +85,17 @@ CREATE INDEX IF NOT EXISTS idx_ma_marcha ON marcha_autor (ID_MARCHA);
 CREATE INDEX IF NOT EXISTS idx_ma_autor ON marcha_autor (ID_AUTOR);
 CREATE INDEX IF NOT EXISTS idx_banda_formacion_ant ON banda (FORMACION_ANT);
 CREATE INDEX IF NOT EXISTS idx_banda_formacion_sig ON banda (FORMACION_SIG);
+
+-- ============================================================
+-- Audit log (also created via scripts/add-fk-constraints.sql
+-- for existing databases)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admin_log (
+  id          INTEGER PRIMARY KEY,
+  accion      TEXT    NOT NULL,
+  tabla       TEXT    NOT NULL,
+  id_registro INTEGER,
+  usuario     TEXT,
+  ts          INTEGER NOT NULL,
+  payload     TEXT
+);
