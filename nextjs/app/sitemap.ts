@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { dbAll } from '@/lib/db';
 import { buildDetailPath } from '@/lib/slugify';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = (process.env.SITE_URL ?? 'https://marchasdecristo.com').replace(/\/$/, '');
@@ -32,7 +32,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       ...toEntries('banda',  bandas,  'monthly', 0.6),
       ...toEntries('disco',  discos,  'monthly', 0.6),
     ];
-  } catch {
+  } catch (err) {
+    console.error('[sitemap] DB query failed, returning static-only sitemap:', err);
     return statics;
   }
 }
