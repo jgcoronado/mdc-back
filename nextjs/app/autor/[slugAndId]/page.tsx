@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { fetchAutor } from '@/lib/api';
 import { extractId, buildDetailPath } from '@/lib/slugify';
+import { generateAutorSchema, generateBreadcrumbs } from '@/lib/schema';
 
 export const revalidate = 3600;
 
@@ -15,9 +16,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const data = await fetchAutor(id).catch(() => null);
   if (!data) return {};
   const fullName = `${data.NOMBRE} ${data.APELLIDOS}`.trim();
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${buildDetailPath('autor', data.ID_AUTOR, fullName)}`;
   return {
     title: `${fullName} — Marchas de Cristo`,
     description: `Compositor de música procesional. Ha compuesto ${data.marchasLength} marchas.${data.LUGAR_NAC ? ` Natural de ${data.LUGAR_NAC}.` : ''}`,
+    openGraph: {
+      type: 'profile',
+      title: fullName,
+      description: `Compositor de ${data.marchasLength} marchas de música procesional`,
+      url,
+    },
   };
 }
 
@@ -35,7 +43,18 @@ export default async function AutorDetailPage({ params }: { params: Params }) {
     redirect(canonical);
   }
 
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${canonical}`;
+  const autorSchema = generateAutorSchema(data, url);
+  const breadcrumbsSchema = generateBreadcrumbs([
+    { name: 'Inicio', url: process.env.SITE_URL || 'https://marchasdecristo.com' },
+    { name: 'Autores', url: `${process.env.SITE_URL || 'https://marchasdecristo.com'}/autor` },
+    { name: fullName, url },
+  ]);
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(autorSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsSchema) }} />
     <div>
       <div className="headDetail">{data.NOMBRE} {data.APELLIDOS}</div>
       <div className="tableList">
@@ -80,6 +99,7 @@ export default async function AutorDetailPage({ params }: { params: Params }) {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

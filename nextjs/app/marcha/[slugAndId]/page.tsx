@@ -4,6 +4,7 @@ import Link from 'next/link';
 import CdList from '@/components/CdList';
 import { fetchMarcha } from '@/lib/api';
 import { extractId, buildDetailPath } from '@/lib/slugify';
+import { generateMarchaSchema, generateBreadcrumbs } from '@/lib/schema';
 
 export const revalidate = 3600;
 
@@ -16,9 +17,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const data = await fetchMarcha(id).catch(() => null);
   if (!data) return {};
   const autores = data.AUTOR.map((a) => a.nombre).join(', ');
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${buildDetailPath('marcha', data.ID_MARCHA, data.TITULO)}`;
   return {
     title: `${data.TITULO} — Marchas de Cristo`,
     description: `Marcha procesional "${data.TITULO}" compuesta por ${autores}.${data.DEDICATORIA ? ` Dedicada a ${data.DEDICATORIA}.` : ''}`,
+    openGraph: {
+      type: 'music.song',
+      title: data.TITULO,
+      description: `Marcha procesional compuesta por ${autores}`,
+      url,
+    },
   };
 }
 
@@ -36,6 +44,14 @@ export default async function MarchaDetailPage({ params }: { params: Params }) {
     redirect(canonical);
   }
 
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${buildDetailPath('marcha', data.ID_MARCHA, data.TITULO)}`;
+  const marchaSchema = generateMarchaSchema(data, url);
+  const breadcrumbsSchema = generateBreadcrumbs([
+    { name: 'Inicio', url: process.env.SITE_URL || 'https://marchasdecristo.com' },
+    { name: 'Marchas', url: `${process.env.SITE_URL || 'https://marchasdecristo.com'}/marcha` },
+    { name: data.TITULO, url },
+  ]);
+
   function getDedicatoria(ded: string, loc: string) {
     const isDed = ded && ded !== '0';
     const isLoc = loc && loc !== '0';
@@ -45,6 +61,9 @@ export default async function MarchaDetailPage({ params }: { params: Params }) {
   }
 
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(marchaSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsSchema) }} />
     <div>
       <div className="headDetail">{data.TITULO}</div>
       <div className="tableList">
@@ -103,6 +122,7 @@ export default async function MarchaDetailPage({ params }: { params: Params }) {
       {data.discos.map((d) => (
         <CdList key={d.ID_DISCO} disco={d} />
       ))}
-    </div>
+      </div>
+    </>
   );
 }

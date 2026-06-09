@@ -4,6 +4,7 @@ import Link from 'next/link';
 import CoverImage from '@/components/CoverImage';
 import { fetchDisco } from '@/lib/api';
 import { extractId, buildDetailPath } from '@/lib/slugify';
+import { generateDiscoSchema, generateBreadcrumbs } from '@/lib/schema';
 
 export const revalidate = 3600;
 
@@ -15,9 +16,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!id) return {};
   const data = await fetchDisco(id).catch(() => null);
   if (!data) return {};
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${buildDetailPath('disco', data.ID_DISCO, data.NOMBRE_CD)}`;
   return {
     title: `${data.NOMBRE_CD} — Marchas de Cristo`,
     description: `Disco de música procesional "${data.NOMBRE_CD}" de ${data.BANDA}. Contiene ${data.marchasLength} marchas.`,
+    openGraph: {
+      type: 'music.album',
+      title: data.NOMBRE_CD,
+      description: `Álbum de música procesional de ${data.BANDA}`,
+      url,
+    },
   };
 }
 
@@ -34,10 +42,21 @@ export default async function DiscoDetailPage({ params }: { params: Params }) {
     redirect(canonical);
   }
 
+  const url = `${process.env.SITE_URL || 'https://marchasdecristo.com'}${canonical}`;
+  const discoSchema = generateDiscoSchema(data, url);
+  const breadcrumbsSchema = generateBreadcrumbs([
+    { name: 'Inicio', url: process.env.SITE_URL || 'https://marchasdecristo.com' },
+    { name: 'Discos', url: `${process.env.SITE_URL || 'https://marchasdecristo.com'}/disco` },
+    { name: data.NOMBRE_CD, url },
+  ]);
+
   const coverSrc = `/cover/${data.ID_DISCO}.png`;
   const bandaPath = buildDetailPath('banda', data.ID_BANDA, data.BANDA);
 
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(discoSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsSchema) }} />
     <div className="grid place-items-center">
       <div className="grid place-items-center xl:join md:join join-vertically">
         <figure className="m-1">
@@ -107,6 +126,7 @@ export default async function DiscoDetailPage({ params }: { params: Params }) {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

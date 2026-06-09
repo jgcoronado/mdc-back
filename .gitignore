@@ -1,5 +1,22 @@
+# Environment — never commit real secrets
 /.env
-/node_modules
-.vercel
+nextjs/.env.local
+nextjs/.env*.local
+
+# Runtime data
 /data
 /snapshots
+/node_modules
+nextjs/node_modules
+
+# Build output
+nextjs/.next
+nextjs/next-env.d.ts
+nextjs/tsconfig.tsbuildinfo
+
+# Legacy deployment artifacts (kept local only)
+.vercel
+
+# IDE / tools
+.claude
+.vscode
