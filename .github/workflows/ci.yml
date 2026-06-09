@@ -24,7 +24,7 @@ jobs:
           cache-dependency-path: nextjs/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Build (includes typecheck)
         run: npm run build
