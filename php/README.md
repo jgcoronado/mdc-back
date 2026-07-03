@@ -89,6 +89,11 @@ php  tools/parity_compare.php     # ejecuta Repo y compara campo a campo (estric
   JSON-LD (`Seo.php`, verificado con paridad), `sitemap.xml` y `robots.txt`, y CSS
   propio (`public/assets/app.css`, tema claro tipo lofi, sin build). Rutas en
   `routes.php`, controladores en `Pages.php`.
-- **Fase 3:** auth + panel admin.
+- **Fase 3 (hecha):** auth + panel admin server-rendered. `Auth.php` (sesión HMAC,
+  PBKDF2/MD5 con auto-upgrade, rate-limit a fichero, CSRF) — **compatible con los
+  hashes y sesiones de Next**. `AdminRepo.php` (escrituras: allowlists, validación
+  FECHA, transacciones, audit log) y `Admin.php` (controladores PRG). Formularios en
+  `templates/admin/`, autocomplete de autores en `public/assets/admin.js`.
+  Requiere `secret_key` en `config.local.php` y `.db` con escritura.
 - **Fase 4:** caché, backups (cron), hardening.
 - **Fase 5:** cutover DNS + vigilancia en Search Console.

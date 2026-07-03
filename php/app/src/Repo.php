@@ -13,8 +13,6 @@ namespace App;
  */
 final class Repo
 {
-    private const AUTOR_LIMIT = 20;
-
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private static function buildFtsQuery(string $raw): ?string
@@ -169,6 +167,43 @@ final class Repo
         self::attachAutores($rows);
 
         return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
+    }
+
+    // ── Admin: cargadores en crudo (para formularios de edición) ─────────────
+
+    /** Fila cruda de marcha (sin normalizar FECHA, sin filtrar por autores). */
+    public static function fetchMarchaRaw(string $id): ?array
+    {
+        return Db::one('SELECT * FROM marcha WHERE ID_MARCHA = ?', [$id]);
+    }
+
+    /** Autores actuales de una marcha: [{ID_AUTOR, NOMBRE_COMPLETO}]. */
+    public static function currentAutoresForMarcha(string $id): array
+    {
+        return Db::all(
+            "SELECT a.ID_AUTOR, (a.NOMBRE || ' ' || a.APELLIDOS) AS NOMBRE_COMPLETO
+             FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
+             WHERE ma.ID_MARCHA = ? ORDER BY a.APELLIDOS",
+            [$id]
+        );
+    }
+
+    /** Fila cruda de autor (para el formulario de edición). */
+    public static function fetchAutorRaw(string $id): ?array
+    {
+        return Db::one('SELECT * FROM autor WHERE ID_AUTOR = ?', [$id]);
+    }
+
+    /** @param list<int> $ids  @return list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string}> */
+    public static function autoresByIds(array $ids): array
+    {
+        if ($ids === []) return [];
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        return Db::all(
+            "SELECT ID_AUTOR, (NOMBRE || ' ' || APELLIDOS) AS NOMBRE_COMPLETO
+             FROM autor WHERE ID_AUTOR IN ($ph) ORDER BY APELLIDOS",
+            array_values($ids)
+        );
     }
 
     // ── Autor ────────────────────────────────────────────────────────────────

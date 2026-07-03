@@ -85,6 +85,35 @@ final class Db
         return $stmt->rowCount();
     }
 
+    public static function lastInsertId(): int
+    {
+        return (int) self::pdo()->lastInsertId();
+    }
+
+    /** Ejecuta $fn dentro de una transacción (commit/rollback automático). */
+    public static function transaction(callable $fn): mixed
+    {
+        $pdo = self::pdo();
+        $pdo->beginTransaction();
+        try {
+            $result = $fn();
+            $pdo->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Registro de auditoría (equivale a lib/db.ts logAdmin). */
+    public static function logAdmin(string $accion, string $tabla, ?int $idRegistro, mixed $payload = null): void
+    {
+        self::run(
+            'INSERT INTO admin_log (accion, tabla, id_registro, usuario, ts, payload) VALUES (?, ?, ?, ?, ?, ?)',
+            [$accion, $tabla, $idRegistro, 'admin', time(), $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null]
+        );
+    }
+
     /**
      * Conteos globales para el pie de página (equivalente a fetchEstado()).
      *

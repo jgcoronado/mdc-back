@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Admin;
 use App\Db;
 use App\Http;
 use App\Pages;
@@ -72,6 +73,22 @@ $router->get('/health', static function (): void {
     }
     echo implode("\n", $lines) . "\n";
 });
+
+// ── Admin (auth + panel) ──────────────────────────────────────────────────────
+$router->get('/login', [Admin::class, 'loginForm']);
+$router->post('/login', [Admin::class, 'loginPost']);
+$router->post('/logout', [Admin::class, 'logout']);
+$router->get('/dashboard', [Admin::class, 'dashboard']);
+// /add antes del catch-all /{id}
+$router->get('/dashboard/marcha/add', [Admin::class, 'marchaAddForm']);
+$router->post('/dashboard/marcha/add', [Admin::class, 'marchaAddPost']);
+$router->get('/dashboard/marcha/{id}', [Admin::class, 'marchaEditForm']);
+$router->post('/dashboard/marcha/{id}', [Admin::class, 'marchaEditPost']);
+$router->get('/dashboard/autor/add', [Admin::class, 'autorAddForm']);
+$router->post('/dashboard/autor/add', [Admin::class, 'autorAddPost']);
+$router->get('/dashboard/autor/{id}', [Admin::class, 'autorEditForm']);
+$router->post('/dashboard/autor/{id}', [Admin::class, 'autorEditPost']);
+$router->get('/api/autor/fastSearch', [Admin::class, 'autorFastSearch']);
 
 // ── 404 ──────────────────────────────────────────────────────────────────────
 $router->notFound([Http::class, 'notFound']);
