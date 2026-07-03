@@ -1,0 +1,10 @@
+# Defensa en profundidad: si por error el .db acaba dentro del webroot, que NO
+# se pueda descargar por HTTP. Lo correcto es tener este directorio FUERA de
+# public_html (ver php/README.md).
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

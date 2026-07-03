@@ -1,0 +1,4 @@
+# La base de datos no se versiona (se descarga del VPS; ver php/README.md).
+mdc.db
+mdc.db-wal
+mdc.db-shm

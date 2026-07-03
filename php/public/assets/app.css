@@ -1,0 +1,207 @@
+/* Marchas de Cristo — hoja de estilos propia (Fase 2, opción A).
+   Reproduce el aspecto del tema "lofi" (claro, minimal, casi monocromo). */
+
+:root {
+    --bg: #ffffff;
+    --surface: #f6f6f6;   /* base-200: cards, cabeceras de detalle */
+    --surface2: #ececec;  /* base-300: zebra alterna, hover */
+    --border: #e3e3e3;
+    --fg: #0f0f0f;
+    --muted: #6b7280;
+    --neutral: #14161a;   /* botones sólidos */
+    --neutral-fg: #ffffff;
+    --radius: 0.9rem;
+    --radius-sm: 0.4rem;
+    --wrap: 48rem;
+    font-synthesis-weight: none;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ── Header / nav ───────────────────────────────────────────────────────── */
+header {
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 20;
+}
+header nav {
+    max-width: var(--wrap);
+    margin: 0 auto;
+    padding: 0 1rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.brand { font-weight: 700; text-decoration: none; color: var(--fg); white-space: nowrap; }
+.brand:hover { opacity: 0.7; }
+.nav-links { list-style: none; display: flex; gap: 0.25rem; margin: 0; padding: 0; font-size: 0.9rem; }
+.nav-links a { text-decoration: none; color: var(--fg); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); display: inline-block; }
+.nav-links a:hover { background: var(--surface2); }
+
+/* Menú móvil (sin JS, con <details>) */
+.nav-mobile { position: relative; display: none; }
+.nav-mobile > summary { list-style: none; cursor: pointer; padding: 0.35rem; border-radius: var(--radius-sm); display: inline-flex; }
+.nav-mobile > summary::-webkit-details-marker { display: none; }
+.nav-mobile > summary svg { width: 1.4rem; height: 1.4rem; }
+.nav-mobile ul {
+    position: absolute; right: 0; top: 100%; margin-top: 0.25rem;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08); width: 12rem; padding: 0.4rem; list-style: none;
+    display: flex; flex-direction: column; gap: 0.1rem; z-index: 30;
+}
+.nav-mobile ul a { display: block; padding: 0.5rem 0.6rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--fg); font-size: 0.9rem; }
+.nav-mobile ul a:hover { background: var(--surface2); }
+
+/* ── Main / footer ──────────────────────────────────────────────────────── */
+main { flex: 1; width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 1.5rem 1rem; }
+main a { color: inherit; text-decoration: none; }
+main a:not(.btn):hover { text-decoration: underline; }
+
+footer { border-top: 1px solid var(--border); }
+footer .inner { max-width: var(--wrap); margin: 0 auto; padding: 1rem; text-align: center; font-size: 0.75rem; color: var(--muted); }
+
+/* ── Utilidades de layout ───────────────────────────────────────────────── */
+.stack { display: flex; flex-direction: column; gap: 1rem; }
+.home { gap: 1.5rem; }
+.row { display: flex; gap: 0.5rem; }
+.muted { color: var(--muted); font-size: 0.8rem; }
+.small { font-size: 0.85rem; }
+.nums { font-variant-numeric: tabular-nums; }
+
+h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
+
+/* ── Cards / panels ─────────────────────────────────────────────────────── */
+.card { background: var(--surface); border-radius: var(--radius); padding: 1.25rem; }
+.panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+/* Cabecera de detalle */
+.headDetail {
+    background: var(--surface); border-radius: var(--radius);
+    max-width: var(--wrap); margin: 0.75rem auto; padding: 1.25rem;
+    font-size: 1.5rem; font-weight: 600; text-align: center;
+}
+
+/* ── Tablas ─────────────────────────────────────────────────────────────── */
+.tableList { overflow-x: auto; border-radius: var(--radius); background: var(--bg); width: 100%; max-width: var(--wrap); margin: 0 auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 0.6rem 0.75rem; vertical-align: top; border-bottom: 1px solid var(--border); }
+.table th { font-weight: 600; white-space: nowrap; }
+.table tbody tr:last-child th, .table tbody tr:last-child td { border-bottom: 0; }
+.table-zebra tbody tr:nth-child(odd) { background: var(--surface); }
+.table-sm th, .table-sm td { padding: 0.4rem 0.6rem; font-size: 0.9rem; }
+.thead-neutral td { background: var(--surface2); font-weight: 600; }
+.table thead th { border-bottom: 2px solid var(--border); font-weight: 600; }
+
+/* ── Divider con texto ──────────────────────────────────────────────────── */
+.divider { display: flex; align-items: center; text-align: center; gap: 0.75rem; color: var(--muted); font-size: 0.9rem; margin: 2rem auto; max-width: var(--wrap); }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* ── Botones ────────────────────────────────────────────────────────────── */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.5rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer;
+    text-decoration: none; line-height: 1; white-space: nowrap;
+}
+.btn:hover { background: var(--surface2); }
+.btn-sm { padding: 0.35rem 0.65rem; font-size: 0.85rem; }
+.btn-neutral { background: var(--neutral); color: var(--neutral-fg); border-color: var(--neutral); }
+.btn-neutral:hover { opacity: 0.88; background: var(--neutral); }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: var(--surface2); }
+
+/* ── Formularios ────────────────────────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field-label { font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+.input, .select {
+    width: 100%; padding: 0.4rem 0.6rem; font: inherit; font-size: 0.9rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--fg);
+}
+.input:focus, .select:focus { outline: 2px solid var(--neutral); outline-offset: -1px; }
+.select { width: auto; }
+.search-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.25rem; }
+.search-info { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.5rem; }
+
+/* ── Paginación ─────────────────────────────────────────────────────────── */
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1rem; }
+.pagination .ellipsis { padding: 0 0.25rem; color: var(--muted); }
+
+/* ── Home: últimas incorporaciones ──────────────────────────────────────── */
+.welcome-text { margin: 0; font-size: 0.9rem; color: rgba(15,15,15,0.85); }
+.welcome-counts { margin-top: 0.75rem; font-size: 0.75rem; color: var(--muted); }
+.section-title { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; }
+.ultimas { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg); }
+.ultima-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; text-decoration: none; color: inherit; border-top: 1px solid var(--border); }
+.ultima-row:first-child { border-top: 0; }
+.ultima-row:hover { background: var(--surface); text-decoration: none; }
+.ultima-main { min-width: 0; }
+.ultima-title { display: block; font-weight: 500; font-size: 0.9rem; }
+.ultima-authors { display: block; font-size: 0.78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ultima-date { font-size: 0.78rem; color: var(--muted); flex-shrink: 0; }
+.firma { font-size: 0.72rem; color: rgba(15,15,15,0.4); text-align: right; margin: 0; }
+
+/* ── CdList ─────────────────────────────────────────────────────────────── */
+.cdlist { list-style: none; margin: 0.5rem auto; padding: 0; max-width: var(--wrap); }
+.cdlist-row { display: flex; align-items: center; gap: 0.9rem; background: var(--surface); border-radius: var(--radius); padding: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.cdlist-row:hover { background: var(--surface2); }
+.cover-thumb { width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: var(--radius-sm); display: block; }
+.cdlist-main { flex: 1; min-width: 0; }
+.cdlist-title { font-size: 1.05rem; }
+.cdlist-sub { font-size: 0.82rem; font-weight: 600; opacity: 0.6; margin-left: 1rem; }
+.cdlist-date { color: var(--muted); font-size: 0.85rem; }
+
+/* ── Timeline (banda) ───────────────────────────────────────────────────── */
+.timeline-wrap { display: grid; place-items: center; margin: 1rem 0; }
+.timeline { list-style: none; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin: 0; padding: 0; }
+.timeline li { display: flex; align-items: center; gap: 0.5rem; }
+.timeline li::after { content: ""; width: 2rem; height: 2px; background: var(--border); }
+.timeline li:last-child::after { display: none; }
+.tl-date { font-size: 0.8rem; color: var(--muted); }
+.tl-dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; background: var(--fg); flex-shrink: 0; }
+.tl-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.2rem 0.55rem; font-size: 0.85rem; }
+
+/* ── Collapse (estadísticas) ────────────────────────────────────────────── */
+.collapse { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); overflow: hidden; }
+.collapse-title { cursor: pointer; padding: 1rem; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.collapse-title::-webkit-details-marker { display: none; }
+.collapse-title::after { content: "▾"; color: var(--muted); transition: transform 0.15s; }
+.collapse[open] .collapse-title::after { transform: rotate(180deg); }
+.collapse-content { padding: 0 0.75rem 0.75rem; font-size: 0.9rem; }
+
+/* ── Detalle de disco ───────────────────────────────────────────────────── */
+.disco-detail { display: flex; flex-direction: column; align-items: center; }
+.disco-head { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.disco-cover { margin: 0.25rem; }
+.cover-large { max-width: 16rem; width: 100%; height: auto; border-radius: var(--radius); box-shadow: 0 1px 4px rgba(0,0,0,0.15); display: block; }
+.disco-meta { display: flex; flex-direction: column; align-items: center; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (min-width: 640px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .col-span-2 { grid-column: span 2; }
+}
+@media (min-width: 768px) {
+    .disco-head { flex-direction: row; align-items: flex-start; }
+}
+@media (max-width: 639px) {
+    .nav-links { display: none; }
+    .nav-mobile { display: block; }
+}

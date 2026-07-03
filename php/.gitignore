@@ -1,0 +1,5 @@
+# Config con secretos (SECRET_KEY, etc.)
+/app/config.local.php
+
+# Salida generada por la herramienta de paridad (Fase 1)
+/tools/parity_expected.json
