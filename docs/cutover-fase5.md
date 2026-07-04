@@ -92,8 +92,10 @@ ninguna URL** — es solo mover el dominio de un servidor a otro.
 canónicas apuntan a `marchasdecristo.com`, Google **consolida** hacia el dominio bueno,
 así que el riesgo es bajo. Aun así, recomendable cerrar la puerta:
 
-- [ ] Opción A (recomendada): **301 del subdominio a marchasdecristo.com** — te lo puedo
-      implementar en la app (un chequeo de `HTTP_HOST` en el bootstrap).
+- [ ] Opción A (recomendada): **301 del subdominio (y `www`) a marchasdecristo.com** — ya
+      implementado en la app. Actívalo **tras el cutover** poniendo en `config.local.php`
+      del host: `'force_canonical_host' => true`. (Apagado por defecto para poder seguir
+      probando en `jaguerra27.helioho.st` sin que rebote.)
 - [ ] Opción B: `noindex` para el host de staging.
 
 ---

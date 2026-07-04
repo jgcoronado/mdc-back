@@ -32,4 +32,25 @@ final class Http
     {
         header('Cache-Control: no-store, max-age=0');
     }
+
+    /**
+     * URL de destino si hay que redirigir al host canónico (301), o null si no.
+     * Solo actúa si config['force_canonical_host'] es true (activar tras el cutover).
+     * Redirige cualquier host != el de site_url → site_url + ruta (cubre staging y www).
+     */
+    public static function canonicalRedirectTarget(array $config, string $host, string $uri): ?string
+    {
+        if (empty($config['force_canonical_host'])) {
+            return null;
+        }
+        $canonical = parse_url((string) ($config['site_url'] ?? ''), PHP_URL_HOST);
+        if (!$canonical) {
+            return null;
+        }
+        $host = preg_replace('/:\d+$/', '', $host); // quitar puerto
+        if (strcasecmp((string) $host, $canonical) === 0) {
+            return null;
+        }
+        return rtrim((string) $config['site_url'], '/') . ($uri !== '' ? $uri : '/');
+    }
 }

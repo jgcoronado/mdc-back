@@ -13,4 +13,6 @@ return [
     // 'site_url' => 'https://jaguerra27.helioho.st', // staging durante la migración
     // 'db_path'  => __DIR__ . '/../data/mdc.db',      // por defecto ya apunta aquí
     // 'secret_key' => 'genera-48-bytes-aleatorios',   // Fase 3
+    // 'force_canonical_host' => true,                 // ACTIVAR TRAS EL CUTOVER: 301 de
+    //                                                 // jaguerra27.helioho.st y www a site_url
 ];

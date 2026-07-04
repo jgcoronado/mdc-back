@@ -26,6 +26,18 @@ if (!empty($config['debug'])) {
     error_reporting(E_ALL & ~E_DEPRECATED);
 }
 
+// Redirección al host canónico (staging/www → marchasdecristo.com). Solo si está
+// activado en config (force_canonical_host) — normalmente tras el cutover.
+$canonicalTarget = App\Http::canonicalRedirectTarget(
+    $config,
+    $_SERVER['HTTP_HOST'] ?? '',
+    $_SERVER['REQUEST_URI'] ?? '/'
+);
+if ($canonicalTarget !== null) {
+    header('Location: ' . $canonicalTarget, true, 301);
+    exit;
+}
+
 $router = new App\Router();
 require APP_DIR . '/routes.php';
 

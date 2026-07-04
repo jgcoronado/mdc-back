@@ -7,6 +7,7 @@ declare(strict_types=1);
 $defaults = [
     'debug'            => false,
     'site_url'         => 'https://marchasdecristo.com',
+    'force_canonical_host' => false,          // true tras el cutover → 301 de staging/www a site_url
     'db_path'          => getenv('DB_PATH') ?: (DATA_DIR . '/mdc.db'),
     'secret_key'       => '',                 // Fase 3 (auth) — definir en config.local.php
     'auth_cookie_name' => 'mdc_session',
