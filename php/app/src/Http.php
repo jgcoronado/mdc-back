@@ -20,4 +20,16 @@ final class Http
         View::render('404', [], ['title' => 'Página no encontrada — Marchas de Cristo']);
         exit;
     }
+
+    /** Cacheable por navegador/proxy (páginas públicas estables). */
+    public static function cachePublic(int $seconds): void
+    {
+        header('Cache-Control: public, max-age=' . $seconds);
+    }
+
+    /** No cachear (búsquedas y páginas de admin). */
+    public static function noStore(): void
+    {
+        header('Cache-Control: no-store, max-age=0');
+    }
 }

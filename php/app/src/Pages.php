@@ -37,6 +37,7 @@ final class Pages
     // ── Home ──────────────────────────────────────────────────────────────────
     public static function home(): void
     {
+        Http::cachePublic(1800);
         View::render('home', [
             'ultimas' => Repo::fetchUltimas(),
             'estado' => Repo::fetchEstado(),
@@ -51,6 +52,7 @@ final class Pages
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
         $result = $hasQuery ? Repo::searchMarchas(http_build_query($criteria), $page, $limit) : null;
+        $result !== null ? Http::noStore() : Http::cachePublic(3600);
         View::render('marcha_list', compact('criteria', 'result', 'page', 'limit'), [
             'title' => 'Buscador de marchas procesionales — Marchas de Cristo',
             'description' => 'Busca marchas procesionales por título, fecha, dedicatoria, localidad y provincia.',
@@ -62,6 +64,7 @@ final class Pages
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
         $result = $hasQuery ? Repo::searchAutores(http_build_query($criteria), $page, $limit) : null;
+        $result !== null ? Http::noStore() : Http::cachePublic(3600);
         View::render('autor_list', compact('criteria', 'result', 'page', 'limit'), [
             'title' => 'Buscador de compositores — Marchas de Cristo',
             'description' => 'Busca compositores de música procesional por nombre.',
@@ -73,6 +76,7 @@ final class Pages
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
         $result = $hasQuery ? Repo::searchBandas(http_build_query($criteria), $page, $limit) : null;
+        $result !== null ? Http::noStore() : Http::cachePublic(3600);
         View::render('banda_list', compact('criteria', 'result', 'page', 'limit'), [
             'title' => 'Buscador de bandas — Marchas de Cristo',
             'description' => 'Busca bandas de cornetas y tambores y agrupaciones musicales por nombre, localidad y provincia.',
@@ -84,6 +88,7 @@ final class Pages
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
         $result = $hasQuery ? Repo::searchDiscos(http_build_query($criteria), $page, $limit) : null;
+        $result !== null ? Http::noStore() : Http::cachePublic(3600);
         View::render('disco_list', compact('criteria', 'result', 'page', 'limit'), [
             'title' => 'Buscador de discos — Marchas de Cristo',
             'description' => 'Busca discos de música procesional de Semana Santa por nombre.',
@@ -106,6 +111,7 @@ final class Pages
         $url = $base . $canonical;
         $autores = implode(', ', array_map(static fn(array $a): string => (string) $a['nombre'], $m['AUTOR']));
 
+        Http::cachePublic(3600);
         View::render('marcha_detail', ['m' => $m], [
             'title' => $m['TITULO'] . ' — Marchas de Cristo',
             'description' => 'Marcha procesional "' . $m['TITULO'] . '" compuesta por ' . $autores . '.'
@@ -136,6 +142,7 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
 
+        Http::cachePublic(3600);
         View::render('autor_detail', ['a' => $a, 'fullName' => $fullName], [
             'title' => $fullName . ' — Marchas de Cristo',
             'description' => 'Compositor de música procesional. Ha compuesto ' . $a['marchasLength'] . ' marchas.'
@@ -165,6 +172,7 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
 
+        Http::cachePublic(3600);
         View::render('banda_detail', ['b' => $b], [
             'title' => $b['NOMBRE_BREVE'] . ' — Marchas de Cristo',
             'description' => $b['NOMBRE_COMPLETO'] . ', banda de ' . $b['LOCALIDAD'] . '. Ha grabado ' . $b['discosLength'] . ' discos y estrenado ' . $b['marchasLength'] . ' marchas.',
@@ -193,6 +201,7 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
 
+        Http::cachePublic(3600);
         View::render('disco_detail', ['d' => $d], [
             'title' => $d['NOMBRE_CD'] . ' — Marchas de Cristo',
             'description' => 'Disco de música procesional "' . $d['NOMBRE_CD'] . '" de ' . $d['BANDA'] . '. Contiene ' . $d['marchasLength'] . ' marchas.',
@@ -211,6 +220,7 @@ final class Pages
     // ── Estadísticas ──────────────────────────────────────────────────────────
     public static function estadisticas(): void
     {
+        Http::cachePublic(1800);
         View::render('estadisticas', [
             'masAutor' => Repo::fetchMasAutor(),
             'masDedica' => Repo::fetchMasDedica(),
@@ -226,6 +236,7 @@ final class Pages
     public static function sitemap(): void
     {
         header('Content-Type: application/xml; charset=UTF-8');
+        Http::cachePublic(3600);
         $base = self::base();
 
         $urls = [
@@ -268,6 +279,7 @@ final class Pages
     public static function robots(): void
     {
         header('Content-Type: text/plain; charset=UTF-8');
+        Http::cachePublic(86400);
         $base = self::base();
         echo "User-Agent: *\n";
         echo "Allow: /\n";

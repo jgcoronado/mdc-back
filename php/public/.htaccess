@@ -13,6 +13,20 @@ Options -MultiViews -Indexes
     RewriteRule ^ index.php [L]
 </IfModule>
 
+# Cabeceras de seguridad.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Caché larga para estáticos (assets y portadas).
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+</IfModule>
+
 # No servir dotfiles (.htaccess, .git, etc.).
 <FilesMatch "^\.">
     <IfModule mod_authz_core.c>

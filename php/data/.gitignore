@@ -4,3 +4,5 @@ mdc.db-wal
 mdc.db-shm
 # Estado del rate-limiter de login (runtime)
 .login_attempts.json
+# Backups generados por tools/backup.php
+backups/

@@ -116,6 +116,7 @@ final class Auth
     /** Guard: exige sesión válida o redirige a /login. */
     public static function requireAuth(): array
     {
+        Http::noStore(); // el contenido de admin nunca se cachea
         $payload = self::currentSession();
         if ($payload === null) {
             Http::redirect('/login', 302);

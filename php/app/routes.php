@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Admin;
+use App\Auth;
 use App\Db;
 use App\Http;
 use App\Pages;
@@ -43,35 +44,36 @@ $router->get('/estadisticas', [Pages::class, 'estadisticas']);
 $router->get('/sitemap.xml', [Pages::class, 'sitemap']);
 $router->get('/robots.txt', [Pages::class, 'robots']);
 
-// ── Diagnóstico (Fase 0) ─────────────────────────────────────────────────────
-// TODO Fase 4: restringir o eliminar antes del cutover (revela la ruta del .db).
+// ── Diagnóstico ──────────────────────────────────────────────────────────────
+// Público: solo "ok" + versión. El detalle (rutas, conteos, FTS) requiere sesión
+// admin para no filtrar la ruta del .db.
 $router->get('/health', static function (): void {
     header('Content-Type: text/plain; charset=utf-8');
-    $config = $GLOBALS['config'];
-    $lines = [
-        'status: ok',
-        'php: ' . PHP_VERSION,
-        'db_path: ' . $config['db_path'],
-        'db_exists: ' . (is_file($config['db_path']) ? 'YES' : 'NO'),
-    ];
-    if (is_file($config['db_path'])) {
-        try {
-            $pdo = Db::pdo();
-            $lines[] = 'sqlite: ' . $pdo->query('SELECT sqlite_version()')->fetchColumn();
-            $lines[] = 'journal_mode: ' . $pdo->query('PRAGMA journal_mode')->fetchColumn();
-            $c = Db::counts();
-            $lines[] = "counts: marchas={$c['MARCHAS']} autores={$c['AUTORES']} bandas={$c['BANDAS']} discos={$c['DISCOS']}";
-            try {
-                $pdo->query('SELECT rowid FROM marcha_fts WHERE marcha_fts MATCH \'"amargura"\' LIMIT 1')->fetchAll();
-                $lines[] = 'fts5: OK';
-            } catch (\Throwable $e) {
-                $lines[] = 'fts5: ERROR ' . $e->getMessage();
-            }
-        } catch (\Throwable $e) {
-            $lines[] = 'db_error: ' . $e->getMessage();
-        }
+    Http::noStore();
+    echo "status: ok\n";
+    echo 'php: ' . PHP_VERSION . "\n";
+
+    if (Auth::currentSession() === null) {
+        return; // sin sesión no revelamos más
     }
-    echo implode("\n", $lines) . "\n";
+
+    $config = $GLOBALS['config'];
+    echo 'db_path: ' . $config['db_path'] . "\n";
+    echo 'db_exists: ' . (is_file($config['db_path']) ? 'YES' : 'NO') . "\n";
+    if (!is_file($config['db_path'])) {
+        return;
+    }
+    try {
+        $pdo = Db::pdo();
+        echo 'sqlite: ' . $pdo->query('SELECT sqlite_version()')->fetchColumn() . "\n";
+        echo 'journal_mode: ' . $pdo->query('PRAGMA journal_mode')->fetchColumn() . "\n";
+        $c = Db::counts();
+        echo "counts: marchas={$c['MARCHAS']} autores={$c['AUTORES']} bandas={$c['BANDAS']} discos={$c['DISCOS']}\n";
+        $pdo->query('SELECT rowid FROM marcha_fts WHERE marcha_fts MATCH \'"amargura"\' LIMIT 1')->fetchAll();
+        echo "fts5: OK\n";
+    } catch (\Throwable $e) {
+        echo 'db_error: ' . $e->getMessage() . "\n";
+    }
 });
 
 // ── Admin (auth + panel) ──────────────────────────────────────────────────────

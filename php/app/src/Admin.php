@@ -48,12 +48,14 @@ final class Admin
     // ── Login / logout ─────────────────────────────────────────────────────
     public static function loginForm(): void
     {
+        Http::noStore();
         if (Auth::currentSession() !== null) Http::redirect('/dashboard', 302);
         View::render('admin/login', ['error' => null, 'username' => ''], ['title' => 'Acceso — Marchas de Cristo', 'noindex' => true]);
     }
 
     public static function loginPost(): void
     {
+        Http::noStore();
         $username = (string) ($_POST['username'] ?? '');
         $password = (string) ($_POST['password'] ?? '');
         $fail = static function (string $msg, int $status) use ($username): void {

@@ -95,5 +95,20 @@ php  tools/parity_compare.php     # ejecuta Repo y compara campo a campo (estric
   FECHA, transacciones, audit log) y `Admin.php` (controladores PRG). Formularios en
   `templates/admin/`, autocomplete de autores en `public/assets/admin.js`.
   Requiere `secret_key` en `config.local.php` y `.db` con escritura.
-- **Fase 4:** caché, backups (cron), hardening.
-- **Fase 5:** cutover DNS + vigilancia en Search Console.
+- **Fase 4 (hecha):** caché (`Cache-Control`: detalle 1h, home/estadísticas 30min,
+  búsquedas `no-store`, sitemap 1h; estáticos 30d por `.htaccess`), cabeceras de
+  seguridad, `/health` restringido (detalle solo con sesión admin) y backup del
+  `.db` por cron (`app/tools/backup.php`, VACUUM INTO + retención). Ver "Backups".
+- **Fase 5:** cutover DNS (apuntar marchasdecristo.com) + vigilancia en Search Console.
+
+## Backups (cron)
+
+`app/tools/backup.php` hace una copia consistente del `.db` (`VACUUM INTO`) en
+`backups/` junto a la BD (fuera del webroot) y purga las de más de 14 días. En
+HelioHost → **Cron Jobs**, diario:
+
+```
+/usr/local/bin/php /home/USUARIO/app/tools/backup.php
+```
+
+(ajusta la ruta de PHP a la de tu versión si difiere).
