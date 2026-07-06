@@ -49,11 +49,30 @@ const normalize = (s) =>
     .toLowerCase();
 
 // ── clasificación por keywords ──────────────────────────────────────────────
+// "Estreno"/"recuperamos" también se usan en un sentido que NO nos interesa:
+// el debut/reinicio de actividad DE LA BANDA para una hermandad (p.ej. "estreno
+// de nuestra formación tras la imagen de...") no tiene nada que ver con el
+// estreno de una marcha nueva. Se neutralizan esas frases antes de buscar
+// keywords de clasificación (la comprobación de exclusión no se ve afectada).
+const FALSOS_POSITIVOS = [
+  /estreno de (?:la|nuestra|esta) (?:formacion|banda|agrupacion)/g,
+  /(?:formacion|banda|agrupacion) (?:estrena|estrenara) (?:su|la) temporada/g,
+  /estreno de temporada/g,
+  /recupera(?:mos)? (?:la )?actividad/g,
+];
+
+function stripFalsosPositivos(haystackNorm) {
+  let h = haystackNorm;
+  for (const re of FALSOS_POSITIVOS) h = h.replace(re, ' ');
+  return h;
+}
+
 function classifyText(kw, tituloNorm, descNorm) {
   const haystack = `${tituloNorm}\n${descNorm}`;
   for (const term of kw.excluir) {
     if (haystack.includes(normalize(term))) return { clasificacion: 'otro', motivo: `excluido:${term}` };
   }
+  const haystackCat = stripFalsosPositivos(haystack);
   // Orden de prioridad: estreno > novedad > recuperacion. Un vídeo puede tocar
   // varias categorías (p.ej. "estreno" y "novedad" a la vez); nos quedamos con
   // la primera que matchee y anotamos cuántos términos en total dieron señal.
@@ -61,7 +80,7 @@ function classifyText(kw, tituloNorm, descNorm) {
   let hits = 0;
   let clasificacion = null;
   for (const cat of order) {
-    const matched = (kw.clasificacion[cat] || []).filter((term) => haystack.includes(normalize(term)));
+    const matched = (kw.clasificacion[cat] || []).filter((term) => haystackCat.includes(normalize(term)));
     hits += matched.length;
     if (!clasificacion && matched.length > 0) clasificacion = cat;
   }
@@ -79,11 +98,18 @@ const QUOTE_PAIRS = [
 
 // Prefijos de "etiqueta" que suelen preceder al título real y no son parte de
 // él (p.ej. "ESTRENO MUNDIAL: Reina de las Lágrimas" → nos interesa solo lo de
-// después de los dos puntos si lo hay, o lo dejamos para el separador).
-const LABEL_PREFIX = /^[\s\p{Extended_Pictographic}️]*\s*(estreno( mundial| absoluto)?|novedad|nuevo estreno|primicia|recuperaci[oó]n|recuperamos)\s*:?\s*[-|]?\s*/iu;
+// después de los dos puntos si lo hay, o lo dejamos para el separador). El \b
+// final es importante: sin él, "Estrenos" (plural, vídeo-resumen de varias
+// marchas) se leía como "Estreno" + sobraba una "s" suelta como título.
+const LABEL_PREFIX = /^[\s\p{Extended_Pictographic}️]*\s*(estreno( mundial| absoluto)?|novedad|nuevo estreno|primicia|recuperaci[oó]n|recuperamos)\b\s*:?\s*[-|]?\s*/iu;
+
+// Etiqueta de calidad/resolución al principio del título ("[4K]", "4K", "HD"...),
+// muy común en canales de banda y que si no se quita contamina el título
+// extraído (p.ej. "4K | Desprecio | Estreno 2025" → sin esto se leía "4K").
+const QUALITY_PREFIX = /^\[?\s*(?:4k|8k|2k|hd|fhd|uhd)\s*\]?\s*[-|:]?\s*/i;
 
 function extractTitulo(rawTitulo, kw) {
-  const cleaned = (rawTitulo || '').trim();
+  const cleaned = (rawTitulo || '').trim().replace(QUALITY_PREFIX, '');
 
   for (const [open, close] of QUOTE_PAIRS) {
     const re = new RegExp(`${escapeRe(open)}([^${escapeRe(close)}]{2,100})${escapeRe(close)}`);
