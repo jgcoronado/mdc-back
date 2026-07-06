@@ -1,0 +1,54 @@
+{
+  "_doc": "Diccionario de clasificación heurística (Fase 2). El matching es sobre título + descripción normalizados (minúsculas, sin diacríticos). Afínalo con lo que veas en los canales reales.",
+  "clasificacion": {
+    "estreno": [
+      "estreno",
+      "estrena",
+      "estrenamos",
+      "estreno mundial",
+      "se estrena",
+      "estreno absoluto"
+    ],
+    "novedad": [
+      "novedad",
+      "nueva marcha",
+      "primicia",
+      "por primera vez",
+      "premiere",
+      "world premiere"
+    ],
+    "recuperacion": [
+      "recuperacion",
+      "recupera",
+      "recuperamos",
+      "recuperada",
+      "rescate",
+      "rescatada",
+      "rescatamos",
+      "vuelve a sonar"
+    ]
+  },
+  "excluir": [
+    "ensayo",
+    "tutorial",
+    "cover",
+    "promo",
+    "teaser",
+    "trailer",
+    "making of",
+    "entrevista",
+    "convocatoria",
+    "audicion",
+    "casting",
+    "felicitacion",
+    "felices fiestas",
+    "villancico",
+    "resumen",
+    "highlights"
+  ],
+  "extraccion": {
+    "_doc": "Pistas para extraer el título de la marcha del título del vídeo (Fase 2). Se busca texto entrecomillado primero; si no, se parte por estos separadores.",
+    "separadores": ["|", "-", "//", "·", "»", "«", ":"],
+    "comillas": ["\"", "«»", "“”", "‘’", "'"]
+  }
+}

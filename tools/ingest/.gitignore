@@ -1,0 +1,10 @@
+# Lista real de canales (contiene los canales concretos; cópiala de canales.example.csv)
+config/canales.csv
+
+# Salida y caché del extractor (Fase 1+)
+cache/
+out/
+*.ndjson
+
+# Node
+node_modules/
