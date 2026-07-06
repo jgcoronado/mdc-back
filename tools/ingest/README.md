@@ -88,9 +88,37 @@ node extract.mjs                               # pasada real: todos los canales,
 node extract.mjs --force                       # ignora la caché y vuelve a bajar
 ```
 
+## Fase 2 — clasificador + extractor heurístico ✅
+
+[`classify.mjs`](classify.mjs) lee `out/videos.ndjson` (salida de la Fase 1) y por
+cada vídeo:
+
+1. **Clasifica** por keywords de [`config/keywords.json`](config/keywords.json):
+   `estreno` / `novedad` / `recuperacion` / `otro` (los `otro` se descartan y no
+   pasan a candidatos — la mayoría de vídeos de un canal son conciertos de
+   marchas ya existentes, no estrenos).
+2. **Extrae** los campos propuestos (`P_*`) de título/descripción:
+   - `P_TITULO` — primero busca texto entrecomillado; si no hay, corta por el
+     primer separador (`|`, `-`, `:`, …) tras quitar prefijos tipo "ESTRENO MUNDIAL:".
+   - `P_AUTORES` — busca el nombre del compositor tras el título usando
+     conectores habituales ("de", "autoría de", "compuesta por", "original de"…).
+   - `P_LOCALIDAD` — patrón "... en `<Localidad>` `<Año>`" del título.
+   - `P_FECHA` — año de publicación del vídeo (por defecto; el texto puede
+     mencionar un año distinto de composición, que queda para revisión manual).
+3. Asigna **confianza** (0–1) y **flags** (`sin_autor_detectado`,
+   `sin_localidad_detectada`, `titulo_sin_comillas`, …) para que el panel
+   resalte lo que hay que revisar a mano.
+
+Salida: `out/candidatos.ndjson` (solo estreno/novedad/recuperación).
+
+```bash
+cd tools/ingest
+node classify.mjs                 # out/videos.ndjson → out/candidatos.ndjson
+node classify.mjs --debug         # + out/descartados.ndjson con el motivo de cada descarte
+```
+
 ## Próximas fases
 
-- **Fase 2** — clasificador + extractor heurístico de campos.
 - **Fase 3** — dedup contra `marcha` (recuperaciones solo si no existen).
 - **Fase 4** — panel de revisión PHP (import NDJSON + aceptar/descartar).
 - **Fase 5** — primera pasada real con tu lista de bandas.
