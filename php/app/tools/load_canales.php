@@ -8,9 +8,9 @@ declare(strict_types=1);
  *   php app/tools/load_canales.php ruta/al/canales.csv
  *   DB_PATH=data/mdc.db php php/app/tools/load_canales.php tools/ingest/config/canales.csv
  *
- * CSV con cabecera: ID_BANDA,NOMBRE_BREVE,CANAL_URL,DESDE_ANIO,NOTAS
- * (NOMBRE_BREVE es informativo; se valida que ID_BANDA exista en `banda`.)
- * Upsert por (ID_BANDA, CANAL_URL): re-ejecutar actualiza DESDE_ANIO/NOTAS sin duplicar.
+ * CSV con cabecera: ID_BANDA,CANAL_URL  (se valida que ID_BANDA exista en `banda`).
+ * Siempre canal oficial y desde 2019 (DESDE_ANIO usa el default de la tabla).
+ * Idempotente por (ID_BANDA, CANAL_URL): re-ejecutar no duplica.
  */
 
 define('APP_DIR', dirname(__DIR__));
@@ -38,7 +38,7 @@ if ($fh === false) {
 }
 
 $header = fgetcsv($fh);
-$expected = ['ID_BANDA', 'NOMBRE_BREVE', 'CANAL_URL', 'DESDE_ANIO', 'NOTAS'];
+$expected = ['ID_BANDA', 'CANAL_URL'];
 if ($header === false || array_map('strtoupper', array_map('trim', $header)) !== $expected) {
     fwrite(STDERR, 'Cabecera inválida. Se espera: ' . implode(',', $expected) . "\n");
     exit(1);
@@ -50,10 +50,8 @@ try {
 
     $bandaExists = $pdo->prepare('SELECT 1 FROM banda WHERE ID_BANDA = ?');
     $upsert = $pdo->prepare(
-        'INSERT INTO ingest_canal (ID_BANDA, CANAL_URL, DESDE_ANIO, NOTAS)
-         VALUES (:banda, :url, :anio, :notas)
-         ON CONFLICT (ID_BANDA, CANAL_URL)
-         DO UPDATE SET DESDE_ANIO = excluded.DESDE_ANIO, NOTAS = excluded.NOTAS'
+        'INSERT INTO ingest_canal (ID_BANDA, CANAL_URL) VALUES (:banda, :url)
+         ON CONFLICT (ID_BANDA, CANAL_URL) DO NOTHING'
     );
 
     $ok = 0; $skip = 0; $line = 1;
@@ -61,9 +59,7 @@ try {
         $line++;
         if ($row === [null] || $row === []) continue;                 // línea vacía
         $idBanda = (int) trim((string) ($row[0] ?? ''));
-        $url = trim((string) ($row[2] ?? ''));
-        $anio = (int) (trim((string) ($row[3] ?? '')) ?: 2019);
-        $notas = trim((string) ($row[4] ?? '')) ?: null;
+        $url = trim((string) ($row[1] ?? ''));
 
         if ($idBanda <= 0 || $url === '') {
             fwrite(STDERR, "Línea $line: ID_BANDA o CANAL_URL vacíos, se omite.\n");
@@ -76,7 +72,7 @@ try {
             $skip++;
             continue;
         }
-        $upsert->execute([':banda' => $idBanda, ':url' => $url, ':anio' => $anio, ':notas' => $notas]);
+        $upsert->execute([':banda' => $idBanda, ':url' => $url]);
         $ok++;
     }
     fclose($fh);
