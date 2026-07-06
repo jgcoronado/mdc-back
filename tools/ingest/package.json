@@ -1,0 +1,13 @@
+{
+  "name": "mdc-ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ingesta offline de marchas desde YouTube (yt-dlp) para marchasdecristo.com",
+  "scripts": {
+    "extract": "node extract.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

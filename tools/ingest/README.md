@@ -67,9 +67,29 @@ En el host es igual pero sin `DB_PATH` (usa el `db_path` de `config.php`):
 /usr/local/bin/php /home/USUARIO/app/tools/migrate_ingest.php
 ```
 
+## Fase 1 — extractor yt-dlp ✅
+
+[`extract.mjs`](extract.mjs) (Node, sin dependencias nativas; requiere `yt-dlp` en el
+PATH). Lee `config/canales.csv`, raspa las pestañas `/videos` y `/streams` de cada
+canal (los directos son clave: muchos estrenos son emisiones en vivo), filtra desde
+2019 y vuelca:
+
+- `out/raw/<ID_BANDA>-<slug>.ndjson` — caché slim por canal (reanudable).
+- `out/videos.ndjson` — dataset combinado y deduplicado por `video_id`.
+
+Cada registro: `id_banda, video_id, url, titulo, descripcion, publicado (ISO),
+duracion_seg, live_status, tab, channel, channel_id`. Los vídeos de solo-miembros o
+próximos estrenos se omiten.
+
+```bash
+cd tools/ingest
+node extract.mjs --only 16 --max 3 --sleep 0   # smoke test (3 vídeos de una banda)
+node extract.mjs                               # pasada real: todos los canales, desde 2019
+node extract.mjs --force                       # ignora la caché y vuelve a bajar
+```
+
 ## Próximas fases
 
-- **Fase 1** — extractor yt-dlp (Node, sin dependencias nativas; emite metadatos crudos).
 - **Fase 2** — clasificador + extractor heurístico de campos.
 - **Fase 3** — dedup contra `marcha` (recuperaciones solo si no existen).
 - **Fase 4** — panel de revisión PHP (import NDJSON + aceptar/descartar).
