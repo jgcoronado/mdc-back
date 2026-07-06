@@ -34,7 +34,10 @@
 
 ### 2. Cron de backup  ·  *(Plesk)*
 - [ ] Plesk → **Scheduled Tasks** → *Add Task* → tipo **"Run a PHP script"** →
-      `/home/jaguerra27.helioho.st/app/tools/backup.php` → **diario** (p. ej. 03:00).
+      `/home/jaguerra27.helioho.st/app/tools/backup.php` → **semanal** (p. ej. domingo 03:00).
+      Retención subida a `backup_keep_days=60` (~8-9 copias) para compensar la
+      cadencia semanal. También se puede lanzar a mano desde Plesk tras ediciones
+      importantes en el admin.
 - [ ] Ejecutarlo una vez a mano y confirmar que aparece `private/backups/mdc-*.db`.
 
 ### 3. Search Console  ·  *(tú)*

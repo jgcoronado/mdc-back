@@ -17,7 +17,7 @@ $defaults = [
     'login_window_ms'    => 15 * 60 * 1000,   // 15 min
     'login_lock_ms'      => 15 * 60 * 1000,   // 15 min
     'password_pbkdf2_iterations' => 210000,
-    'backup_keep_days'   => 14,               // retención de backups (tools/backup.php)
+    'backup_keep_days'   => 60,               // retención (tools/backup.php); cron semanal → ~8-9 copias
 ];
 
 $localFile = APP_DIR . '/config.local.php';
