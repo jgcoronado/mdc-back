@@ -161,4 +161,50 @@ final class AdminRepo
         Db::logAdmin('INSERT', 'autor', $autorId);
         return ['code' => 'CREATED', 'autorId' => $autorId];
     }
+
+    // ── Ingesta (candidatos de YouTube, ver tools/ingest/) ──────────────────
+
+    /**
+     * Acepta un candidato: crea la marcha (con el mismo camino que addMarcha)
+     * y además fija AUDIO con la URL del vídeo de origen (addMarcha no admite
+     * AUDIO al crear porque una marcha añadida a mano normalmente no tiene
+     * vídeo todavía; aquí sí lo tenemos siempre).
+     *
+     * @param array<string,mixed> $fields
+     * @param list<int> $autoresIds
+     * @return array{code:string, marchaId?:int}
+     */
+    public static function aceptarCandidato(int $idCand, array $fields, array $autoresIds): array
+    {
+        $cand = Db::one('SELECT ESTADO, VIDEO_URL FROM ingest_candidato WHERE ID_CAND = ?', [$idCand]);
+        if ($cand === null) return ['code' => 'NOT_FOUND'];
+        if ($cand['ESTADO'] !== 'pendiente') return ['code' => 'NOT_PENDING'];
+
+        $r = self::addMarcha($fields, $autoresIds);
+        if (($r['code'] ?? '') !== 'CREATED') return $r;
+
+        if (!empty($cand['VIDEO_URL'])) {
+            self::editMarcha($r['marchaId'], ['AUDIO'], [$cand['VIDEO_URL']]);
+        }
+
+        Db::run(
+            "UPDATE ingest_candidato SET ESTADO = 'aceptado', MARCHA_CREADA = ?, REVIEWED_AT = datetime('now') WHERE ID_CAND = ?",
+            [$r['marchaId'], $idCand]
+        );
+        Db::logAdmin('ACCEPT', 'ingest_candidato', $idCand, ['marchaId' => $r['marchaId']]);
+        return $r;
+    }
+
+    /** @return array{code:string} */
+    public static function descartarCandidato(int $idCand, ?string $motivo): array
+    {
+        $changes = Db::run(
+            "UPDATE ingest_candidato SET ESTADO = 'descartado', MOTIVO = ?, REVIEWED_AT = datetime('now')
+             WHERE ID_CAND = ? AND ESTADO = 'pendiente'",
+            [self::normalize($motivo), $idCand]
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING'];
+        Db::logAdmin('DISCARD', 'ingest_candidato', $idCand, ['motivo' => $motivo]);
+        return ['code' => 'DISCARDED'];
+    }
 }

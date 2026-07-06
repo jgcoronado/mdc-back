@@ -246,9 +246,19 @@ final class Admin
     public static function autorAddForm(): void
     {
         $session = Auth::requireAuth();
+        // Prefill opcional desde ?nombre=Nombre Apellidos (p.ej. enlace "crear
+        // compositor" desde la revisión de ingesta): el último token se asume
+        // apellidos, el resto nombre. Es solo un punto de partida editable.
+        $prefill = trim((string) ($_GET['nombre'] ?? ''));
+        $autor = [];
+        if ($prefill !== '') {
+            $parts = preg_split('/\s+/', $prefill) ?: [];
+            $autor['APELLIDOS'] = array_pop($parts);
+            $autor['NOMBRE'] = implode(' ', $parts);
+        }
         View::render('admin/autor_form', [
             'mode' => 'add', 'session' => $session, 'action' => '/dashboard/autor/add',
-            'autor' => [], 'notice' => null, 'error' => null,
+            'autor' => $autor, 'notice' => null, 'error' => null,
         ], ['title' => 'Añadir compositor — Marchas de Cristo', 'noindex' => true]);
     }
 
@@ -270,6 +280,68 @@ final class Admin
         $r = AdminRepo::addAutor($fields);
         if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/autor/' . $r['autorId'] . '?created=1');
         $reRender($r['code'] ?? 'ERROR');
+    }
+
+    // ── Ingesta (revisión de candidatos de YouTube) ─────────────────────────
+    public static function ingestaList(): void
+    {
+        $session = Auth::requireAuth();
+        $filters = [
+            'estado' => (string) ($_GET['estado'] ?? 'pendiente'),
+            'banda' => (string) ($_GET['banda'] ?? ''),
+            'clasificacion' => (string) ($_GET['clasificacion'] ?? ''),
+        ];
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $result = IngestaRepo::listCandidatos($filters, $page);
+        View::render('admin/ingesta_list', [
+            'session' => $session, 'filters' => $filters, 'page' => $page,
+            'result' => $result, 'bandas' => IngestaRepo::bandasConCandidatos(),
+            'counts' => IngestaRepo::counts(),
+        ], ['title' => 'Ingesta desde YouTube — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function ingestaDetail(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        $cand = IngestaRepo::fetchCandidato($id);
+        if ($cand === null) Http::notFound();
+
+        $autoresNombres = array_filter(array_map('trim', explode(',', (string) ($cand['P_AUTORES'] ?? ''))));
+        View::render('admin/ingesta_detail', [
+            'session' => $session, 'cand' => $cand,
+            'autoresSugeridos' => $autoresNombres,
+            'notice' => self::noticeFromQuery(), 'error' => null,
+        ], ['title' => 'Revisar candidato #' . $id . ' — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function ingestaAceptar(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF");
+
+        $fields = [];
+        foreach (AdminRepo::INSERTABLE_MARCHA as $f) $fields[$f] = $_POST[$f] ?? '';
+        $ids = self::postAutoresIds();
+
+        if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED");
+
+        $r = AdminRepo::aceptarCandidato($id, $fields, $ids);
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/marcha/' . $r['marchaId'] . '?created=1');
+        Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'));
+    }
+
+    public static function ingestaDescartar(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF");
+
+        $motivo = trim((string) ($_POST['motivo'] ?? ''));
+        $r = AdminRepo::descartarCandidato($id, $motivo !== '' ? $motivo : null);
+        if (($r['code'] ?? '') !== 'DISCARDED') Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'));
+        Http::redirect('/dashboard/ingesta?descartado=1');
     }
 
     // ── Autocomplete de autores (JSON) ───────────────────────────────────────

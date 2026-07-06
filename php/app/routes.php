@@ -92,5 +92,11 @@ $router->get('/dashboard/autor/{id}', [Admin::class, 'autorEditForm']);
 $router->post('/dashboard/autor/{id}', [Admin::class, 'autorEditPost']);
 $router->get('/api/autor/fastSearch', [Admin::class, 'autorFastSearch']);
 
+// ── Ingesta (revisión de candidatos de YouTube, ver tools/ingest/) ───────────
+$router->get('/dashboard/ingesta', [Admin::class, 'ingestaList']);
+$router->get('/dashboard/ingesta/{id}', [Admin::class, 'ingestaDetail']);
+$router->post('/dashboard/ingesta/{id}/aceptar', [Admin::class, 'ingestaAceptar']);
+$router->post('/dashboard/ingesta/{id}/descartar', [Admin::class, 'ingestaDescartar']);
+
 // ── 404 ──────────────────────────────────────────────────────────────────────
 $router->notFound([Http::class, 'notFound']);
