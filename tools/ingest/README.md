@@ -122,7 +122,16 @@ node extract.mjs --only 16 --max 20             # smoke test acotado (real, pero
 node extract.mjs                                # pasada real completa (reanudable)
 node extract.mjs --force                        # ignora la caché por vídeo y repite todo
 node extract.mjs --concurrency 6 --sleep 0.3    # más rápido (a tu propio riesgo de cortesía con YouTube)
+node extract.mjs --months 10-3                  # solo octubre→marzo (temporada de estrenos), cruza fin de año
 ```
+
+**`--months INICIO-FIN`**: los estrenos de estas bandas se concentran entre
+octubre y marzo (temporada previa a Semana Santa). Filtrar por ese rango antes
+de la extracción completa reduce drásticamente el volumen en canales muy
+activos: en las 8 bandas de ejemplo, `--months 10-3` bajó el total a extraer
+de ~7.300 a ~800 vídeos (viable en minutos en vez de horas). El filtro se
+aplica dos veces: barato en la pasada 1 (con 1 mes de colchón, porque la fecha
+ahí es aproximada) y exacto tras la pasada 2 (con la fecha real).
 
 Cada registro final: `id_banda, video_id, url, titulo, descripcion, publicado (ISO),
 duracion_seg, live_status, tab, channel, channel_id`. Los vídeos de solo-miembros,
