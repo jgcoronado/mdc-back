@@ -67,26 +67,67 @@ En el host es igual pero sin `DB_PATH` (usa el `db_path` de `config.php`):
 /usr/local/bin/php /home/USUARIO/app/tools/migrate_ingest.php
 ```
 
-## Fase 1 — extractor yt-dlp ✅
+## Fase 1 — extractor yt-dlp ✅ (rediseñado: dos pasadas)
 
 [`extract.mjs`](extract.mjs) (Node, sin dependencias nativas; requiere `yt-dlp` en el
-PATH). Lee `config/canales.csv`, raspa las pestañas `/videos` y `/streams` de cada
-canal (los directos son clave: muchos estrenos son emisiones en vivo), filtra desde
-2019 y vuelca:
+PATH). Lee `config/canales.csv`, procesa las pestañas `/videos` y `/streams` de cada
+canal (los directos son clave: muchos estrenos son emisiones en vivo) y filtra
+desde 2019.
 
-- `out/raw/<ID_BANDA>-<slug>.ndjson` — caché slim por canal (reanudable).
-- `out/videos.ndjson` — dataset combinado y deduplicado por `video_id`.
+### El problema que obligó al rediseño
 
-Cada registro: `id_banda, video_id, url, titulo, descripcion, publicado (ISO),
-duracion_seg, live_status, tab, channel, channel_id`. Los vídeos de solo-miembros o
-próximos estrenos se omiten.
+La primera versión pedía metadatos completos (`--dump-json`, con descripción) de
+**cada vídeo del canal, uno a uno y en serie**. Al probarlo con canales reales
+(p.ej. `@lascigarreras`, 4.200+ vídeos históricos) pasó esto:
+
+- Una fracción grande del canal son vídeos **exclusivos para "socios"/members**
+  (niveles "Fajín morado", "Ángel de la fama"...). yt-dlp solo puede saberlo
+  **abriendo la página del vídeo** — así que cada uno generaba una petición
+  entera + un `ERROR: ... members-only ...` en el log. Con cientos de vídeos así,
+  el log se llenaba de errores y el proceso apenas avanzaba.
+- Además, sin filtrar antes, había que abrir **todos** los vídeos del canal
+  (incluso de 2008) para poder leer su fecha real y descartarlos — carísimo.
+- En 5 minutos de prueba real, el extractor no llegó ni a terminar la pestaña
+  `/videos` de un solo canal.
+
+### La solución: filtrar barato antes de abrir nada
+
+1. **Pasada 1 (listado):** `yt-dlp --flat-playlist --dump-json --extractor-args
+   youtubetab:approximate_date` sobre la pestaña completa. Esto es **una
+   respuesta grande por pestaña**, no una petición por vídeo, y ya trae
+   `availability` (permite detectar `subscriber_only`/`premium_only`/`private`
+   **sin abrir el vídeo**) y una fecha aproximada. Con esto se descartan de raíz:
+   vídeos solo-para-miembros, vídeos anteriores a 2019, y títulos que ya delatan
+   ruido (`ensayo`, `cover`, `tutorial`... de `keywords.json`).
+2. **Pasada 2 (extracción completa):** solo para los vídeos que sobreviven al
+   filtro se pide `--dump-json` normal (con descripción, necesaria para la
+   Fase 2), y esto se hace con un **pool de workers concurrentes** (por defecto
+   4) en vez de ir uno a uno.
+3. **Caché por vídeo, no por canal:** `out/raw/<ID_BANDA>-<slug>.ndjson` se
+   escribe línea a línea a medida que llegan resultados. Cortar el proceso a
+   media extracción no pierde nada — la siguiente ejecución solo pide los
+   vídeos que faltan.
+
+Resultado medido sobre `@lascigarreras` (canal real, muy activo): la pasada 1
+tarda ~45s y lista los 4.200+ vídeos sin un solo error; tras filtrar quedan
+~3.200 candidatos (se descartaron 280 solo-miembros con **cero** peticiones a
+esos vídeos). La pasada 2, con concurrencia 4, extrae a ~2,9 vídeos/segundo →
+toda la extracción de las 3 bandas de ejemplo (~4.240 candidatos) se completa en
+**~25 minutos**, sin errores.
 
 ```bash
 cd tools/ingest
-node extract.mjs --only 16 --max 3 --sleep 0   # smoke test (3 vídeos de una banda)
-node extract.mjs                               # pasada real: todos los canales, desde 2019
-node extract.mjs --force                       # ignora la caché y vuelve a bajar
+node extract.mjs --dry-run                     # cuenta candidatos por canal, sin descargar nada
+node extract.mjs --only 16 --max 20             # smoke test acotado (real, pero pequeño)
+node extract.mjs                                # pasada real completa (reanudable)
+node extract.mjs --force                        # ignora la caché por vídeo y repite todo
+node extract.mjs --concurrency 6 --sleep 0.3    # más rápido (a tu propio riesgo de cortesía con YouTube)
 ```
+
+Cada registro final: `id_banda, video_id, url, titulo, descripcion, publicado (ISO),
+duracion_seg, live_status, tab, channel, channel_id`. Los vídeos de solo-miembros,
+fuera de fecha o cuyo título ya delata ruido se descartan **antes** de pedir su
+descripción; los próximos estrenos (`is_upcoming`) también se omiten.
 
 ## Fase 2 — clasificador + extractor heurístico ✅
 
