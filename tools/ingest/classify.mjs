@@ -108,10 +108,21 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ── extracción de LOCALIDAD (del título: "... en <Localidad> <Año>") ───────
+// ── extracción de LOCALIDAD (del título) ────────────────────────────────────
+// Dos estilos vistos en canales reales:
+//   "... en Santaella 2026"                    (año pegado a la localidad)
+//   "... en la Cuesta del Rosario | Sábado Santo 2026 | ..." (año en otro
+//   segmento tras un separador; la localidad puede llevar artículo/conectores)
+// Se corta la captura en el primer separador o justo antes de un año, y se
+// exige que el título tenga un año EN ALGÚN PUNTO (evita falsos positivos
+// como "en directo", que además no empieza en mayúscula tras "en").
 function extractLocalidad(rawTitulo) {
-  const m = (rawTitulo || '').match(/\ben\s+([A-ZÁÉÍÓÚÑ][\wÀ-ÿ' -]{2,40}?)\s+(19|20)\d{2}\b/);
-  return m ? m[1].trim() : null;
+  const t = rawTitulo || '';
+  if (!/(19|20)\d{2}/.test(t)) return null;
+  const m = t.match(/\ben\s+((?:el|la|los|las)\s+)?([A-ZÁÉÍÓÚÑ][^|:\-–·»«\n]*?)(?=\s*[|:\-–·»«]|\s+(?:19|20)\d{2}\b|$)/);
+  if (!m) return null;
+  const loc = ((m[1] || '') + m[2]).trim().replace(/\s+(el|la|los|las|de|del)$/i, '').trim();
+  return loc || null;
 }
 
 // ── extracción de AUTORES (de la descripción) ───────────────────────────────
