@@ -67,10 +67,26 @@ function stripFalsosPositivos(haystackNorm) {
   return h;
 }
 
+// "ensayo" en la exclusión busca vídeos DE ensayo, pero "local/nave/sala de
+// ensayo" es solo el nombre del sitio donde graban (boilerplate habitual en
+// vídeos de estreno en audio) — sin esto se descartaban TODOS los estrenos
+// de algún canal solo por mencionar su sala de ensayos en la descripción.
+const EXCLUSION_FALSOS_POSITIVOS = [/(?:local|nave|sala|salon) de ensayo/g];
+
+function stripExclusionFalsosPositivos(haystackNorm) {
+  let h = haystackNorm;
+  for (const re of EXCLUSION_FALSOS_POSITIVOS) h = h.replace(re, ' ');
+  return h;
+}
+
 function classifyText(kw, tituloNorm, descNorm) {
+  for (const term of (kw.excluir_titulo?.terminos || [])) {
+    if (tituloNorm.includes(normalize(term))) return { clasificacion: 'otro', motivo: `excluido_titulo:${term}` };
+  }
   const haystack = `${tituloNorm}\n${descNorm}`;
+  const haystackExcl = stripExclusionFalsosPositivos(haystack);
   for (const term of kw.excluir) {
-    if (haystack.includes(normalize(term))) return { clasificacion: 'otro', motivo: `excluido:${term}` };
+    if (haystackExcl.includes(normalize(term))) return { clasificacion: 'otro', motivo: `excluido:${term}` };
   }
   const haystackCat = stripFalsosPositivos(haystack);
   // Orden de prioridad: estreno > novedad > recuperacion. Un vídeo puede tocar
@@ -108,14 +124,26 @@ const LABEL_PREFIX = /^[\s\p{Extended_Pictographic}️]*\s*(estreno( mundial| ab
 // extraído (p.ej. "4K | Desprecio | Estreno 2025" → sin esto se leía "4K").
 const QUALITY_PREFIX = /^\[?\s*(?:4k|8k|2k|hd|fhd|uhd)\s*\]?\s*[-|:]?\s*/i;
 
-function extractTitulo(rawTitulo, kw) {
-  const cleaned = (rawTitulo || '').trim().replace(QUALITY_PREFIX, '');
-
+function buscarEntrecomillado(text) {
   for (const [open, close] of QUOTE_PAIRS) {
     const re = new RegExp(`${escapeRe(open)}([^${escapeRe(close)}]{2,100})${escapeRe(close)}`);
-    const m = cleaned.match(re);
-    if (m && m[1].trim().length >= 2) return { titulo: m[1].trim(), confianza: 'alta' };
+    const m = text.match(re);
+    if (m && m[1].trim().length >= 2) return m[1].trim();
   }
+  return null;
+}
+
+function extractTitulo(rawTitulo, kw, descripcion) {
+  const cleaned = (rawTitulo || '').trim().replace(QUALITY_PREFIX, '');
+
+  const enTitulo = buscarEntrecomillado(cleaned);
+  if (enTitulo) return { titulo: enTitulo, confianza: 'alta' };
+
+  // Algunos canales no citan la marcha en el título pero sí en la descripción
+  // (p.ej. audios de estreno: 'Audio en directo de "Judio", obra compuesta
+  // por...' con título simplemente "JUDIO I ESTRENO (Directo)").
+  const enDesc = buscarEntrecomillado(descripcion || '');
+  if (enDesc) return { titulo: enDesc, confianza: 'alta' };
 
   const withoutLabel = cleaned.replace(LABEL_PREFIX, '').trim();
   const candidate = withoutLabel || cleaned;
@@ -126,6 +154,11 @@ function extractTitulo(rawTitulo, kw) {
     const idx = candidate.indexOf(sep);
     if (idx > 0 && idx < cut) cut = idx;
   }
+  // Separador estilístico: una "I" mayúscula suelta entre espacios, usado por
+  // algún canal en vez de "|" (p.ej. "JUDIO I ESTRENO (Directo)").
+  const mI = candidate.match(/\sI\s/);
+  if (mI && mI.index > 0 && mI.index < cut) cut = mI.index;
+
   const segment = candidate.slice(0, cut).trim();
   return { titulo: segment || null, confianza: 'baja' };
 }
@@ -165,6 +198,11 @@ function splitAutores(chunk) {
 const AUTOR_CONECTORES =
   'autor[ií]a de|compuesta por|compuesto por|obra de|original de|de';
 
+// Palabras que marcan dónde termina el nombre y empieza otra cosa (dedicatoria,
+// intérprete...). Sin "dedicad[oa]" frases como "de Fulano dedicada a la
+// Virgen..." se colaban enteras dentro del nombre capturado.
+const STOP_AUTOR = /\b(dedicad[oa]|interpretad[ao]|por la|por el|en el|en la|para)\b/i;
+
 function extractAutores(descripcion, tituloCandidato) {
   const desc = descripcion || '';
 
@@ -174,8 +212,7 @@ function extractAutores(descripcion, tituloCandidato) {
     const reAfterTitle = new RegExp(`${escTitulo}["'”’»]?\\s*,?\\s*(?:${AUTOR_CONECTORES})\\s+([^.\\n]{3,140})`, 'i');
     const m = desc.match(reAfterTitle);
     if (m) {
-      const stopped = m[1].split(/\b(interpretad[ao]|por la|por el|en el|en la|para)\b/i)[0];
-      const autores = splitAutores(stopped);
+      const autores = splitAutores(m[1].split(STOP_AUTOR)[0]);
       if (autores.length) return { autores, confianza: 'alta' };
     }
   }
@@ -183,7 +220,15 @@ function extractAutores(descripcion, tituloCandidato) {
   // 2. Etiqueta explícita "Autor(es):" / "Compositor(es):"
   const reLabel = desc.match(/\b(?:autor(?:es)?|compositor(?:es)?)\s*:\s*([^\n]{3,140})/i);
   if (reLabel) {
-    const autores = splitAutores(reLabel[1]);
+    const autores = splitAutores(reLabel[1].split(STOP_AUTOR)[0]);
+    if (autores.length) return { autores, confianza: 'media' };
+  }
+
+  // 3. "obra (musical) de <Autor>" sin repetir el título antes (p.ej. "Nueva
+  // obra musical de Jesús Barrera Ríos, dedicada a...").
+  const reObra = desc.match(/\bobra(?:\s+musical)?\s+de\s+([^.\n]{3,140})/i);
+  if (reObra) {
+    const autores = splitAutores(reObra[1].split(STOP_AUTOR)[0]);
     if (autores.length) return { autores, confianza: 'media' };
   }
 
@@ -201,7 +246,7 @@ function buildCandidate(video, kw) {
   }
 
   const flags = [];
-  const { titulo: pTitulo, confianza: tituloConfianza } = extractTitulo(video.titulo, kw);
+  const { titulo: pTitulo, confianza: tituloConfianza } = extractTitulo(video.titulo, kw, video.descripcion);
   if (!pTitulo) flags.push('sin_titulo_detectado');
   if (tituloConfianza === 'baja') flags.push('titulo_sin_comillas');
 

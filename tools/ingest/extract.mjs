@@ -44,7 +44,7 @@ const EXCLUDED_AVAILABILITY = new Set(['subscriber_only', 'premium_only', 'priva
 
 // ── args ─────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const a = { force: false, max: 0, only: null, since: 2019, sleep: 0.4, concurrency: 4, dryRun: false };
+  const a = { force: false, max: 0, only: null, since: 2019, sleep: 0.4, concurrency: 4, dryRun: false, months: null };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
     if (t === '--force') a.force = true;
@@ -54,6 +54,11 @@ function parseArgs(argv) {
     else if (t === '--since') a.since = parseInt(argv[++i], 10) || 2019;
     else if (t === '--sleep') a.sleep = Number(argv[++i]) || 0;
     else if (t === '--concurrency') a.concurrency = Math.max(1, parseInt(argv[++i], 10) || 4);
+    else if (t === '--months') {
+      const m = String(argv[++i]).match(/^(\d{1,2})-(\d{1,2})$/);
+      if (!m) { console.error('--months espera "INICIO-FIN", p.ej. --months 10-3'); process.exit(2); }
+      a.months = { start: parseInt(m[1], 10), end: parseInt(m[2], 10) };
+    }
     else { console.error(`Argumento no reconocido: ${t}`); process.exit(2); }
   }
   return a;
@@ -75,6 +80,13 @@ const isoDate = (yyyymmdd) =>
     : null;
 
 const normalize = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** ¿mes (1-12) dentro de [start,end]? admite rango que cruza fin de año (10-3 = oct..mar). */
+function monthInRange(month, range) {
+  if (!range || !month) return true;
+  const { start, end } = range;
+  return start <= end ? month >= start && month <= end : month >= start || month <= end;
+}
 
 function tabUrls(url) {
   const u = url.trim().replace(/\/+$/, '');
@@ -222,7 +234,7 @@ async function processChannel(idBanda, canalUrl, kw) {
     console.log(`${entries.length} listados, ${added} nuevos`);
   }
 
-  const dropped = { miembros: 0, fecha: 0, titulo_excluido: 0, upcoming: 0 };
+  const dropped = { miembros: 0, fecha: 0, mes: 0, titulo_excluido: 0, upcoming: 0 };
   const excluirNorm = kw.excluir.map(normalize);
   const candidates = [];
   for (const [videoId, { entry: v, tab }] of seenFlat) {
@@ -230,6 +242,12 @@ async function processChannel(idBanda, canalUrl, kw) {
     if (v.live_status === 'is_upcoming') { dropped.upcoming++; continue; }
     const year = v.upload_date ? parseInt(v.upload_date.slice(0, 4), 10) : null;
     if (year && year < args.since - 1) { dropped.fecha++; continue; } // colchón; filtro fino tras pasada 2
+    if (args.months) {
+      const month = v.upload_date ? parseInt(v.upload_date.slice(4, 6), 10) : null;
+      // colchón de ±1 mes por la fecha aproximada (approximate_date puede errar por semanas)
+      const holgada = { start: ((args.months.start - 2 + 12) % 12) + 1, end: (args.months.end % 12) + 1 };
+      if (month && !monthInRange(month, holgada)) { dropped.mes++; continue; }
+    }
     const tituloNorm = normalize(v.title);
     if (excluirNorm.some((k) => tituloNorm.includes(k))) { dropped.titulo_excluido++; continue; }
     candidates.push({ videoId, tab });
@@ -238,7 +256,7 @@ async function processChannel(idBanda, canalUrl, kw) {
   console.log(
     `  [1/2] filtrado: ${seenFlat.size} vistos → ${candidates.length} candidatos ` +
     `(descartados: ${dropped.miembros} solo-miembros, ${dropped.fecha} fuera de fecha, ` +
-    `${dropped.titulo_excluido} título excluido, ${dropped.upcoming} próximos)`
+    `${dropped.mes} fuera de mes, ${dropped.titulo_excluido} título excluido, ${dropped.upcoming} próximos)`
   );
 
   if (args.dryRun) return { listados: seenFlat.size, candidatos: candidates.length, dropped };
@@ -266,7 +284,8 @@ async function processChannel(idBanda, canalUrl, kw) {
     } else {
       const v = res.video;
       const year = v.upload_date ? parseInt(v.upload_date.slice(0, 4), 10) : null;
-      if (v.live_status === 'is_upcoming' || (year && year < args.since)) {
+      const month = v.upload_date ? parseInt(v.upload_date.slice(4, 6), 10) : null;
+      if (v.live_status === 'is_upcoming' || (year && year < args.since) || (args.months && !monthInRange(month, args.months))) {
         fueraDeRango++;
       } else {
         const rec = slimRecord(idBanda, canalUrl, seenFlat.get(videoId)?.tab ?? 'videos', v);

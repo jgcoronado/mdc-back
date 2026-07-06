@@ -46,6 +46,10 @@
     "resumen",
     "highlights"
   ],
+  "excluir_titulo": {
+    "_doc": "Igual que excluir, pero solo mira el TÍTULO del vídeo, no la descripción — para keywords que aparecen como boilerplate de canal en pie de página (p.ej. el nombre de un podcast propio del canal, mencionado en TODAS las descripciones) y darían muchísimos falsos positivos si se buscaran en el texto completo.",
+    "terminos": ["podcast"]
+  },
   "extraccion": {
     "_doc": "Pistas para extraer el título de la marcha del título del vídeo (Fase 2). Se busca texto entrecomillado primero; si no, se parte por estos separadores.",
     "separadores": ["|", "-", "//", "·", "»", "«", ":"],
