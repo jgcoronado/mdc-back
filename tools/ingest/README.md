@@ -191,7 +191,28 @@ Coincidencias medias (0.75–0.9) también quedan pendientes, solo con aviso.
 `dedup.mjs` enriquece `out/candidatos.ndjson` in-place, dejándolo listo para
 la Fase 4 (import al panel admin).
 
+## Fase 4 — panel de revisión (PHP) ✅
+
+1. Importa los candidatos ya deduplicados a la tabla de staging:
+   ```bash
+   php php/app/tools/import_candidatos.php tools/ingest/out/candidatos.ndjson
+   ```
+   Upsert por `VIDEO_ID`: si un candidato ya fue revisado (aceptado/descartado/
+   duplicado), **no se toca** al reimportar — solo se refrescan los que
+   siguen `pendiente`. Así puedes repetir Fases 1-4 sin perder decisiones ya
+   tomadas.
+2. Entra en `/dashboard/ingesta` (con sesión admin): lista con filtros por
+   estado/banda/clasificación y badges de confianza/duplicado.
+3. Abre un candidato para revisarlo: vídeo embebido, campos propuestos
+   editables (mismo formulario que "Añadir marcha"), selector de autor con
+   el autocomplete existente y un enlace "＋ crear compositor" (con el nombre
+   detectado precargado) para los que aún no existen en la BD.
+4. **Aceptar** crea la marcha (reutilizando la misma lógica de alta que el
+   resto del panel) y además fija `AUDIO` con la URL del vídeo de origen.
+   **Descartar** admite un motivo opcional. Ambas acciones exigen que el
+   candidato siga `pendiente` (comprobado en el servidor, no solo en la
+   interfaz) y quedan registradas en el audit log.
+
 ## Próximas fases
 
-- **Fase 4** — panel de revisión PHP (import NDJSON + aceptar/descartar).
 - **Fase 5** — primera pasada real con tu lista de bandas.
