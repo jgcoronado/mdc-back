@@ -167,8 +167,31 @@ node classify.mjs                 # out/videos.ndjson → out/candidatos.ndjson
 node classify.mjs --debug         # + out/descartados.ndjson con el motivo de cada descarte
 ```
 
+## Fase 3 — dedup contra marchas existentes ✅
+
+1. Exporta las marchas de las bandas con canal registrado (solo lectura):
+   ```bash
+   php php/app/tools/export_marchas.php > tools/ingest/out/marchas.json
+   ```
+2. Cruza cada candidato contra las marchas de **su misma banda de estreno**
+   por similitud de título (Levenshtein normalizado, sin dependencias):
+   ```bash
+   cd tools/ingest
+   node dedup.mjs
+   ```
+
+Regla acordada: una **recuperación** con coincidencia fuerte (≥0.9) ya existe
+en la BD → se marca `estado=duplicado` y no llega al panel como candidato
+nuevo. Un **estreno/novedad** con coincidencia **nunca se autodescarta** (por
+definición debería ser nuevo — un match es una señal de alerta para el
+revisor, no una prueba de duplicado): queda `pendiente` con el match anotado
+(`match_marcha_id`, `match_titulo`, `match_score`) para que decida un humano.
+Coincidencias medias (0.75–0.9) también quedan pendientes, solo con aviso.
+
+`dedup.mjs` enriquece `out/candidatos.ndjson` in-place, dejándolo listo para
+la Fase 4 (import al panel admin).
+
 ## Próximas fases
 
-- **Fase 3** — dedup contra `marcha` (recuperaciones solo si no existen).
 - **Fase 4** — panel de revisión PHP (import NDJSON + aceptar/descartar).
 - **Fase 5** — primera pasada real con tu lista de bandas.
