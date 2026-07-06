@@ -255,7 +255,9 @@ final class Pages
             foreach (Db::all("SELECT ID_AUTOR AS id, (NOMBRE || ' ' || APELLIDOS) AS label FROM autor") as $r) {
                 $urls[] = [$base . Slug::buildDetailPath('autor', $r['id'], (string) $r['label']), 'monthly', '0.6'];
             }
-            foreach (Db::all('SELECT ID_BANDA AS id, NOMBRE_BREVE AS label FROM banda') as $r) {
+            // NOMBRE_COMPLETO para que el slug coincida con la canónica del detalle
+            // (el detalle usa NOMBRE_COMPLETO; con NOMBRE_BREVE el sitemap daba 308).
+            foreach (Db::all('SELECT ID_BANDA AS id, NOMBRE_COMPLETO AS label FROM banda') as $r) {
                 $urls[] = [$base . Slug::buildDetailPath('banda', $r['id'], (string) $r['label']), 'monthly', '0.6'];
             }
             foreach (Db::all('SELECT ID_DISCO AS id, NOMBRE_CD AS label FROM disco') as $r) {
