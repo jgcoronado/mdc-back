@@ -29,7 +29,11 @@ final class Db
             throw new RuntimeException("Base de datos no encontrada en: {$path} — descarga mdc.db (ver php/README.md).");
         }
 
-        $pdo = new PDO('sqlite:' . $path, null, null, [
+        // Pdo\Sqlite (PHP 8.4+) expone createFunction() sin deprecar; una
+        // instancia PDO "plana" solo tiene el alias sqliteCreateFunction(),
+        // deprecado desde PHP 8.5. Instanciar la subclase evita el aviso.
+        $pdoClass = class_exists(\Pdo\Sqlite::class) ? \Pdo\Sqlite::class : PDO::class;
+        $pdo = new $pdoClass('sqlite:' . $path, null, null, [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
@@ -43,7 +47,13 @@ final class Db
         }
         $pdo->exec('PRAGMA foreign_keys = ON');
         $pdo->exec('PRAGMA busy_timeout = 5000');
-        $pdo->sqliteCreateFunction('NOACC', [self::class, 'noAcc'], 1);
+        // PDO::sqliteCreateFunction() está deprecado desde PHP 8.5 en favor de
+        // Pdo\Sqlite::createFunction() (PHP 8.4+); el fallback cubre PHP <8.4.
+        if (method_exists($pdo, 'createFunction')) {
+            $pdo->createFunction('NOACC', [self::class, 'noAcc'], 1);
+        } else {
+            $pdo->sqliteCreateFunction('NOACC', [self::class, 'noAcc'], 1);
+        }
 
         self::$pdo = $pdo;
         return $pdo;
