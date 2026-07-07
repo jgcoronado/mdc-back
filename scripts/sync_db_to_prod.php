@@ -19,15 +19,21 @@ declare(strict_types=1);
  *   php scripts/sync_db_to_prod.php --dry-run           # solo comprueba, no sube nada
  *   php scripts/sync_db_to_prod.php --max-days 15       # umbral distinto a 10 días
  *   php scripts/sync_db_to_prod.php --local ruta/mdc.db # otro fichero local
+ *   php scripts/sync_db_to_prod.php --skip-move         # no mueve el .db actual a backups/
+ *                                                         (la red de seguridad extra es
+ *                                                          redundante si ya hay un backup
+ *                                                          reciente, que es lo que exige el
+ *                                                          guardarraíl de todas formas)
  */
 
 // ── args ─────────────────────────────────────────────────────────────────
-$args = ['dryRun' => false, 'maxDays' => 10, 'local' => __DIR__ . '/../php/data/mdc.db'];
+$args = ['dryRun' => false, 'maxDays' => 10, 'local' => __DIR__ . '/../php/data/mdc.db', 'skipMove' => false];
 for ($i = 1; $i < $argc; $i++) {
     $a = $argv[$i];
     if ($a === '--dry-run') $args['dryRun'] = true;
     elseif ($a === '--max-days') $args['maxDays'] = (int) $argv[++$i];
     elseif ($a === '--local') $args['local'] = $argv[++$i];
+    elseif ($a === '--skip-move') $args['skipMove'] = true;
     else { fwrite(STDERR, "Argumento no reconocido: $a\n"); exit(2); }
 }
 
@@ -171,15 +177,20 @@ if ($args['dryRun']) {
 // como backup válido.)
 $tsAhora = (new DateTimeImmutable())->format('Ymd-His');
 $nombrePreSync = "mdc-$tsAhora.db";
-echo "Moviendo private/mdc.db → private/backups/$nombrePreSync (red de seguridad)…\n";
 $privateDir = $prefix . 'private';
-$renombrado = ftpQuote($baseUrl, $user, $pass, $privateDir, [
-    'RNFR mdc.db',
-    "RNTO backups/$nombrePreSync",
-]);
-if (!$renombrado) {
-    fwrite(STDERR, "\n⛔ ABORTADO: no se pudo mover el .db actual a backups/ antes de sobrescribir. No se ha subido nada.\n");
-    exit(1);
+if ($args['skipMove']) {
+    echo "--skip-move: no se mueve el .db actual (ya hay un backup reciente que cubre el rollback).\n";
+} else {
+    echo "Moviendo private/mdc.db → private/backups/$nombrePreSync (red de seguridad)…\n";
+    $renombrado = ftpQuote($baseUrl, $user, $pass, $privateDir, [
+        'RNFR mdc.db',
+        "RNTO backups/$nombrePreSync",
+    ]);
+    if (!$renombrado) {
+        fwrite(STDERR, "\n⛔ ABORTADO: no se pudo mover el .db actual a backups/ antes de sobrescribir. No se ha subido nada.\n");
+        fwrite(STDERR, "   (Si ya hay un backup reciente, puedes reintentar con --skip-move para saltarte este paso.)\n");
+        exit(1);
+    }
 }
 
 // ── 3. Subir el .db local a private/mdc.db ───────────────────────────────
@@ -190,4 +201,8 @@ if (!$subido) {
     exit(1);
 }
 
-echo "\n✅ Sincronizado: private/mdc.db actualizado. Copia previa a salvo en private/backups/$nombrePreSync.\n";
+if ($args['skipMove']) {
+    echo "\n✅ Sincronizado: private/mdc.db actualizado. Rollback disponible desde el backup reciente en private/backups/.\n";
+} else {
+    echo "\n✅ Sincronizado: private/mdc.db actualizado. Copia previa a salvo en private/backups/$nombrePreSync.\n";
+}
