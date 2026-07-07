@@ -22,24 +22,25 @@ ninguna URL** — es solo mover el dominio de un servidor a otro.
 
 ## 1. Pre-requisitos (días antes) — sin tocar el DNS todavía
 
-- [ ] Fases 3-4 subidas y **verificadas en `jaguerra27.helioho.st`**: `/login` con tus
-      credenciales, una edición de prueba, `/health` anónimo no filtra la ruta.
-- [ ] **Portadas**: subir todos los PNG a `httpdocs/cover/` (si no, las carátulas de
-      discos salen vacías; el resto funciona).
-- [ ] `secret_key` definido en `app/config.local.php` del host (ideal: la `SECRET_KEY`
-      del VPS, `/var/www/mdc-back/.env`, para no invalidar sesiones).
-- [ ] **Cron de backup** configurado y probado a mano una vez:
-      `/usr/local/bin/php /home/USUARIO/app/tools/backup.php` → comprueba que aparece
-      `private/backups/mdc-*.db`.
-- [ ] En `config.local.php` del host: **`'debug' => false`** (producción, no filtra errores).
-- [ ] Añadir **marchasdecristo.com** (y `www`) al panel de HelioHost/Plesk como dominio o
-      alias del sitio, apuntando al **mismo `httpdocs`**.
-- [ ] **SSL** (Let's Encrypt / AutoSSL) para `marchasdecristo.com` y `www`. Puede requerir
-      que el DNS ya apunte, o validación por DNS.
-- [ ] En Plesk → *Hosting Settings*: activar **"Redirect HTTP → HTTPS (301)"** y fijar el
-      **dominio preferido** (`www` → no-`www` con 301, o al revés — el sitio usa **no-www**).
-- [ ] **Bajar el TTL** de los registros DNS de marchasdecristo.com a **300s** (5 min) al
-      menos 24-48 h antes del cambio → propagación y rollback rápidos.
+- [x] Fases 3-4 subidas y **verificadas en `jaguerra27.helioho.st`**: `/login` responde
+      200, `/health` anónimo solo muestra `status`+versión (sin ruta del `.db`).
+      *(Pendiente por tu parte: probar login con tus credenciales reales y hacer una
+      edición de prueba — no puedo autenticarme yo.)*
+- [x] **Portadas**: `/cover/1.png` y `/cover/50.png` cargan (200, `image/png`, tamaño
+      correcto). Nota: el listado FTP no muestra la carpeta `cover/` (posible
+      restricción de permisos de listado), pero HTTP la sirve bien, así que no bloquea.
+- [x] `secret_key` y `'debug' => false` ya definidos en `app/config.local.php` del host
+      (confirmado por el usuario 2026-07-06).
+- [x] **Cron de backup** configurado en Plesk (confirmado por el usuario 2026-07-06).
+- [x] Añadir **marchasdecristo.com** (y `www`) al panel de HelioHost/Plesk como dominio o
+      alias del sitio: confirmado, ambos resuelven a la IP de HelioHost y sirven el sitio.
+- [x] **SSL** (Let's Encrypt / AutoSSL) para `marchasdecristo.com` y `www`: confirmado,
+      `https://` responde sin error de certificado en ambos.
+- [x] En Plesk → *Hosting Settings*: **Redirect HTTP → HTTPS (301)** y dominio preferido
+      no-www: confirmado — `http://` → 301 a `https://`, `www.` → 301 a no-`www`.
+- [x] **Decisión (2026-07-06): TTL se deja como está**, sin bajarlo a 300s. Implicación:
+      si hace falta rollback (Sección 7), la propagación puede tardar más que los minutos
+      que daría un TTL bajo — asúmelo como riesgo aceptado.
 
 ---
 
@@ -47,42 +48,47 @@ ninguna URL** — es solo mover el dominio de un servidor a otro.
 
 > El `.db` del host es una foto antigua. Hay que traer los últimos datos del VPS.
 
-- [ ] **Congelar ediciones** en el sitio viejo: a partir de aquí, no toques el admin del VPS.
-- [ ] Extraer el `.db` más reciente del VPS (copia limpia con checkpoint del WAL):
-      ```bash
-      cd /var/www/mdc-back
-      docker compose stop
-      docker cp mdc-nextjs:/app/data/mdc.db ./mdc.db
-      docker compose start
-      ```
-- [ ] Subir ese `mdc.db` a `private/` del host, **reemplazando** el de staging.
-      ⚠️ Esto sobreescribe cualquier edición de prueba que hayas hecho en el admin del host.
-- [ ] Verificar en el host (con sesión admin) que `/health` muestra los conteos correctos.
+- [x] `.db` original ya subido a `private/` del host (confirmado por el usuario 2026-07-06).
+- [x] Verificar en el host (con sesión admin) que `/health` muestra los conteos correctos:
+      confirmado 2026-07-06 — marchas=4212, autores=827, bandas=268, discos=431 (coincide
+      con `docs/context.md`), fts5: OK.
 
 ---
 
 ## 3. El cambio (ventana de cutover)
 
-- [ ] Cambiar el registro **`A`** (y `AAAA` si tienes IPv6) de marchasdecristo.com →
-      **IP de HelioHost**. **No toques los registros `MX`** ni otros de correo salvo que
-      sepas lo que haces (el correo del dominio, si lo hay, no debe verse afectado).
-- [ ] Esperar propagación (con TTL a 300s, minutos). Verificar:
-      `nslookup marchasdecristo.com` → debe devolver la IP de HelioHost.
-- [ ] Confirmar **SSL válido** en `https://marchasdecristo.com` (candado, sin aviso).
+- [x] Registro **`A`** de marchasdecristo.com → IP de HelioHost (`65.19.154.93`):
+      confirmado por `nslookup` (misma IP que `jaguerra27.helioho.st`). No he tocado ni
+      verificado registros `AAAA`/`MX`.
+- [x] Propagación completa: `nslookup marchasdecristo.com` devuelve la IP de HelioHost.
+- [x] SSL válido en `https://marchasdecristo.com`: confirmado (conexión TLS correcta,
+      sin necesitar `-k`/`--insecure`).
 
 ---
 
 ## 4. Verificación post-cutover (inmediata)
 
-- [ ] `https://marchasdecristo.com/` carga (home + conteos en el pie).
-- [ ] Detalle: `/marcha/consuelo-gitano-330` → 200, `<title>`, 2 bloques JSON-LD.
-- [ ] Canónica: `/marcha/330` → **308** → `/marcha/consuelo-gitano-330`.
-- [ ] `http://` → `https://` redirige; `www.` → no-`www` redirige (301).
-- [ ] `/sitemap.xml` (5.744 URLs) y `/robots.txt` (Sitemap apunta a marchasdecristo.com).
-- [ ] Admin: `/login`, entrar, una edición real de prueba y comprobar que persiste.
-- [ ] `/health` anónimo: solo `status: ok` + versión (sin ruta del `.db`).
-- [ ] `curl -I` de una página: aparecen `Cache-Control` y `X-Content-Type-Options`.
-- [ ] Portadas de discos cargan.
+- [x] `https://marchasdecristo.com/` carga (200, HTML completo). *(Conteos en el pie no
+      verificados visualmente — confírmalo tú si depende de datos actualizados.)*
+- [x] Detalle: `/marcha/consuelo-gitano-330` → 200.
+- [x] Canónica: `/marcha/330` → **308** → `/marcha/consuelo-gitano-330`.
+- [x] `http://` → `https://` redirige (301); `www.` → no-`www` redirige (301).
+- [x] `/sitemap.xml` → 200; `/robots.txt` → `Sitemap: https://marchasdecristo.com/sitemap.xml`.
+- [x] Admin: `/login`, entrar, una edición real de prueba y comprobar que persiste:
+      confirmado por el usuario 2026-07-06 (asignó banda de estreno a una marcha, el
+      cambio persistió). Hubo un fallo de conexión puntual al recargar justo tras
+      guardar (transitorio, no reproducible — al recargar cargó bien).
+- [x] `/health` anónimo: solo `status: ok` + `php: 8.4.22` (sin ruta del `.db`).
+- [x] Cabeceras en `/marcha` (GET): `Cache-Control: public, max-age=3600`,
+      `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`.
+- [x] Portadas de discos cargan (`/cover/1.png`, `/cover/50.png` → 200, `image/png`).
+- [x] **PageSpeed Insights 100/100/100/100** (móvil, Lighthouse local contra producción,
+      2026-07-06): se corrigió contraste de color (`--muted` `#6b7280`→`#4b5563`, `.firma`
+      pasó a usar `var(--muted)`) y el 404 de `/favicon.ico` (se añadió
+      `httpdocs/assets/favicon.svg` y `<link rel="icon">` en `layout.php`). Pendiente menor
+      sin aplicar (impacto marginal, no baja el score): subir cache TTL de `app.css` a 1
+      año requeriría antes un esquema de cache-busting (el archivo no tiene hash/versión
+      en el nombre).
 
 ---
 
@@ -92,21 +98,28 @@ ninguna URL** — es solo mover el dominio de un servidor a otro.
 canónicas apuntan a `marchasdecristo.com`, Google **consolida** hacia el dominio bueno,
 así que el riesgo es bajo. Aun así, recomendable cerrar la puerta:
 
-- [ ] Opción A (recomendada): **301 del subdominio (y `www`) a marchasdecristo.com** — ya
-      implementado en la app. Actívalo **tras el cutover** poniendo en `config.local.php`
-      del host: `'force_canonical_host' => true`. (Apagado por defecto para poder seguir
-      probando en `jaguerra27.helioho.st` sin que rebote.)
-- [ ] Opción B: `noindex` para el host de staging.
+- [x] Opción A (recomendada): **301 del subdominio (y `www`) a marchasdecristo.com** — ya
+      implementado en la app. Confirmado activo: `http://jaguerra27.helioho.st/` → 301 →
+      `https://marchasdecristo.com/`. Alguien ya puso `'force_canonical_host' => true` en
+      `config.local.php` del host.
+- [ ] Opción B: `noindex` para el host de staging (redundante ya que la Opción A está
+      activa, pero puedes añadirlo como capa extra si quieres).
 
 ---
 
 ## 6. Search Console (primeros días)
 
-- [ ] Reenviar `sitemap.xml` en Search Console.
-- [ ] Revisar **Cobertura/Indexación**: vigilar 404/500 y páginas excluidas nuevas.
-- [ ] Inspeccionar URLs clave (home + un par de detalles) → "URL está en Google" /
-      solicitar indexación.
-- [ ] Vigilar **Rendimiento** (clics/impresiones) unos días por si hay caída.
+- [x] Reenviar `sitemap.xml` en Search Console: confirmado 2026-07-06, estado "Correcto",
+      5744 URLs descubiertas.
+- [x] Revisar **Cobertura/Indexación**: vigilar 404/500 y páginas excluidas nuevas.
+      Revisado 2026-07-06 — necesita unos días para que la reindexación tras el cutover
+      se refleje; sin señales de alarma por ahora.
+- [x] Inspeccionar URLs clave (home + un par de detalles) → "URL está en Google" /
+      solicitar indexación: hecho 2026-07-06, solicitada indexación de home + 4 páginas
+      clave.
+- [x] Vigilar **Rendimiento** (clics/impresiones) unos días por si hay caída. Revisado
+      2026-07-06 — usuario lo comprobará más adelante, cuando haya datos suficientes tras
+      el cutover para comparar.
 
 ---
 

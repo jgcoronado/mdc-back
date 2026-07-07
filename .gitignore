@@ -1,18 +1,10 @@
 # Environment — never commit real secrets
 /.env
-nextjs/.env.local
-nextjs/.env*.local
+/.env.ftp
 
 # Runtime data
 /data
 /snapshots
-/node_modules
-nextjs/node_modules
-
-# Build output
-nextjs/.next
-nextjs/next-env.d.ts
-nextjs/tsconfig.tsbuildinfo
 
 # Session logs (auto-generated docs)
 /docs/session-*.md
