@@ -344,6 +344,21 @@ final class Admin
         Http::redirect('/dashboard/ingesta?descartado=1');
     }
 
+    // ── Autocomplete de dedicatorias (JSON, para el panel de ingesta) ────────
+    public static function dedicatoriaFastSearch(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (Auth::currentSession() === null) {
+            http_response_code(401);
+            echo json_encode(['code' => 'AUTH_REQUIRED', 'data' => []]);
+            return;
+        }
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $data = Repo::searchDedicatorias($q);
+        echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     // ── Autocomplete de autores (JSON) ───────────────────────────────────────
     public static function autorFastSearch(): void
     {

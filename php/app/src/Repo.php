@@ -206,6 +206,28 @@ final class Repo
         );
     }
 
+    /**
+     * Predictivo de dedicatorias (panel de ingesta): combinaciones distintas de
+     * DEDICATORIA/LOCALIDAD/PROVINCIA ya usadas en marchas existentes, para no
+     * reescribir a mano hermandades que ya están en la BD. Ordenado por
+     * frecuencia (la combinación más repetida primero).
+     *
+     * @return list<array{DEDICATORIA:string,LOCALIDAD:?string,PROVINCIA:?string,N:int}>
+     */
+    public static function searchDedicatorias(string $q, int $limit = 10): array
+    {
+        if (mb_strlen($q) < 7) return [];
+        return Db::all(
+            "SELECT DEDICATORIA, LOCALIDAD, PROVINCIA, COUNT(*) AS N
+             FROM marcha
+             WHERE DEDICATORIA IS NOT NULL AND DEDICATORIA <> '' AND DEDICATORIA LIKE ?
+             GROUP BY DEDICATORIA, LOCALIDAD, PROVINCIA
+             ORDER BY N DESC, DEDICATORIA ASC
+             LIMIT ?",
+            ['%' . $q . '%', $limit]
+        );
+    }
+
     // ── Autor ────────────────────────────────────────────────────────────────
 
     public static function fetchAutor(string $id): ?array

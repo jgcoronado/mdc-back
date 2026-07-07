@@ -91,6 +91,7 @@ $router->post('/dashboard/autor/add', [Admin::class, 'autorAddPost']);
 $router->get('/dashboard/autor/{id}', [Admin::class, 'autorEditForm']);
 $router->post('/dashboard/autor/{id}', [Admin::class, 'autorEditPost']);
 $router->get('/api/autor/fastSearch', [Admin::class, 'autorFastSearch']);
+$router->get('/api/dedicatoria/fastSearch', [Admin::class, 'dedicatoriaFastSearch']);
 
 // ── Ingesta (revisión de candidatos de YouTube, ver tools/ingest/) ───────────
 $router->get('/dashboard/ingesta', [Admin::class, 'ingestaList']);

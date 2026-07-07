@@ -8,11 +8,10 @@ $flags = $cand['FLAGS'] ? (json_decode((string) $cand['FLAGS'], true) ?: []) : [
 $fields = [
     ['TITULO', 'Título', 'text', $cand['P_TITULO'] ?? ''],
     ['FECHA', 'Fecha (año de 4 dígitos)', 'text', $cand['P_FECHA'] ?? ''],
-    ['DEDICATORIA', 'Dedicatoria', 'text', $cand['P_DEDICATORIA'] ?? ''],
     ['LOCALIDAD', 'Localidad', 'text', $cand['P_LOCALIDAD'] ?? ''],
     ['PROVINCIA', 'Provincia', 'text', $cand['P_PROVINCIA'] ?? ''],
-    ['BANDA_ESTRENO', 'ID de la banda de estreno', 'number', $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? ''],
 ];
+$bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 ?>
 <div class="stack admin-form">
     <div class="admin-bar">
@@ -67,11 +66,27 @@ $fields = [
     <form class="panel" action="/dashboard/ingesta/<?= (int) $cand['ID_CAND'] ?>/aceptar" method="POST" id="aceptarForm">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
 <?php foreach ($fields as [$key, $label, $type, $default]): ?>
+<?php if ($key === 'LOCALIDAD'): ?>
+        <div class="field">
+            <label class="field-label" for="DEDICATORIA">Dedicatoria</label>
+            <div class="autocomplete">
+                <input class="input" id="DEDICATORIA" name="DEDICATORIA" type="text"
+                       value="<?= V::e($cand['P_DEDICATORIA'] ?? '') ?>" autocomplete="off">
+                <div id="dedicatoriaSuggest" class="suggest" hidden></div>
+            </div>
+            <p class="muted">Escribe 7+ caracteres para buscar hermandades ya existentes en la BD. Al elegir una, se rellenan también localidad y provincia.</p>
+        </div>
+<?php endif; ?>
         <div class="field">
             <label class="field-label" for="<?= $key ?>"><?= $label ?></label>
             <input class="input" id="<?= $key ?>" name="<?= $key ?>" type="<?= $type ?>" value="<?= V::e($default) ?>">
         </div>
 <?php endforeach; ?>
+        <div class="field">
+            <label class="field-label" for="BANDA_ESTRENO">ID de la banda de estreno</label>
+            <input class="input" id="BANDA_ESTRENO" name="BANDA_ESTRENO" type="number" value="<?= V::e($bandaEstrenoVal) ?>">
+            <p class="muted">Banda del candidato: <strong><?= V::e($cand['NOMBRE_BREVE'] ?? ('#' . $cand['ID_BANDA'])) ?></strong> (#<?= (int) $cand['ID_BANDA'] ?>)<?php if ((string) $bandaEstrenoVal !== (string) $cand['ID_BANDA']): ?> — el valor del campo es distinto, revísalo<?php endif; ?>.</p>
+        </div>
         <div class="field">
             <label class="field-label" for="DETALLES_MARCHA">Detalles</label>
             <textarea class="input" id="DETALLES_MARCHA" name="DETALLES_MARCHA" rows="3"></textarea>
@@ -121,4 +136,62 @@ document.querySelectorAll('.sugerido-autor').forEach(function (btn) {
         search.focus();
     });
 });
+
+// Predictivo de dedicatorias: a partir de 7 caracteres busca hermandades ya
+// existentes en la BD (/api/dedicatoria/fastSearch). Si la dedicatoria es de
+// tipo hermandad ("Hdad" en el texto), al aceptar la sugerencia se rellenan
+// también localidad y provincia.
+(function () {
+    var input = document.getElementById('DEDICATORIA');
+    var suggest = document.getElementById('dedicatoriaSuggest');
+    if (!input || !suggest) return;
+
+    function closeSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
+
+    var timer, controller;
+    input.addEventListener('input', function () {
+        var q = input.value.trim();
+        clearTimeout(timer);
+        if (q.length < 7) { closeSuggest(); return; }
+        timer = setTimeout(async function () {
+            if (controller) controller.abort();
+            controller = new AbortController();
+            try {
+                var res = await fetch('/api/dedicatoria/fastSearch?q=' + encodeURIComponent(q),
+                    { signal: controller.signal, credentials: 'same-origin' });
+                var data = await res.json();
+                var rows = Array.isArray(data.data) ? data.data : [];
+                if (!rows.length) { closeSuggest(); return; }
+                suggest.innerHTML = '';
+                rows.forEach(function (r) {
+                    var esHermandad = /hdad/i.test(r.DEDICATORIA || '');
+                    var label = esHermandad
+                        ? [r.DEDICATORIA, r.LOCALIDAD, r.PROVINCIA].filter(Boolean).join(' - ')
+                        : r.DEDICATORIA;
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'suggest-item';
+                    b.textContent = label;
+                    b.addEventListener('click', function () {
+                        input.value = r.DEDICATORIA;
+                        if (esHermandad) {
+                            var loc = document.getElementById('LOCALIDAD');
+                            var prov = document.getElementById('PROVINCIA');
+                            if (loc && r.LOCALIDAD) loc.value = r.LOCALIDAD;
+                            if (prov && r.PROVINCIA) prov.value = r.PROVINCIA;
+                        }
+                        closeSuggest();
+                        input.focus();
+                    });
+                    suggest.appendChild(b);
+                });
+                suggest.hidden = false;
+            } catch (e) { /* abortado o red: ignorar */ }
+        }, 200);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!suggest.contains(e.target) && e.target !== input) closeSuggest();
+    });
+})();
 </script>
