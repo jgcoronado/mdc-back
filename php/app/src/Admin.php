@@ -324,10 +324,11 @@ final class Admin
         $fields = [];
         foreach (AdminRepo::INSERTABLE_MARCHA as $f) $fields[$f] = $_POST[$f] ?? '';
         $ids = self::postAutoresIds();
+        $guardarAudio = isset($_POST['guardar_audio']);
 
         if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED");
 
-        $r = AdminRepo::aceptarCandidato($id, $fields, $ids);
+        $r = AdminRepo::aceptarCandidato($id, $fields, $ids, $guardarAudio);
         if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/marcha/' . $r['marchaId'] . '?created=1');
         Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'));
     }

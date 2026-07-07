@@ -166,15 +166,16 @@ final class AdminRepo
 
     /**
      * Acepta un candidato: crea la marcha (con el mismo camino que addMarcha)
-     * y además fija AUDIO con la URL del vídeo de origen (addMarcha no admite
-     * AUDIO al crear porque una marcha añadida a mano normalmente no tiene
-     * vídeo todavía; aquí sí lo tenemos siempre).
+     * y, si $guardarAudio es true (por defecto), además fija AUDIO con la URL
+     * del vídeo de origen (addMarcha no admite AUDIO al crear porque una
+     * marcha añadida a mano normalmente no tiene vídeo todavía; aquí sí lo
+     * tenemos siempre, pero el revisor puede decidir no guardarlo).
      *
      * @param array<string,mixed> $fields
      * @param list<int> $autoresIds
      * @return array{code:string, marchaId?:int}
      */
-    public static function aceptarCandidato(int $idCand, array $fields, array $autoresIds): array
+    public static function aceptarCandidato(int $idCand, array $fields, array $autoresIds, bool $guardarAudio = true): array
     {
         $cand = Db::one('SELECT ESTADO, VIDEO_URL FROM ingest_candidato WHERE ID_CAND = ?', [$idCand]);
         if ($cand === null) return ['code' => 'NOT_FOUND'];
@@ -183,7 +184,7 @@ final class AdminRepo
         $r = self::addMarcha($fields, $autoresIds);
         if (($r['code'] ?? '') !== 'CREATED') return $r;
 
-        if (!empty($cand['VIDEO_URL'])) {
+        if ($guardarAudio && !empty($cand['VIDEO_URL'])) {
             self::editMarcha($r['marchaId'], ['AUDIO'], [$cand['VIDEO_URL']]);
         }
 

@@ -111,6 +111,13 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
             <p class="muted">Debe haber al menos un autor. Si no existe, créalo con el enlace "＋ crear" y vuelve a buscarlo aquí.</p>
         </div>
 
+        <div class="field">
+            <label class="row" style="align-items:center;gap:0.4rem;cursor:pointer">
+                <input type="checkbox" id="guardar_audio" name="guardar_audio" value="1" checked>
+                Guardar el vídeo como audio de la marcha
+            </label>
+        </div>
+
         <div class="row">
             <button class="btn btn-neutral" type="submit">Aceptar y crear marcha</button>
         </div>
