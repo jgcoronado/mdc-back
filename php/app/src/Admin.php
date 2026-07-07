@@ -137,7 +137,7 @@ final class Admin
     {
         $session = Auth::requireAuth();
         $id = (string) $p['id'];
-        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/marcha/$id?err=CSRF");
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/marcha/$id?err=CSRF", 302);
 
         $current = Repo::fetchMarchaRaw($id);
         if ($current === null) Http::notFound();
@@ -158,19 +158,19 @@ final class Admin
         $subIds = self::postAutoresIds();
         $authorChanged = $curIds !== $subIds;
 
-        if ($keys === [] && !$authorChanged) Http::redirect("/dashboard/marcha/$id?nochanges=1");
+        if ($keys === [] && !$authorChanged) Http::redirect("/dashboard/marcha/$id?nochanges=1", 302);
 
         if ($keys !== []) {
             $r = AdminRepo::editMarcha((int) $id, $keys, $values);
             if ($r['code'] === 'NOT_FOUND') Http::notFound();
-            if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/marcha/$id?err=" . $r['code']);
+            if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/marcha/$id?err=" . $r['code'], 302);
         }
         if ($authorChanged) {
-            if ($subIds === []) Http::redirect("/dashboard/marcha/$id?err=AUTHORS_REQUIRED");
+            if ($subIds === []) Http::redirect("/dashboard/marcha/$id?err=AUTHORS_REQUIRED", 302);
             $r = AdminRepo::editMarchaAutores((int) $id, $subIds);
-            if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/marcha/$id?err=" . $r['code']);
+            if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/marcha/$id?err=" . $r['code'], 302);
         }
-        Http::redirect("/dashboard/marcha/$id?saved=1");
+        Http::redirect("/dashboard/marcha/$id?saved=1", 302);
     }
 
     // ── Marcha: alta ─────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ final class Admin
 
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { $reRender('CSRF'); return; }
         $r = AdminRepo::addMarcha($fields, $ids);
-        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/marcha/' . $r['marchaId'] . '?created=1');
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/marcha/' . $r['marchaId'] . '?created=1', 302);
         $reRender($r['code'] ?? 'ERROR');
     }
 
@@ -221,7 +221,7 @@ final class Admin
     {
         $session = Auth::requireAuth();
         $id = (string) $p['id'];
-        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/autor/$id?err=CSRF");
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/autor/$id?err=CSRF", 302);
 
         $current = Repo::fetchAutorRaw($id);
         if ($current === null) Http::notFound();
@@ -235,11 +235,11 @@ final class Admin
                 $values[] = AdminRepo::normalize($sub);
             }
         }
-        if ($keys === []) Http::redirect("/dashboard/autor/$id?nochanges=1");
+        if ($keys === []) Http::redirect("/dashboard/autor/$id?nochanges=1", 302);
 
         $r = AdminRepo::editAutor((int) $id, $keys, $values);
-        if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/autor/$id?err=" . $r['code']);
-        Http::redirect("/dashboard/autor/$id?saved=1");
+        if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/autor/$id?err=" . $r['code'], 302);
+        Http::redirect("/dashboard/autor/$id?saved=1", 302);
     }
 
     // ── Autor: alta ──────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ final class Admin
 
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { $reRender('CSRF'); return; }
         $r = AdminRepo::addAutor($fields);
-        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/autor/' . $r['autorId'] . '?created=1');
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/autor/' . $r['autorId'] . '?created=1', 302);
         $reRender($r['code'] ?? 'ERROR');
     }
 
@@ -319,30 +319,30 @@ final class Admin
     {
         $session = Auth::requireAuth();
         $id = (int) $p['id'];
-        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF");
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF", 302);
 
         $fields = [];
         foreach (AdminRepo::INSERTABLE_MARCHA as $f) $fields[$f] = $_POST[$f] ?? '';
         $ids = self::postAutoresIds();
         $guardarAudio = isset($_POST['guardar_audio']);
 
-        if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED");
+        if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED", 302);
 
         $r = AdminRepo::aceptarCandidato($id, $fields, $ids, $guardarAudio);
-        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/ingesta?aceptado=' . $r['marchaId']);
-        Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'));
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/ingesta?aceptado=' . $r['marchaId'], 302);
+        Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
     }
 
     public static function ingestaDescartar(array $p): void
     {
         $session = Auth::requireAuth();
         $id = (int) $p['id'];
-        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF");
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF", 302);
 
         $motivo = trim((string) ($_POST['motivo'] ?? ''));
         $r = AdminRepo::descartarCandidato($id, $motivo !== '' ? $motivo : null);
-        if (($r['code'] ?? '') !== 'DISCARDED') Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'));
-        Http::redirect('/dashboard/ingesta?descartado=1');
+        if (($r['code'] ?? '') !== 'DISCARDED') Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect('/dashboard/ingesta?descartado=1', 302);
     }
 
     // ── Autocomplete de dedicatorias (JSON, para el panel de ingesta) ────────
