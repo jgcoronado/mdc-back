@@ -52,6 +52,7 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
     <meta property="og:url" content="<?= $e($og['url']) ?>">
 <?php endif; ?>
 <?php endif; ?>
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/app.css">
 <?php foreach ($jsonld as $schema): ?>
     <script type="application/ld+json"><?= Seo::json($schema) ?></script>
