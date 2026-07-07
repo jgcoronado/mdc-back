@@ -252,6 +252,58 @@ final class Repo
         return $autor;
     }
 
+    /**
+     * Autores cuyo NOMBRE, APELLIDOS o NOMBRE_ART contienen (por subcadena,
+     * insensible a mayúsculas/acentos) cada palabra de $q — igual criterio
+     * que searchDedicatorias/searchBandas, en vez de FTS5 (que solo hace
+     * match de palabra completa y por eso el predictivo de autor iba peor
+     * que el de dedicatoria). Pensado para autocompletar desde 3 caracteres.
+     *
+     * @return list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string}>
+     */
+    public static function autorCandidatosPorTexto(string $q, int $limit = 15): array
+    {
+        $tokens = preg_split('/\s+/u', trim(Db::noAcc($q)), -1, PREG_SPLIT_NO_EMPTY);
+        if ($tokens === []) return [];
+
+        $conditions = [];
+        $values = [];
+        foreach ($tokens as $t) {
+            $conditions[] = '(NOACC(NOMBRE) LIKE ? OR NOACC(APELLIDOS) LIKE ? OR NOACC(NOMBRE_ART) LIKE ?)';
+            $needle = '%' . $t . '%';
+            array_push($values, $needle, $needle, $needle);
+        }
+        $where = implode(' AND ', $conditions);
+
+        return Db::all(
+            "SELECT ID_AUTOR, (NOMBRE || ' ' || APELLIDOS) AS NOMBRE_COMPLETO
+             FROM autor WHERE $where
+             ORDER BY APELLIDOS ASC LIMIT ?",
+            [...$values, $limit]
+        );
+    }
+
+    /**
+     * Mejor autor existente para un nombre de texto libre (p.ej. extraído de
+     * un título de YouTube), comparado por similitud de texto. Devuelve null
+     * si no hay ningún candidato con solapamiento léxico.
+     *
+     * @return array{ID_AUTOR:int,NOMBRE_COMPLETO:string,score:float}|null
+     */
+    public static function mejorAutorPorNombre(string $nombre): ?array
+    {
+        $rows = self::autorCandidatosPorTexto($nombre, 50);
+
+        $mejor = null;
+        foreach ($rows as $r) {
+            $score = Similarity::ratio($nombre, (string) $r['NOMBRE_COMPLETO']);
+            if ($mejor === null || $score > $mejor['score']) {
+                $mejor = ['ID_AUTOR' => (int) $r['ID_AUTOR'], 'NOMBRE_COMPLETO' => (string) $r['NOMBRE_COMPLETO'], 'score' => $score];
+            }
+        }
+        return $mejor;
+    }
+
     public static function searchAutores(string $query, int $page = 1, int $limit = 20): array
     {
         parse_str($query, $params);

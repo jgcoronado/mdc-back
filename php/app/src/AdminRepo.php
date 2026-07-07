@@ -63,9 +63,11 @@ final class AdminRepo
     /**
      * @param array<string,mixed> $fields  campo => valor
      * @param list<int> $autoresIds
+     * @param int|null $excluirIdCand      candidato de ingesta que se está aceptando (si aplica), para no reevaluarse a sí mismo
+     * @param int|null $bandaOrigenCand    ID_BANDA del candidato aceptado (si aplica), por si BANDA_ESTRENO se corrigió a mano en el formulario
      * @return array{code:string, marchaId?:int}
      */
-    public static function addMarcha(array $fields, array $autoresIds): array
+    public static function addMarcha(array $fields, array $autoresIds, ?int $excluirIdCand = null, ?int $bandaOrigenCand = null): array
     {
         $safe = [];
         foreach (self::INSERTABLE_MARCHA as $f) {
@@ -100,6 +102,13 @@ final class AdminRepo
         });
 
         Db::logAdmin('INSERT', 'marcha', $marchaId, ['campos' => $cols, 'autores' => $ids]);
+        IngestaRepo::reevaluarTrasCrearMarcha(
+            $marchaId,
+            isset($safe['BANDA_ESTRENO']) ? (int) $safe['BANDA_ESTRENO'] : null,
+            (string) ($safe['TITULO'] ?? ''),
+            $excluirIdCand,
+            $bandaOrigenCand
+        );
         return ['code' => 'CREATED', 'marchaId' => $marchaId];
     }
 
@@ -177,11 +186,15 @@ final class AdminRepo
      */
     public static function aceptarCandidato(int $idCand, array $fields, array $autoresIds, bool $guardarAudio = true): array
     {
-        $cand = Db::one('SELECT ESTADO, VIDEO_URL FROM ingest_candidato WHERE ID_CAND = ?', [$idCand]);
+        $cand = Db::one('SELECT ESTADO, VIDEO_URL, ID_BANDA FROM ingest_candidato WHERE ID_CAND = ?', [$idCand]);
         if ($cand === null) return ['code' => 'NOT_FOUND'];
         if ($cand['ESTADO'] !== 'pendiente') return ['code' => 'NOT_PENDING'];
 
-        $r = self::addMarcha($fields, $autoresIds);
+        // La banda de origen (canal de YouTube) del candidato puede no coincidir
+        // con BANDA_ESTRENO si el revisor la corrigió en el formulario (p.ej. el
+        // vídeo lo sube un canal de grabación distinto de la banda de estreno
+        // real). Reevaluamos por ambas para no perder duplicados del mismo canal.
+        $r = self::addMarcha($fields, $autoresIds, $idCand, $cand['ID_BANDA'] !== null ? (int) $cand['ID_BANDA'] : null);
         if (($r['code'] ?? '') !== 'CREATED') return $r;
 
         if ($guardarAudio && !empty($cand['VIDEO_URL'])) {

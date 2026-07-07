@@ -1,5 +1,7 @@
 <?php use App\View as V; use App\Auth;
-/** @var array $session @var array<string,mixed> $cand @var list<string> $autoresSugeridos
+/** @var array $session @var array<string,mixed> $cand
+ *  @var list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string,score:float}> $autoresAuto
+ *  @var list<string> $autoresSugeridos
  *  @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
 $val = static fn(string $k, string $default = ''): string => V::e($cand[$k] ?? $default);
@@ -94,6 +96,12 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 
         <div class="field">
             <label class="field-label">Autor(es)</label>
+<?php if ($autoresAuto): ?>
+            <p class="small muted">
+                Añadidos automáticamente (coincidencia ≥80% con un autor ya existente):
+                <?= V::e(implode(', ', array_map(static fn(array $a): string => $a['NOMBRE_COMPLETO'] . ' (' . (int) round($a['score'] * 100) . '%)', $autoresAuto))) ?>
+            </p>
+<?php endif; ?>
 <?php if ($autoresSugeridos): ?>
             <p class="small muted">
                 Sugeridos por el vídeo:
@@ -135,6 +143,14 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 </div>
 <script src="/assets/admin.js" defer></script>
 <script>
+// Autores con coincidencia fuerte (≥80%) detectada en el servidor: se añaden
+// como chip ya seleccionado sin esperar a que el revisor los busque a mano.
+var autoresAuto = <?= json_encode(array_map(static fn(array $a): array => ['id' => $a['ID_AUTOR'], 'nombre' => $a['NOMBRE_COMPLETO']], $autoresAuto), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.AutorAutocomplete) return;
+    autoresAuto.forEach(function (a) { window.AutorAutocomplete.addChip(a.id, a.nombre); });
+});
+
 // Sugerencias de autor extraídas del vídeo: si el nombre YA existe en la BD,
 // se añade directamente como autor (sin tener que buscarlo y volver a
 // aceptarlo en el desplegable). Si no existe, se deja el nombre en el cuadro

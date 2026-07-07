@@ -308,9 +308,20 @@ final class Admin
         if ($cand === null) Http::notFound();
 
         $autoresNombres = array_filter(array_map('trim', explode(',', (string) ($cand['P_AUTORES'] ?? ''))));
+        $autoresAuto = [];
+        $autoresSugeridos = [];
+        foreach ($autoresNombres as $nombre) {
+            $match = Repo::mejorAutorPorNombre($nombre);
+            if ($match !== null && $match['score'] >= 0.8) {
+                $autoresAuto[] = $match;
+            } else {
+                $autoresSugeridos[] = $nombre;
+            }
+        }
+
         View::render('admin/ingesta_detail', [
             'session' => $session, 'cand' => $cand,
-            'autoresSugeridos' => $autoresNombres,
+            'autoresAuto' => $autoresAuto, 'autoresSugeridos' => $autoresSugeridos,
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => 'Revisar candidato #' . $id . ' — Marchas de Cristo', 'noindex' => true]);
     }
@@ -371,8 +382,8 @@ final class Admin
             return;
         }
         $nombre = trim((string) ($_GET['nombre'] ?? ''));
-        if ($nombre === '') { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
-        $data = array_slice(Repo::searchAutores('nombre=' . rawurlencode($nombre))['data'], 0, 15);
+        if (mb_strlen($nombre) < 3) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
+        $data = Repo::autorCandidatosPorTexto($nombre, 15);
         echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 }
