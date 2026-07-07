@@ -1,0 +1,855 @@
+<title>Revisión de diseño frontend — Marchas de Cristo</title>
+<style>
+/* ============================================================
+   REVISIÓN DE DISEÑO — Marchas de Cristo
+   Identidad del documento: "dossier de archivo" — papel cálido,
+   tinta, filete fino, tipografía serif con carácter. Sobrio.
+   ============================================================ */
+
+:root{
+  /* Neutrales del documento (papel cálido, no crema AI) */
+  --bg:#f5f4ef; --surface:#fffdf8; --surface-2:#eeece4; --fg:#1c1a15;
+  --muted:#6c675c; --faint:#928c7e; --line:#e2dfd4; --line-2:#d6d2c5;
+  --accent:#8a2233;            /* oxblood — terciopelo de Semana Santa */
+  --accent-soft:rgba(138,34,51,.09);
+  /* Acentos de cada prototipo (theme-aware, se reasignan más abajo) */
+  --a-link:#28457f;            /* A · catálogo: azul enlace clásico, apagado */
+  --b-accent:#8a2233;          /* B · dossier: oxblood */
+  --c-accent:#2f5d86;          /* C · explorador: acero */
+  --c-chip:#eef1f6;
+  --ok:#2f6b46; --warn:#8a5a1f;
+  /* Tipografía */
+  --serif:Georgia,"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  --wrap:74rem;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#14130e; --surface:#1c1a14; --surface-2:#232019; --fg:#ece7db;
+    --muted:#a49d8c; --faint:#847d6d; --line:#2d2a20; --line-2:#38342a;
+    --accent:#e29aa4; --accent-soft:rgba(226,154,164,.13);
+    --a-link:#93aae4; --b-accent:#e29aa4; --c-accent:#84b3dd; --c-chip:#20262f;
+    --ok:#7bc199; --warn:#d8a765;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f4ef; --surface:#fffdf8; --surface-2:#eeece4; --fg:#1c1a15;
+  --muted:#6c675c; --faint:#928c7e; --line:#e2dfd4; --line-2:#d6d2c5;
+  --accent:#8a2233; --accent-soft:rgba(138,34,51,.09);
+  --a-link:#28457f; --b-accent:#8a2233; --c-accent:#2f5d86; --c-chip:#eef1f6;
+  --ok:#2f6b46; --warn:#8a5a1f;
+}
+:root[data-theme="dark"]{
+  --bg:#14130e; --surface:#1c1a14; --surface-2:#232019; --fg:#ece7db;
+  --muted:#a49d8c; --faint:#847d6d; --line:#2d2a20; --line-2:#38342a;
+  --accent:#e29aa4; --accent-soft:rgba(226,154,164,.13);
+  --a-link:#93aae4; --b-accent:#e29aa4; --c-accent:#84b3dd; --c-chip:#20262f;
+  --ok:#7bc199; --warn:#d8a765;
+}
+
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+  line-height:1.6;font-size:16px;}
+.page{max-width:var(--wrap);margin:0 auto;padding:0 1.5rem 5rem;}
+a{color:var(--accent);}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;line-height:1.15;
+  text-wrap:balance;margin:0;}
+p{margin:0;}
+.mono{font-family:var(--mono);}
+.tnum{font-variant-numeric:tabular-nums;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px;}
+
+/* ── Eyebrow / rótulos ──────────────────────────────────── */
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);font-weight:600;}
+.kicker{font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);}
+
+/* ── Portada ────────────────────────────────────────────── */
+.cover{padding:3.5rem 0 2rem;border-bottom:1px solid var(--line);}
+.cover h1{font-size:clamp(2rem,5vw,3.25rem);letter-spacing:-.01em;margin:.6rem 0 .5rem;}
+.cover .lede{font-size:1.12rem;color:var(--muted);max-width:42rem;}
+.cover-meta{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;margin-top:1.6rem;
+  font-family:var(--mono);font-size:.75rem;color:var(--faint);}
+.cover-meta b{color:var(--fg);font-weight:600;}
+
+/* ── Índice ─────────────────────────────────────────────── */
+.toc{display:flex;flex-wrap:wrap;gap:.4rem;margin:1.4rem 0 0;}
+.toc a{font-family:var(--mono);font-size:.75rem;text-decoration:none;
+  color:var(--muted);border:1px solid var(--line-2);border-radius:999px;
+  padding:.28rem .7rem;background:var(--surface);}
+.toc a:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── Secciones ──────────────────────────────────────────── */
+section{padding:3rem 0;border-bottom:1px solid var(--line);}
+.sec-head{display:flex;align-items:baseline;gap:.9rem;margin-bottom:1.4rem;}
+.sec-head .num{font-family:var(--mono);font-size:.8rem;color:var(--accent);
+  font-weight:700;letter-spacing:.05em;flex:none;padding-top:.35rem;}
+.sec-head h2{font-size:clamp(1.4rem,3vw,2rem);}
+.prose{max-width:44rem;color:var(--fg);}
+.prose p+p{margin-top:1rem;}
+.prose strong{font-weight:600;}
+.muted{color:var(--muted);}
+.two{display:grid;grid-template-columns:1fr;gap:1.5rem;}
+@media(min-width:780px){.two{grid-template-columns:1fr 1fr;gap:2rem;}}
+
+/* ── Tarjeta de datos / KPIs ────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;margin:1.5rem 0;}
+@media(min-width:620px){.kpis{grid-template-columns:repeat(5,1fr);}}
+.kpi{background:var(--surface);padding:1rem 1.1rem;}
+.kpi .n{font-family:var(--serif);font-size:1.75rem;font-weight:600;
+  font-variant-numeric:tabular-nums;}
+.kpi .l{font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--faint);margin-top:.15rem;}
+
+/* ── Medidores de cobertura de campos ───────────────────── */
+.meters{margin:1.4rem 0;display:flex;flex-direction:column;gap:.55rem;
+  max-width:40rem;}
+.meter{display:grid;grid-template-columns:9.5rem 1fr 3rem;align-items:center;
+  gap:.75rem;font-size:.86rem;}
+.meter .name{font-family:var(--mono);font-size:.74rem;color:var(--muted);
+  text-align:right;}
+.meter .track{height:.55rem;background:var(--surface-2);border-radius:999px;
+  overflow:hidden;}
+.meter .fill{height:100%;border-radius:999px;
+  background:color-mix(in oklab,var(--accent) 78%,var(--fg));}
+.meter .fill.low{background:color-mix(in oklab,var(--warn) 70%,var(--fg));}
+.meter .val{font-variant-numeric:tabular-nums;color:var(--fg);font-size:.8rem;
+  text-align:right;font-family:var(--mono);}
+
+/* ── DAFO ───────────────────────────────────────────────── */
+.dafo{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:.5rem;}
+@media(min-width:760px){.dafo{grid-template-columns:1fr 1fr;}}
+.quad{background:var(--surface);padding:1.4rem 1.5rem;}
+.quad h3{font-size:1.05rem;display:flex;align-items:center;gap:.55rem;
+  margin-bottom:.8rem;font-family:var(--sans);}
+.quad h3 .tag{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;
+  padding:.15rem .45rem;border-radius:4px;font-weight:700;}
+.quad.pos h3 .tag{background:color-mix(in oklab,var(--ok) 18%,var(--surface));color:var(--ok);}
+.quad.neg h3 .tag{background:var(--accent-soft);color:var(--accent);}
+.quad ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.5rem;}
+.quad li{font-size:.9rem;color:var(--fg);}
+.quad li b{font-weight:600;}
+
+/* ── Alternativa (bloque) ───────────────────────────────── */
+.alt{padding-top:2.5rem;}
+.alt-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.6rem 1rem;
+  margin-bottom:.4rem;}
+.alt-head .id{font-family:var(--mono);font-weight:700;font-size:.9rem;
+  color:var(--accent);border:1.5px solid var(--accent);border-radius:6px;
+  padding:.1rem .5rem;}
+.alt-head h3{font-size:1.5rem;}
+.alt-head .src{font-family:var(--mono);font-size:.72rem;color:var(--faint);}
+.alt-desc{max-width:44rem;color:var(--muted);margin:.4rem 0 1.2rem;}
+.pc{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
+@media(min-width:680px){.pc{grid-template-columns:1fr 1fr;}}
+.pc>div{background:var(--surface);padding:1.1rem 1.3rem;}
+.pc h4{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:.6rem;}
+.pc .pros h4{color:var(--ok);}
+.pc .cons h4{color:var(--accent);}
+.pc ul{margin:0;padding-left:1.05rem;display:flex;flex-direction:column;gap:.4rem;}
+.pc li{font-size:.87rem;}
+
+.demo-label{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .7rem;
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);}
+.demo-label::after{content:"";flex:1;height:1px;background:var(--line);}
+
+/* ── Marco del prototipo (canvas) ───────────────────────── */
+.frame{border:1px solid var(--line-2);border-radius:12px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.05),0 12px 34px -18px rgba(0,0,0,.28);}
+.frame-bar{display:flex;align-items:center;gap:.5rem;padding:.5rem .8rem;
+  background:var(--surface-2);border-bottom:1px solid var(--line);}
+.frame-bar .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--line-2);}
+.frame-bar .url{font-family:var(--mono);font-size:.72rem;color:var(--faint);
+  margin-left:.4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.proto{padding:0;}
+
+/* Contenedor de scroll horizontal para tablas anchas */
+.scrollx{overflow-x:auto;}
+
+/* =====================================================================
+   PROTOTIPO A — "Ficha de catálogo" (OPAC / archive.org)
+   Utilitario, monoespaciado, denso, filetes, cero adorno.
+   ===================================================================== */
+.proto.a{background:var(--surface);font-family:var(--mono);
+  font-size:13.5px;line-height:1.55;color:var(--fg);padding:0;}
+.proto.a .wrap{max-width:52rem;margin:0 auto;padding:1.4rem 1.4rem 2rem;}
+.proto.a .crumb{color:var(--faint);font-size:12px;margin-bottom:1rem;}
+.proto.a .crumb a{color:var(--a-link);text-decoration:none;}
+.proto.a .crumb a:hover{text-decoration:underline;}
+.proto.a .recno{color:var(--faint);font-size:11px;letter-spacing:.05em;
+  text-transform:uppercase;}
+.proto.a .rec-title{font-family:var(--mono);font-size:20px;font-weight:700;
+  margin:.15rem 0 .1rem;letter-spacing:-.01em;}
+.proto.a .rec-sub{color:var(--muted);font-size:12.5px;
+  border-bottom:2px solid var(--fg);padding-bottom:.7rem;margin-bottom:.9rem;}
+.proto.a dl{display:grid;grid-template-columns:11rem 1fr;gap:0;margin:0;}
+.proto.a dt{color:var(--muted);padding:.32rem .8rem .32rem 0;
+  border-bottom:1px dotted var(--line-2);text-transform:uppercase;
+  font-size:11px;letter-spacing:.06em;}
+.proto.a dd{margin:0;padding:.32rem 0;border-bottom:1px dotted var(--line-2);}
+.proto.a a.rl{color:var(--a-link);text-decoration:none;}
+.proto.a a.rl:hover{text-decoration:underline;}
+.proto.a .sect{margin-top:1.5rem;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--fg);
+  padding-bottom:.25rem;margin-bottom:.5rem;}
+.proto.a table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.proto.a th{text-align:left;color:var(--muted);font-weight:400;
+  border-bottom:1px solid var(--line-2);padding:.28rem .6rem .28rem 0;
+  text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;}
+.proto.a td{padding:.24rem .6rem .24rem 0;border-bottom:1px dotted var(--line);
+  vertical-align:top;}
+.proto.a .more{margin-top:.6rem;color:var(--faint);font-size:11.5px;}
+
+/* =====================================================================
+   PROTOTIPO B — "Dossier patrimonial" (patrimoniomusical.com)
+   Editorial: serif, dos columnas, ficha técnica lateral, sereno.
+   ===================================================================== */
+.proto.b{background:var(--surface);color:var(--fg);font-family:var(--sans);
+  padding:0;}
+.proto.b .wrap{max-width:56rem;margin:0 auto;padding:2rem 1.6rem 2.4rem;}
+.proto.b .eb{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--b-accent);font-weight:600;}
+.proto.b h1{font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.6rem);
+  letter-spacing:-.01em;margin:.35rem 0 .3rem;}
+.proto.b .byline{color:var(--muted);font-size:1rem;margin-bottom:.2rem;}
+.proto.b .byline a{color:var(--b-accent);text-decoration:none;}
+.proto.b .byline a:hover{text-decoration:underline;}
+.proto.b .rule{height:2px;background:var(--b-accent);width:3.5rem;
+  margin:1.1rem 0 1.6rem;border-radius:2px;}
+.proto.b .cols{display:grid;grid-template-columns:1fr;gap:2rem;}
+@media(min-width:720px){.proto.b .cols{grid-template-columns:1fr 15rem;}}
+.proto.b .aside{order:-1;}
+@media(min-width:720px){.proto.b .aside{order:1;}}
+.proto.b .card{background:var(--surface-2);border:1px solid var(--line);
+  border-radius:10px;padding:1.1rem 1.2rem;}
+.proto.b .card h4{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:.7rem;}
+.proto.b .ficha{display:flex;flex-direction:column;gap:.65rem;}
+.proto.b .ficha .row{display:flex;flex-direction:column;gap:.05rem;}
+.proto.b .ficha .k{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--faint);}
+.proto.b .ficha .v{font-size:.95rem;}
+.proto.b .ficha .v a{color:var(--b-accent);text-decoration:none;}
+.proto.b .ficha .v a:hover{text-decoration:underline;}
+.proto.b .audio{display:flex;align-items:center;gap:.8rem;margin-top:1rem;
+  padding:.7rem .85rem;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface);}
+.proto.b .audio .play{width:2.2rem;height:2.2rem;border-radius:50%;flex:none;
+  background:var(--b-accent);color:#fff;display:grid;place-items:center;
+  font-size:.8rem;}
+.proto.b .audio .meta{min-width:0;}
+.proto.b .audio .t{font-size:.85rem;font-weight:600;}
+.proto.b .audio .s{font-size:.72rem;color:var(--faint);}
+.proto.b h3.block{font-family:var(--serif);font-size:1.25rem;margin:2rem 0 .3rem;}
+.proto.b .lead{color:var(--fg);font-size:1rem;line-height:1.7;}
+.proto.b .cap{font-size:.78rem;color:var(--faint);margin:.2rem 0 .7rem;
+  font-style:italic;}
+.proto.b table{width:100%;border-collapse:collapse;font-size:.86rem;}
+.proto.b thead th{text-align:left;font-family:var(--mono);font-size:.66rem;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;
+  border-bottom:1.5px solid var(--line-2);padding:.4rem .7rem .4rem 0;}
+.proto.b tbody td{padding:.42rem .7rem .42rem 0;border-bottom:1px solid var(--line);
+  vertical-align:top;}
+.proto.b tbody tr:hover td{background:var(--surface-2);}
+.proto.b .rel{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem;}
+.proto.b .rel a{font-family:var(--sans);font-size:.82rem;text-decoration:none;
+  color:var(--fg);background:var(--surface-2);border:1px solid var(--line-2);
+  border-radius:8px;padding:.5rem .8rem;}
+.proto.b .rel a:hover{border-color:var(--b-accent);color:var(--b-accent);}
+.proto.b .rel a b{color:var(--b-accent);}
+
+/* =====================================================================
+   PROTOTIPO C — "Explorador de datos" (Datasette / consola)
+   Relacional: barra de consulta, facetas, IDs, tabla ordenable (JS).
+   ===================================================================== */
+.proto.c{background:var(--surface);color:var(--fg);font-family:var(--sans);
+  padding:0;}
+.proto.c .wrap{max-width:56rem;margin:0 auto;padding:1.3rem 1.4rem 2rem;}
+.proto.c .omni{display:flex;align-items:center;gap:.55rem;
+  border:1px solid var(--line-2);border-radius:9px;background:var(--surface-2);
+  padding:.55rem .7rem;font-family:var(--mono);font-size:.8rem;color:var(--muted);}
+.proto.c .omni .kbd{margin-left:auto;font-size:.66rem;color:var(--faint);
+  border:1px solid var(--line-2);border-radius:4px;padding:.05rem .35rem;}
+.proto.c .facets{display:flex;flex-wrap:wrap;gap:.4rem;margin:.8rem 0 1.2rem;}
+.proto.c .chip{font-family:var(--mono);font-size:.72rem;color:var(--c-accent);
+  background:var(--c-chip);border:1px solid color-mix(in oklab,var(--c-accent) 30%,transparent);
+  border-radius:6px;padding:.2rem .55rem;}
+.proto.c .chip .x{color:var(--faint);}
+.proto.c .rec-head{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;
+  padding-bottom:.9rem;border-bottom:1px solid var(--line);margin-bottom:.2rem;}
+.proto.c h1{font-family:var(--serif);font-size:1.7rem;margin:0;}
+.proto.c .idb{font-family:var(--mono);font-size:.72rem;color:var(--c-accent);
+  background:var(--c-chip);border-radius:5px;padding:.15rem .45rem;}
+.proto.c .kv{display:grid;grid-template-columns:1fr;gap:0;margin:.4rem 0 0;}
+@media(min-width:620px){.proto.c .kv{grid-template-columns:1fr 1fr;
+  column-gap:2.2rem;}}
+.proto.c .kv .r{display:grid;grid-template-columns:8.5rem 1fr;gap:.5rem;
+  padding:.42rem 0;border-bottom:1px solid var(--line);align-items:baseline;}
+.proto.c .kv .k{font-family:var(--mono);font-size:.68rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--faint);}
+.proto.c .kv .v{font-size:.9rem;font-variant-numeric:tabular-nums;}
+.proto.c .kv .v a{color:var(--c-accent);text-decoration:none;
+  font-family:var(--mono);font-size:.83rem;}
+.proto.c .kv .v a:hover{text-decoration:underline;}
+.proto.c .kv .v .cnt{color:var(--faint);font-family:var(--mono);font-size:.72rem;}
+.proto.c .player{display:flex;align-items:center;gap:.6rem;margin:1.1rem 0 0;
+  font-family:var(--mono);font-size:.78rem;color:var(--c-accent);
+  border:1px dashed color-mix(in oklab,var(--c-accent) 40%,var(--line-2));
+  border-radius:8px;padding:.55rem .75rem;}
+.proto.c .disco-bar{display:flex;align-items:center;gap:.7rem;
+  margin:1.6rem 0 .5rem;flex-wrap:wrap;}
+.proto.c .disco-bar h3{font-family:var(--mono);font-size:.8rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);font-weight:600;}
+.proto.c .disco-bar .rows{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
+.proto.c .filter{margin-left:auto;font-family:var(--mono);font-size:.76rem;
+  border:1px solid var(--line-2);border-radius:6px;padding:.32rem .55rem;
+  background:var(--bg);color:var(--fg);min-width:11rem;}
+.proto.c .filter::placeholder{color:var(--faint);}
+.proto.c table{width:100%;border-collapse:collapse;font-size:.83rem;
+  font-variant-numeric:tabular-nums;}
+.proto.c thead th{text-align:left;font-family:var(--mono);font-size:.66rem;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;
+  border-bottom:1.5px solid var(--line-2);padding:.4rem .7rem;cursor:pointer;
+  user-select:none;white-space:nowrap;}
+.proto.c thead th:first-child{padding-left:.4rem;}
+.proto.c thead th .ar{color:var(--faint);font-size:.7rem;}
+.proto.c tbody td{padding:.36rem .7rem;border-bottom:1px solid var(--line);}
+.proto.c tbody td:first-child{padding-left:.4rem;}
+.proto.c tbody tr:hover td{background:var(--c-chip);}
+.proto.c td .disc{font-family:var(--mono);color:var(--c-accent);}
+.proto.c .hidden{display:none;}
+
+/* ── Recomendación ──────────────────────────────────────── */
+.reco{background:var(--surface);border:1px solid var(--line-2);border-radius:14px;
+  padding:1.6rem 1.7rem;margin-top:1rem;}
+.reco .pill{display:inline-block;font-family:var(--mono);font-size:.7rem;
+  letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);
+  border-radius:999px;padding:.2rem .7rem;margin-bottom:.9rem;}
+.reco h3{font-size:1.4rem;margin-bottom:.5rem;}
+.steps{counter-reset:s;margin:1.2rem 0 0;padding:0;list-style:none;
+  display:flex;flex-direction:column;gap:.7rem;}
+.steps li{counter-increment:s;display:grid;grid-template-columns:1.8rem 1fr;
+  gap:.7rem;align-items:baseline;font-size:.92rem;}
+.steps li::before{content:counter(s);font-family:var(--mono);font-weight:700;
+  color:var(--accent);border:1.5px solid var(--accent);border-radius:6px;
+  text-align:center;font-size:.8rem;padding:.05rem 0;}
+.decision{display:flex;flex-wrap:wrap;gap:.5rem;margin:.4rem 0 1.2rem;}
+.decision .d{font-family:var(--mono);font-size:.73rem;background:var(--surface-2);
+  border:1px solid var(--line-2);border-radius:7px;padding:.3rem .6rem;}
+.decision .d b{color:var(--accent);}
+
+footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
+  font-size:.75rem;display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+
+<div class="page">
+
+  <!-- ════════════ PORTADA ════════════ -->
+  <header class="cover">
+    <div class="eyebrow">Revisión de diseño frontend · rama design/frontend-review</div>
+    <h1>Un archivo serio para la música procesional</h1>
+    <p class="lede">Análisis del frontend actual de <b>Marchas de Cristo</b>, DAFO
+      del diseño y tres direcciones —inspiradas en motores de consulta de bases de
+      datos documentales— para la ficha de una marcha.</p>
+    <div class="cover-meta">
+      <span><b>Proyecto:</b> marchasdecristo.com</span>
+      <span><b>Stack:</b> PHP 8.4 · SQLite/FTS5 · sin build</span>
+      <span><b>Registro de ejemplo:</b> #1693 «El Santísimo Cristo del Amor»</span>
+      <span><b>Fecha:</b> 2026-07-07</span>
+    </div>
+    <nav class="toc">
+      <a href="#que-es">01 · Qué es esta web</a>
+      <a href="#dafo">02 · DAFO del diseño</a>
+      <a href="#norte">03 · Norte de diseño</a>
+      <a href="#alt-a">04 · Alternativas ×3</a>
+      <a href="#reco">05 · Recomendación</a>
+    </nav>
+  </header>
+
+  <!-- ════════════ 01 · QUÉ ES ════════════ -->
+  <section id="que-es">
+    <div class="sec-head"><span class="num">01</span><h2>Qué es esta web</h2></div>
+    <div class="prose">
+      <p>No es una web «de marca» ni una tienda: es una <strong>obra de referencia
+        consultable</strong>. Un catálogo documental de música procesional española
+        —marchas, compositores, bandas y discos— con un valor que reside en el
+        <strong>dato estructurado</strong> y en poder <strong>navegar el grafo</strong>
+        que los une. Su pariente natural no es una landing, sino un OPAC de biblioteca,
+        Discogs o IMSLP: <em>lectura casi exclusiva</em>, escritura solo por uno o dos
+        administradores desde un panel.</p>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="n tnum">4.230</div><div class="l">Marchas</div></div>
+      <div class="kpi"><div class="n tnum">829</div><div class="l">Compositores</div></div>
+      <div class="kpi"><div class="n tnum">268</div><div class="l">Bandas</div></div>
+      <div class="kpi"><div class="n tnum">431</div><div class="l">Discos</div></div>
+      <div class="kpi"><div class="n tnum">4.451</div><div class="l">Vínculos disco↔marcha</div></div>
+    </div>
+
+    <div class="two">
+      <div class="prose">
+        <h3 style="font-size:1.05rem;margin-bottom:.5rem;font-family:var(--sans);font-weight:600;">El frontend hoy</h3>
+        <p class="muted">Renderizado en servidor con PHP plano. La ficha de una marcha
+          es una <strong>cabecera + una tabla clave/valor</strong> con filas cebra.
+          Estética «lofi» clara y monocroma, un único ancho de 48&nbsp;rem, sin modo
+          oscuro. Sobria, sí —pero <strong>plana</strong>: todo pesa igual, el título
+          no manda y los datos ricos apenas asoman.</p>
+      </div>
+      <div class="prose">
+        <h3 style="font-size:1.05rem;margin-bottom:.5rem;font-family:var(--sans);font-weight:600;">Lo que el backend ya entrega</h3>
+        <p class="muted">La consulta de detalle ya trae más de lo que la ficha muestra:
+          título, año, autores, dedicatoria, localidad/provincia, tipo, duración, banda
+          de estreno, enlace de <strong>audio</strong> y la <strong>discografía
+          completa</strong> (disco, año, banda, pista). El grafo relacional
+          autor↔marcha↔banda↔disco está ahí, listo para explotarse.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin:2rem 0 .4rem;font-family:var(--sans);font-weight:600;">Cobertura de los campos de <span class="mono">marcha</span> (n=4.230)</h3>
+    <p class="muted" style="max-width:44rem;margin-bottom:.4rem;">El diseño debe lucir
+      igual de bien con un registro rico que con uno pobre: la densidad de datos varía
+      muchísimo de un campo a otro.</p>
+    <div class="meters">
+      <div class="meter"><span class="name">TIPO</span><span class="track"><span class="fill" style="width:99%"></span></span><span class="val">99%</span></div>
+      <div class="meter"><span class="name">DURACIÓN</span><span class="track"><span class="fill" style="width:99%"></span></span><span class="val">99%</span></div>
+      <div class="meter"><span class="name">BANDA_ESTRENO</span><span class="track"><span class="fill" style="width:96%"></span></span><span class="val">96%</span></div>
+      <div class="meter"><span class="name">FECHA</span><span class="track"><span class="fill" style="width:94%"></span></span><span class="val">94%</span></div>
+      <div class="meter"><span class="name">DEDICATORIA</span><span class="track"><span class="fill" style="width:66%"></span></span><span class="val">66%</span></div>
+      <div class="meter"><span class="name">LOCALIDAD</span><span class="track"><span class="fill" style="width:61%"></span></span><span class="val">61%</span></div>
+      <div class="meter"><span class="name">PROVINCIA</span><span class="track"><span class="fill" style="width:60%"></span></span><span class="val">60%</span></div>
+      <div class="meter"><span class="name">AUDIO</span><span class="track"><span class="fill low" style="width:25%"></span></span><span class="val">25%</span></div>
+      <div class="meter"><span class="name">DETALLES</span><span class="track"><span class="fill low" style="width:5%"></span></span><span class="val">5%</span></div>
+    </div>
+    <p class="muted" style="font-size:.82rem;max-width:44rem;">AUDIO (25%) hoy
+      <strong>no se muestra</strong> en la ficha; DURACIÓN y TIPO (99%) apenas se
+      exponen; la discografía se pinta como lista simple. Hay dato desaprovechado.</p>
+  </section>
+
+  <!-- ════════════ 02 · DAFO ════════════ -->
+  <section id="dafo">
+    <div class="sec-head"><span class="num">02</span><h2>DAFO del diseño actual</h2></div>
+    <p class="prose muted" style="margin-bottom:1rem;">Análisis del <em>diseño</em>
+      (no del código): dónde está fuerte, dónde flojea y qué palancas ofrece el contexto.</p>
+    <div class="dafo">
+      <div class="quad pos">
+        <h3><span class="tag">FORTALEZAS</span> Interno · a favor</h3>
+        <ul>
+          <li><b>Sobriedad y ligereza reales:</b> HTML plano, carga instantánea, cero dependencias ni build.</li>
+          <li><b>Contenido ya tabular y semántico</b> (tablas, enlaces), buena base para SEO y el JSON-LD que ya emite.</li>
+          <li><b>Limpieza sin ruido</b> coherente con el «foco en la información» que se busca.</li>
+          <li><b>Mantenimiento mínimo:</b> ~240 líneas de CSS propio, un solo mantenedor lo sostiene.</li>
+        </ul>
+      </div>
+      <div class="quad neg">
+        <h3><span class="tag">DEBILIDADES</span> Interno · en contra</h3>
+        <ul>
+          <li><b>Jerarquía pobre:</b> todo pesa igual; el título no destaca y el dato clave no salta a la vista.</li>
+          <li><b>Desaprovecha el dato:</b> audio oculto, duración/tipo apenas visibles, discografía como lista, sin navegación relacional.</li>
+          <li><b>Monotonía fría:</b> el monocromo «lofi» puede leerse como «sin terminar» más que como sobrio deliberado.</li>
+          <li><b>Sin modo oscuro, sin tipografía con carácter</b> y un único ancho para vistas muy distintas (ficha vs. listado).</li>
+        </ul>
+      </div>
+      <div class="quad pos">
+        <h3><span class="tag">OPORTUNIDADES</span> Externo · a favor</h3>
+        <ul>
+          <li><b>Referencias que legitiman</b> un lenguaje de archivo serio: patrimoniomusical, archive.org, Discogs, IMSLP.</li>
+          <li><b>Datos ricos únicos:</b> hasta 31 grabaciones por marcha y un grafo autor/banda que ningún competidor local explota bien.</li>
+          <li><b>Nicho fiel</b> (cofrade, músico, investigador) que valora la autoridad documental y la exhaustividad.</li>
+          <li><b>JS ligero permitido:</b> filtros/orden en tablas y reproductor embebido sin renunciar a la sobriedad. Y fichas ricas mejoran la <b>indexación SEO</b> (histórico dolor del proyecto).</li>
+        </ul>
+      </div>
+      <div class="quad neg">
+        <h3><span class="tag">AMENAZAS</span> Externo · en contra</h3>
+        <ul>
+          <li><b>Hosting compartido</b> (HelioHost/Plesk): sin build, recursos justos → el diseño debe seguir liviano.</li>
+          <li><b>Un solo mantenedor:</b> un rediseño ambicioso se vuelve deuda si no es simple de sostener.</li>
+          <li><b>Riesgo de «otra web más»:</b> sobre-diseñar destruiría la identidad de archivo serio.</li>
+          <li><b>Contenido heterogéneo</b> (campos del 5% al 99%): un diseño que asume datos completos se ve roto con registros pobres. Y debe degradar bien en móvil.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 03 · NORTE ════════════ -->
+  <section id="norte">
+    <div class="sec-head"><span class="num">03</span><h2>Norte de diseño</h2></div>
+    <div class="two">
+      <div class="prose">
+        <p>Las referencias que marcas apuntan a un mismo lenguaje:
+          <strong>el dato es el héroe</strong>. <a href="https://www.patrimoniomusical.com/">Patrimonio
+          Musical</a> es un <em>dossier patrimonial</em> —ficha estructurada, tono
+          académico, prestigio—; <a href="https://web.archive.org/">archive.org</a> es
+          <em>utilitario y denso</em> —cero adorno, autoridad por austeridad—. A ellas
+          sumo Discogs (discografía), IMSLP (partitura) y Datasette (explorador).</p>
+      </div>
+      <div class="prose">
+        <p class="muted">De ahí, cuatro principios para las tres propuestas:</p>
+        <ul class="prose" style="padding-left:1.1rem;margin-top:.5rem;display:flex;flex-direction:column;gap:.35rem;">
+          <li>La <strong>tipografía y la retícula</strong> hacen el trabajo, no el color.</li>
+          <li><strong>Densidad legible:</strong> mucho dato, bien jerarquizado.</li>
+          <li><strong>Degradar con gracia</strong> ante campos ausentes.</li>
+          <li>El <strong>color, mínimo y con intención</strong> (un solo acento).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 04 · ALTERNATIVAS ════════════ -->
+  <section id="alt-a">
+    <div class="sec-head"><span class="num">04</span><h2>Tres alternativas de diseño</h2></div>
+    <p class="prose muted" style="margin-bottom:.5rem;">Cada una es un
+      <em>motor de consulta</em> distinto aplicado a la misma ficha real (registro
+      #1693). Debajo de cada descripción, un prototipo HTML preliminar y navegable.</p>
+
+    <!-- ───── ALTERNATIVA A ───── -->
+    <div class="alt" id="proto-a">
+      <div class="alt-head">
+        <span class="id">A</span>
+        <h3>Ficha de catálogo</h3>
+        <span class="src">// OPAC bibliotecario · archive.org · registro MARC</span>
+      </div>
+      <p class="alt-desc">El registro como <strong>asiento de catálogo</strong>:
+        monoespaciado, filetes finos, máxima densidad y cero adorno. Autoridad por
+        austeridad. Es la lectura más literal de «foco en la información».</p>
+      <div class="pc">
+        <div class="pros"><h4>Ventajas</h4>
+          <ul>
+            <li>Máxima densidad y atemporalidad; jamás «pasa de moda».</li>
+            <li>Rapidísimo y trivial en PHP+CSS; casi sin mantenimiento.</li>
+            <li>Refuerza la sensación de fuente documental fiable.</li>
+            <li>Degrada perfecto: sin datos, simplemente hay menos filas.</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Inconvenientes</h4>
+          <ul>
+            <li>Árido y frío para el aficionado; puede parecer anticuado.</li>
+            <li>El audio y la discografía rica lucen apagados, sin protagonismo.</li>
+            <li>Jerarquía visual limitada si el registro es muy extenso.</li>
+            <li>Poco «compartible» en redes; nula calidez de marca.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="demo-label">Prototipo A · detalle de marcha</div>
+      <div class="frame">
+        <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marchasdecristo.com/marcha/1693-el-santisimo-cristo-del-amor</span></div>
+        <div class="proto a">
+          <div class="wrap">
+            <div class="crumb"><a href="#proto-a">inicio</a> / <a href="#proto-a">marcha</a> / 1693</div>
+            <div class="recno">Registro n.º 1693 — marcha</div>
+            <div class="rec-title">El Santísimo Cristo del Amor</div>
+            <div class="rec-sub">Marcha procesional · 1944 · Málaga</div>
+            <dl>
+              <dt>Título</dt><dd>El Santísimo Cristo del Amor</dd>
+              <dt>Año</dt><dd>1944</dd>
+              <dt>Tipo</dt><dd>Marcha procesional</dd>
+              <dt>Duración</dt><dd>3:28 (208 s)</dd>
+              <dt>Compositor</dt><dd><a class="rl" href="#proto-a">Alberto Escámez López</a></dd>
+              <dt>Dedicatoria</dt><dd>Hdad. del Amor (Málaga)</dd>
+              <dt>Localidad</dt><dd>Málaga, Málaga</dd>
+              <dt>Estrenada por</dt><dd><a class="rl" href="#proto-a">BCT Bomberos</a> (Málaga)</dd>
+              <dt>Audio</dt><dd><a class="rl" href="#proto-a">▶ escuchar en YouTube ↗</a></dd>
+            </dl>
+            <div class="sect">Discografía — 31 grabaciones</div>
+            <div class="scrollx">
+            <table>
+              <thead><tr><th>Año</th><th>Grabación</th><th>Pista</th></tr></thead>
+              <tbody>
+                <tr><td>1967</td><td>Cornetas y Tambores de la Semana Santa de Sevilla</td><td>3</td></tr>
+                <tr><td>1982</td><td>Semana Santa en Sevilla — Marchas Procesionales</td><td>10</td></tr>
+                <tr><td>1982</td><td>Consolación y Lágrimas</td><td>8</td></tr>
+                <tr><td>1985</td><td>Semana Santa en Andalucía</td><td>5</td></tr>
+                <tr><td>1988</td><td>Stmo. Cristo de las Tres Caídas</td><td>10</td></tr>
+                <tr><td>1990</td><td>Sonidos de Sevilla</td><td>2</td></tr>
+                <tr><td>1994</td><td>Albores de Primavera</td><td>4</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="more">+ 24 grabaciones más — <a class="rl" href="#proto-a">ver todas ↧</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───── ALTERNATIVA B ───── -->
+    <div class="alt" id="proto-b">
+      <div class="alt-head">
+        <span class="id">B</span>
+        <h3>Dossier patrimonial</h3>
+        <span class="src">// patrimoniomusical.com · ficha de museo · base documental</span>
+      </div>
+      <p class="alt-desc">El registro como <strong>documento editorial</strong>: título
+        serif con presencia, ficha técnica lateral, discografía como tabla elegante y
+        bloques para audio y relaciones. Sereno, cálido y con jerarquía. El punto dulce
+        de «sobrio y serio» sin caer en árido.</p>
+      <div class="pc">
+        <div class="pros"><h4>Ventajas</h4>
+          <ul>
+            <li>Equilibra seriedad y calidez; sensación de prestigio patrimonial.</li>
+            <li>Jerarquía clara con sitio propio para audio, discografía y relaciones.</li>
+            <li>Contenido bien estructurado → excelente para SEO.</li>
+            <li>Escala con gracia tanto en registros ricos como pobres.</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Inconvenientes</h4>
+          <ul>
+            <li>Más plantilla y CSS que reorganizar que en A.</li>
+            <li>El layout de dos columnas exige cuidar bien el responsive.</li>
+            <li>Riesgo de «otra web más» si la tipografía no se cuida.</li>
+            <li>Menor densidad: el registro ocupa más scroll.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="demo-label">Prototipo B · detalle de marcha</div>
+      <div class="frame">
+        <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marchasdecristo.com/marcha/1693-el-santisimo-cristo-del-amor</span></div>
+        <div class="proto b">
+          <div class="wrap">
+            <div class="eb">Marcha procesional</div>
+            <h1>El Santísimo Cristo del Amor</h1>
+            <p class="byline">Compositor: <a href="#proto-b">Alberto Escámez López</a> · Málaga, 1944</p>
+            <div class="rule"></div>
+            <div class="cols">
+              <div class="main">
+                <div class="audio">
+                  <div class="play">▶</div>
+                  <div class="meta">
+                    <div class="t">Escuchar la marcha</div>
+                    <div class="s">Grabación de referencia · YouTube ↗</div>
+                  </div>
+                </div>
+
+                <h3 class="block">Sobre la marcha</h3>
+                <p class="lead">Una de las marchas clásicas del repertorio malagueño,
+                  dedicada a la Hermandad del Amor y estrenada por la Banda de Cornetas
+                  y Tambores de Bomberos de Málaga. Su amplia presencia discográfica
+                  —31 grabaciones documentadas desde 1967— da fe de su arraigo.</p>
+
+                <h3 class="block">Discografía</h3>
+                <p class="cap">31 grabaciones documentadas · se muestran las 7 primeras</p>
+                <div class="scrollx">
+                <table>
+                  <thead><tr><th>Año</th><th>Grabación</th><th>Pista</th></tr></thead>
+                  <tbody>
+                    <tr><td>1967</td><td>Cornetas y Tambores de la Semana Santa de Sevilla</td><td>3</td></tr>
+                    <tr><td>1982</td><td>Semana Santa en Sevilla — Marchas Procesionales</td><td>10</td></tr>
+                    <tr><td>1982</td><td>Consolación y Lágrimas</td><td>8</td></tr>
+                    <tr><td>1985</td><td>Semana Santa en Andalucía</td><td>5</td></tr>
+                    <tr><td>1988</td><td>Stmo. Cristo de las Tres Caídas</td><td>10</td></tr>
+                    <tr><td>1990</td><td>Sonidos de Sevilla</td><td>2</td></tr>
+                    <tr><td>1994</td><td>Albores de Primavera</td><td>4</td></tr>
+                  </tbody>
+                </table>
+                </div>
+
+                <div class="rel">
+                  <a href="#proto-b">Más de <b>Alberto Escámez López</b> (27 marchas) →</a>
+                  <a href="#proto-b">Más de <b>BCT Bomberos</b> (26 marchas) →</a>
+                </div>
+              </div>
+
+              <aside class="aside">
+                <div class="card">
+                  <h4>Ficha técnica</h4>
+                  <div class="ficha">
+                    <div class="row"><span class="k">Año</span><span class="v">1944</span></div>
+                    <div class="row"><span class="k">Tipo</span><span class="v">Marcha procesional</span></div>
+                    <div class="row"><span class="k">Duración</span><span class="v">3:28</span></div>
+                    <div class="row"><span class="k">Dedicatoria</span><span class="v">Hdad. del Amor</span></div>
+                    <div class="row"><span class="k">Localidad</span><span class="v">Málaga (Málaga)</span></div>
+                    <div class="row"><span class="k">Compositor</span><span class="v"><a href="#proto-b">Alberto Escámez López</a></span></div>
+                    <div class="row"><span class="k">Estreno</span><span class="v"><a href="#proto-b">BCT Bomberos</a></span></div>
+                    <div class="row"><span class="k">Grabaciones</span><span class="v">31</span></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───── ALTERNATIVA C ───── -->
+    <div class="alt" id="proto-c">
+      <div class="alt-head">
+        <span class="id">C</span>
+        <h3>Explorador de datos</h3>
+        <span class="src">// Datasette · Airtable · consola de consulta relacional</span>
+      </div>
+      <p class="alt-desc">El registro como <strong>fila consultable</strong> dentro de
+        un grafo: barra de búsqueda, facetas, IDs visibles y cada relación es una
+        consulta («ver las 26 marchas de esta banda»). La discografía es una tabla
+        <strong>ordenable y filtrable</strong> (aquí ya funciona el JS ligero). Invita
+        a explorar.</p>
+      <div class="pc">
+        <div class="pros"><h4>Ventajas</h4>
+          <ul>
+            <li>Expone y explota el grafo relacional autor↔marcha↔banda↔disco.</li>
+            <li>Invita a explorar; moderno pero sin dejar de ser sobrio.</li>
+            <li>Escala a miles de filas y encaja con FTS5 y las consultas.</li>
+            <li>El JS ligero (filtro, orden) brilla y aporta utilidad real.</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Inconvenientes</h4>
+          <ul>
+            <li>Puede sentirse «técnico» o frío para el cofrade de a pie.</li>
+            <li>Más JS y estado → más superficie que probar y mantener.</li>
+            <li>Riesgo de sobre-ingeniería para el volumen actual.</li>
+            <li>Curva de mantenimiento mayor para un único mantenedor.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="demo-label">Prototipo C · detalle de marcha · <span style="text-transform:none;letter-spacing:0;">la tabla filtra y ordena de verdad</span></div>
+      <div class="frame">
+        <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marchasdecristo.com/marcha/1693</span></div>
+        <div class="proto c">
+          <div class="wrap">
+            <div class="omni"><span>⌕</span><span>Buscar marcha, compositor, banda o disco…</span><span class="kbd">/</span></div>
+            <div class="facets">
+              <span class="chip">tipo: marcha procesional <span class="x">✕</span></span>
+              <span class="chip">provincia: Málaga <span class="x">✕</span></span>
+              <span class="chip">década: 1940 <span class="x">✕</span></span>
+            </div>
+
+            <div class="rec-head">
+              <h1>El Santísimo Cristo del Amor</h1>
+              <span class="idb">marcha · #1693</span>
+            </div>
+
+            <div class="kv">
+              <div class="r"><span class="k">Año</span><span class="v">1944</span></div>
+              <div class="r"><span class="k">Tipo</span><span class="v">Marcha procesional</span></div>
+              <div class="r"><span class="k">Duración</span><span class="v">3:28</span></div>
+              <div class="r"><span class="k">Dedicatoria</span><span class="v">Hdad. del Amor</span></div>
+              <div class="r"><span class="k">Compositor</span><span class="v"><a href="#proto-c">Alberto Escámez López</a> <span class="cnt">(27)↗</span></span></div>
+              <div class="r"><span class="k">Estreno</span><span class="v"><a href="#proto-c">BCT Bomberos</a> <span class="cnt">(26)↗</span></span></div>
+              <div class="r"><span class="k">Localidad</span><span class="v"><a href="#proto-c">Málaga</a> <span class="cnt">(Málaga)</span></span></div>
+              <div class="r"><span class="k">Grabaciones</span><span class="v">31</span></div>
+            </div>
+
+            <div class="player">▶ audio.youtube · nzP…_s8 — reproducir inline ↗</div>
+
+            <div class="disco-bar">
+              <h3>Discografía</h3>
+              <span class="rows" id="c-count">31 filas</span>
+              <input class="filter" id="c-filter" type="text" placeholder="filtrar grabaciones…" aria-label="Filtrar grabaciones">
+            </div>
+            <div class="scrollx">
+            <table id="c-table">
+              <thead><tr>
+                <th data-k="year" data-type="num">Año <span class="ar">↕</span></th>
+                <th data-k="disco">Grabación <span class="ar">↕</span></th>
+                <th data-k="track" data-type="num">Pista <span class="ar">↕</span></th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1967</td><td class="disc">Cornetas y Tambores de la Semana Santa de Sevilla</td><td>3</td></tr>
+                <tr><td>1982</td><td class="disc">Semana Santa en Sevilla — Marchas Procesionales</td><td>10</td></tr>
+                <tr><td>1982</td><td class="disc">Consolación y Lágrimas</td><td>8</td></tr>
+                <tr><td>1985</td><td class="disc">Banda Ntra. Sra. del Sol</td><td>8</td></tr>
+                <tr><td>1985</td><td class="disc">Semana Santa en Andalucía</td><td>5</td></tr>
+                <tr><td>1988</td><td class="disc">Stmo. Cristo de las Tres Caídas</td><td>10</td></tr>
+                <tr><td>1990</td><td class="disc">Sonidos de Sevilla</td><td>2</td></tr>
+                <tr><td>1994</td><td class="disc">Albores de Primavera</td><td>4</td></tr>
+                <tr><td>1995</td><td class="disc">Al Pasar Cristo</td><td>8</td></tr>
+                <tr><td>1997</td><td class="disc">Señor de la Madrugá</td><td>1</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 05 · RECOMENDACIÓN ════════════ -->
+  <section id="reco">
+    <div class="sec-head"><span class="num">05</span><h2>Recomendación</h2></div>
+    <p class="prose muted">Según lo que fijaste para este rediseño:</p>
+    <div class="decision">
+      <span class="d">Alcance: <b>reskin + reorganizar ficha</b></span>
+      <span class="d">Técnica: <b>JS ligero permitido</b></span>
+      <span class="d">Tema: <b>claro y oscuro</b></span>
+      <span class="d">Destacar: <b>audio · discografía · relaciones · duración/tipo</b></span>
+    </div>
+    <div class="reco">
+      <span class="pill">Propuesta</span>
+      <h3>B como base, con las afordancias relacionales de C</h3>
+      <p class="prose">El <strong>Dossier patrimonial (B)</strong> es el que mejor encaja
+        con «sobrio, serio y con foco en la información» sin resultar árido, y da sitio
+        natural a los cuatro bloques que quieres destacar. Sobre esa base editorial,
+        se injertan las piezas de <strong>C</strong> que aportan utilidad real:
+        la <strong>discografía como tabla ordenable/filtrable</strong> (tu JS ligero),
+        los <strong>enlaces relacionales con recuento</strong> («27 marchas de este autor»)
+        y el <strong>reproductor de audio embebido</strong>. De <strong>A</strong> se
+        conserva su <em>disciplina de densidad</em> para los listados. Ambos temas,
+        claro y oscuro, con un único acento oxblood.</p>
+      <ol class="steps">
+        <li>Introducir <b>tokens de color</b> (claro/oscuro) y un <b>par tipográfico</b> serif + sans en <span class="mono">app.css</span>, sin tocar plantillas todavía.</li>
+        <li>Rehacer <span class="mono">marcha_detail.php</span> al layout de B: cabecera + ficha técnica lateral + bloques.</li>
+        <li>Añadir el <b>bloque de audio</b> (cuando <span class="mono">AUDIO</span> exista) y exponer duración y tipo.</li>
+        <li>Convertir la discografía en <b>tabla</b> con orden y filtro por JS progresivo (funciona sin JS).</li>
+        <li>Añadir los <b>enlaces relacionales</b> con recuento (una consulta <span class="mono">COUNT</span> por autor/banda).</li>
+        <li>Aplicar el mismo lenguaje a <b>autor</b>, <b>banda</b> y <b>disco</b>, y validar el degradado con registros pobres.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Marchas de Cristo · revisión de diseño</span>
+    <span>rama design/frontend-review</span>
+    <span>datos reales · registro #1693 (mdc.db)</span>
+    <span>2026-07-07</span>
+  </footer>
+</div>
+
+<script>
+/* JS ligero — solo para el prototipo C: filtrar y ordenar la discografía.
+   Demuestra en vivo la dirección "explorador de datos". */
+(function(){
+  var table = document.getElementById('c-table');
+  if(!table) return;
+  var tbody = table.querySelector('tbody');
+  var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+  var filter = document.getElementById('c-filter');
+  var count = document.getElementById('c-count');
+  var total = rows.length;
+
+  function refreshCount(){
+    var vis = rows.filter(function(r){ return !r.classList.contains('hidden'); }).length;
+    count.textContent = (vis === total ? '31 filas' : vis + ' de 31 filas');
+  }
+  filter.addEventListener('input', function(){
+    var q = filter.value.trim().toLowerCase();
+    rows.forEach(function(r){
+      r.classList.toggle('hidden', q !== '' && r.textContent.toLowerCase().indexOf(q) === -1);
+    });
+    refreshCount();
+  });
+
+  var dir = {};
+  table.querySelectorAll('th').forEach(function(th, i){
+    th.addEventListener('click', function(){
+      var type = th.getAttribute('data-type');
+      dir[i] = !dir[i];
+      var sorted = rows.slice().sort(function(a,b){
+        var x = a.children[i].textContent.trim();
+        var y = b.children[i].textContent.trim();
+        if(type === 'num'){ x = parseFloat(x)||0; y = parseFloat(y)||0; return dir[i] ? x-y : y-x; }
+        return dir[i] ? x.localeCompare(y,'es') : y.localeCompare(x,'es');
+      });
+      sorted.forEach(function(r){ tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
