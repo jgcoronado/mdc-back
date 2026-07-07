@@ -350,6 +350,127 @@ section{padding:3rem 0;border-bottom:1px solid var(--line);}
 footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
   font-size:.75rem;display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;}
 
+/* ═══ Tokens semánticos (color = dato), theme-aware en un solo sitio ═══ */
+:root{--sem-est:#1c6b3c;--sem-est-bg:#e6f3ea;--sem-nov:#0f6e78;--sem-nov-bg:#e2f2f3;--sem-rec:#8a5a1f;--sem-rec-bg:#f6ecd9;}
+@media(prefers-color-scheme:dark){:root{--sem-est:#7cc39a;--sem-est-bg:#16281d;--sem-nov:#5fc3cd;--sem-nov-bg:#12292c;--sem-rec:#d7a866;--sem-rec-bg:#2c2416;}}
+:root[data-theme="dark"]{--sem-est:#7cc39a;--sem-est-bg:#16281d;--sem-nov:#5fc3cd;--sem-nov-bg:#12292c;--sem-rec:#d7a866;--sem-rec-bg:#2c2416;}
+:root[data-theme="light"]{--sem-est:#1c6b3c;--sem-est-bg:#e6f3ea;--sem-nov:#0f6e78;--sem-nov-bg:#e2f2f3;--sem-rec:#8a5a1f;--sem-rec-bg:#f6ecd9;}
+
+/* ═══ §05 · Análisis de color ═══ */
+.mini{font-family:var(--sans);font-weight:600;font-size:1.05rem;margin:1.9rem 0 .4rem;}
+.palette-note{font-size:.84rem;color:var(--muted);max-width:44rem;}
+.paltab{width:100%;border-collapse:collapse;font-size:.85rem;}
+.paltab th{text-align:left;font-family:var(--mono);font-size:.64rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--faint);border-bottom:1.5px solid var(--line-2);
+  padding:.45rem .8rem .45rem 0;}
+.paltab td{padding:.45rem .8rem .45rem 0;border-bottom:1px solid var(--line);
+  vertical-align:middle;font-family:var(--mono);font-size:.78rem;}
+.dotc{display:inline-block;width:.85rem;height:.85rem;border-radius:3px;
+  border:1px solid rgba(120,120,120,.35);vertical-align:-.12em;margin-right:.45rem;}
+.palette{display:grid;grid-template-columns:1fr;gap:1.4rem;margin:.7rem 0 1rem;}
+@media(min-width:720px){.palette{grid-template-columns:1fr 1fr;}}
+.pal-title{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:.6rem;}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(7.2rem,1fr));gap:.6rem;}
+.sw{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface);}
+.sw .chip{height:2.8rem;}
+.sw .meta{padding:.45rem .55rem;}
+.sw .role{font-size:.74rem;font-weight:600;}
+.sw .hex{font-family:var(--mono);font-size:.68rem;color:var(--faint);}
+.sem{display:flex;flex-wrap:wrap;gap:.5rem;margin:.7rem 0 1rem;}
+.tagc{font-family:var(--mono);font-size:.74rem;padding:.24rem .6rem;border-radius:6px;
+  font-weight:600;border:1px solid transparent;}
+.tagc.tipo{color:var(--accent);background:var(--accent-soft);
+  border-color:color-mix(in oklab,var(--accent) 26%,transparent);}
+.tagc.estreno{color:var(--sem-est);background:var(--sem-est-bg);}
+.tagc.novedad{color:var(--sem-nov);background:var(--sem-nov-bg);}
+.tagc.recup{color:var(--sem-rec);background:var(--sem-rec-bg);}
+
+/* ═══ §06 · Prototipo C refinado ("Índigo noche") ═══ */
+.proto.cx{--bg:#eaecf2;--card:#ffffff;--s2:#f2f4fa;--line:#dce0eb;--ink:#181b24;
+  --muted:#59606f;--faint:#8890a1;--acc:#3a4d9e;--acc-tint:#e9ecf9;
+  background:var(--bg);color:var(--ink);font-family:var(--sans);padding:1.3rem 1.1rem 1.7rem;}
+@media(prefers-color-scheme:dark){.proto.cx{--bg:#0e1016;--card:#161a24;--s2:#1c2130;
+  --line:#2a3350;--ink:#e7eaf4;--muted:#9aa3b8;--faint:#6a7488;--acc:#8ea0ec;--acc-tint:#1e2540;}}
+:root[data-theme="dark"] .proto.cx{--bg:#0e1016;--card:#161a24;--s2:#1c2130;--line:#2a3350;
+  --ink:#e7eaf4;--muted:#9aa3b8;--faint:#6a7488;--acc:#8ea0ec;--acc-tint:#1e2540;}
+:root[data-theme="light"] .proto.cx{--bg:#eaecf2;--card:#ffffff;--s2:#f2f4fa;--line:#dce0eb;
+  --ink:#181b24;--muted:#59606f;--faint:#8890a1;--acc:#3a4d9e;--acc-tint:#e9ecf9;}
+.proto.cx .wrap{max-width:52rem;margin:0 auto;}
+.proto.cx .omni{display:flex;align-items:center;gap:.55rem;border:1px solid var(--line);
+  border-radius:9px;background:var(--card);padding:.6rem .75rem;font-family:var(--mono);
+  font-size:.8rem;color:var(--muted);box-shadow:0 1px 2px rgba(20,28,60,.05);}
+.proto.cx .omni .kbd{margin-left:auto;font-size:.66rem;color:var(--faint);
+  border:1px solid var(--line);border-radius:4px;padding:.05rem .35rem;}
+.proto.cx .facets{display:flex;flex-wrap:wrap;gap:.4rem;margin:.7rem 0 0;}
+.proto.cx .facets .chip{font-family:var(--mono);font-size:.72rem;color:var(--acc);
+  background:var(--acc-tint);border:1px solid color-mix(in oklab,var(--acc) 28%,transparent);
+  border-radius:6px;padding:.2rem .55rem;}
+.proto.cx .facets .chip .x{color:var(--faint);}
+.proto.cx .card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--acc);
+  border-radius:13px;padding:1.4rem 1.5rem 1.5rem;margin-top:1rem;
+  box-shadow:0 1px 2px rgba(20,28,60,.06),0 22px 48px -28px rgba(20,28,60,.42);}
+.proto.cx .head{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;}
+.proto.cx .eb{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--acc);font-weight:600;}
+.proto.cx .tipochip{font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--acc);
+  background:var(--acc-tint);border:1px solid color-mix(in oklab,var(--acc) 26%,transparent);
+  border-radius:6px;padding:.2rem .55rem;}
+.proto.cx h1{font-family:var(--serif);font-size:clamp(1.5rem,3.5vw,2.1rem);letter-spacing:-.01em;
+  margin:.5rem 0 .25rem;color:var(--ink);}
+.proto.cx .sub{color:var(--muted);font-size:.98rem;}
+.proto.cx .sub a{color:var(--acc);text-decoration:none;}
+.proto.cx .sub a:hover{text-decoration:underline;}
+.proto.cx .strip{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:1.2rem 0;}
+@media(min-width:560px){.proto.cx .strip{grid-template-columns:repeat(5,1fr);}}
+.proto.cx .tile{background:var(--s2);padding:.75rem .9rem;}
+.proto.cx .tile .l{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--faint);}
+.proto.cx .tile .n{font-family:var(--serif);font-size:1.4rem;font-weight:600;
+  font-variant-numeric:tabular-nums;margin-top:.1rem;}
+.proto.cx .tile .n.est{color:var(--sem-est);}
+.proto.cx .player{display:flex;align-items:center;gap:.65rem;margin:0 0 1.3rem;padding:.6rem .8rem;
+  border-radius:10px;background:var(--acc-tint);
+  border:1px solid color-mix(in oklab,var(--acc) 22%,transparent);font-size:.86rem;color:var(--ink);}
+.proto.cx .player .pbtn{width:2rem;height:2rem;border-radius:50%;flex:none;background:var(--acc);
+  color:#fff;display:grid;place-items:center;font-size:.72rem;}
+.proto.cx .player .pt{font-weight:600;}
+.proto.cx .player .ps{color:var(--muted);font-size:.76rem;margin-left:auto;}
+.proto.cx .kv2{display:grid;grid-template-columns:1fr;gap:0;margin:0 0 .4rem;}
+@media(min-width:560px){.proto.cx .kv2{grid-template-columns:1fr 1fr;column-gap:2rem;}}
+.proto.cx .kv2 .r{display:grid;grid-template-columns:9rem 1fr;gap:.6rem;padding:.5rem 0;
+  border-bottom:1px solid var(--line);align-items:baseline;}
+.proto.cx .kv2 .k{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--faint);}
+.proto.cx .kv2 .v{font-size:.92rem;}
+.proto.cx .kv2 .v a{color:var(--acc);text-decoration:none;}
+.proto.cx .kv2 .v a:hover{text-decoration:underline;}
+.proto.cx .kv2 .cnt{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
+.proto.cx .disco-bar{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:1.7rem 0 .5rem;}
+.proto.cx .disco-bar h3{font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);font-weight:600;}
+.proto.cx .disco-bar .rows{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
+.proto.cx .filter{margin-left:auto;font-family:var(--mono);font-size:.76rem;border:1px solid var(--line);
+  border-radius:6px;padding:.34rem .55rem;background:var(--card);color:var(--ink);min-width:11rem;}
+.proto.cx .filter::placeholder{color:var(--faint);}
+.proto.cx table{width:100%;border-collapse:collapse;font-size:.83rem;font-variant-numeric:tabular-nums;}
+.proto.cx thead th{text-align:left;font-family:var(--mono);font-size:.64rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1.5px solid var(--line);
+  padding:.42rem .7rem;cursor:pointer;user-select:none;white-space:nowrap;background:var(--s2);}
+.proto.cx thead th .ar{color:var(--faint);}
+.proto.cx tbody td{padding:.4rem .7rem;border-bottom:1px solid var(--line);}
+.proto.cx tbody tr:hover td{background:var(--acc-tint);}
+.proto.cx td .disc{color:var(--acc);}
+.proto.cx .badge.est{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--sem-est);
+  background:var(--sem-est-bg);border-radius:5px;padding:.12rem .45rem;white-space:nowrap;}
+.proto.cx .rel{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.5rem;}
+.proto.cx .rel a{font-size:.82rem;text-decoration:none;color:var(--ink);background:var(--s2);
+  border:1px solid var(--line);border-radius:8px;padding:.5rem .8rem;}
+.proto.cx .rel a:hover{border-color:var(--acc);color:var(--acc);}
+.proto.cx .rel a b{color:var(--acc);}
+.proto.cx .hidden{display:none;}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
 
@@ -369,11 +490,13 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
       <span><b>Fecha:</b> 2026-07-07</span>
     </div>
     <nav class="toc">
-      <a href="#que-es">01 · Qué es esta web</a>
-      <a href="#dafo">02 · DAFO del diseño</a>
-      <a href="#norte">03 · Norte de diseño</a>
+      <a href="#que-es">01 · Qué es</a>
+      <a href="#dafo">02 · DAFO</a>
+      <a href="#norte">03 · Norte</a>
       <a href="#alt-a">04 · Alternativas ×3</a>
-      <a href="#reco">05 · Recomendación</a>
+      <a href="#color">05 · Color y profundidad</a>
+      <a href="#dir-c">06 · Dirección C</a>
+      <a href="#reco">07 · Recomendación</a>
     </nav>
   </header>
 
@@ -772,35 +895,196 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
     </div>
   </section>
 
-  <!-- ════════════ 05 · RECOMENDACIÓN ════════════ -->
+  <!-- ════════════ 05 · COLOR ════════════ -->
+  <section id="color">
+    <div class="sec-head"><span class="num">05</span><h2>Análisis de color y profundidad</h2></div>
+    <div class="prose">
+      <p>El plano actual no es «minimalismo»: es <strong>ausencia de decisiones</strong>.
+        Los grises son de croma&nbsp;≈&nbsp;0 y hay una sola superficie. La sobriedad se
+        conserva aportando <em>profundidad</em> (capas + filete + una sombra suave) y
+        <em>un acento con intención</em> —no saturando la página—. Para C, además, el
+        color puede <strong>codificar dato</strong>.</p>
+    </div>
+
+    <h3 class="mini">De dónde viene la planitud — tokens actuales</h3>
+    <div class="scrollx"><table class="paltab">
+      <thead><tr><th>Rol</th><th>Hoy</th><th>Croma</th><th>Problema</th></tr></thead>
+      <tbody>
+        <tr><td>Fondo</td><td><span class="dotc" style="background:#ffffff"></span>#ffffff</td><td>0</td><td>Blanco puro, sin temperatura</td></tr>
+        <tr><td>Superficie</td><td><span class="dotc" style="background:#f6f6f6"></span>#f6f6f6</td><td>0</td><td>Gris «de sistema», impersonal</td></tr>
+        <tr><td>Borde</td><td><span class="dotc" style="background:#e3e3e3"></span>#e3e3e3</td><td>0</td><td>Un único filete, sin jerarquía</td></tr>
+        <tr><td>Texto</td><td><span class="dotc" style="background:#0f0f0f"></span>#0f0f0f</td><td>0</td><td>Casi negro absoluto, duro</td></tr>
+        <tr><td>Acento</td><td>—</td><td>—</td><td>No existe: nada guía la vista</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="mini">Sistema propuesto para C — «Índigo noche»</h3>
+    <p class="palette-note">Neutros con un leve sesgo frío (hacia el índigo, para que el
+      gris se sienta <em>elegido</em>), tres niveles de superficie que dan elevación y un
+      acento índigo usado en estructura: filete superior de la ficha, estados y enlaces.
+      Contraste del acento sobre blanco ≈&nbsp;<strong>7,7:1</strong>; tinta ≈&nbsp;16:1;
+      texto apagado ≈&nbsp;6,3:1 — todos ≥&nbsp;AA.</p>
+
+    <div class="palette">
+      <div class="pal-group">
+        <div class="pal-title">Tema claro</div>
+        <div class="swatches">
+          <div class="sw"><div class="chip" style="background:#eaecf2"></div><div class="meta"><div class="role">Fondo app</div><div class="hex">#eaecf2</div></div></div>
+          <div class="sw"><div class="chip" style="background:#ffffff"></div><div class="meta"><div class="role">Ficha</div><div class="hex">#ffffff</div></div></div>
+          <div class="sw"><div class="chip" style="background:#f2f4fa"></div><div class="meta"><div class="role">Superficie&nbsp;2</div><div class="hex">#f2f4fa</div></div></div>
+          <div class="sw"><div class="chip" style="background:#dce0eb"></div><div class="meta"><div class="role">Filete</div><div class="hex">#dce0eb</div></div></div>
+          <div class="sw"><div class="chip" style="background:#3a4d9e"></div><div class="meta"><div class="role">Acento índigo</div><div class="hex">#3a4d9e</div></div></div>
+          <div class="sw"><div class="chip" style="background:#181b24"></div><div class="meta"><div class="role">Tinta</div><div class="hex">#181b24</div></div></div>
+        </div>
+      </div>
+      <div class="pal-group">
+        <div class="pal-title">Tema oscuro · «azul noche»</div>
+        <div class="swatches">
+          <div class="sw"><div class="chip" style="background:#0e1016"></div><div class="meta"><div class="role">Fondo app</div><div class="hex">#0e1016</div></div></div>
+          <div class="sw"><div class="chip" style="background:#161a24"></div><div class="meta"><div class="role">Ficha</div><div class="hex">#161a24</div></div></div>
+          <div class="sw"><div class="chip" style="background:#1c2130"></div><div class="meta"><div class="role">Superficie&nbsp;2</div><div class="hex">#1c2130</div></div></div>
+          <div class="sw"><div class="chip" style="background:#2a3350"></div><div class="meta"><div class="role">Filete</div><div class="hex">#2a3350</div></div></div>
+          <div class="sw"><div class="chip" style="background:#8ea0ec"></div><div class="meta"><div class="role">Acento índigo</div><div class="hex">#8ea0ec</div></div></div>
+          <div class="sw"><div class="chip" style="background:#e7eaf4"></div><div class="meta"><div class="role">Tinta</div><div class="hex">#e7eaf4</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="mini">El color codifica dato, no solo decora</h3>
+    <p class="palette-note">Reservamos tres estados semánticos —los que ya viven en tu
+      código de ingesta— <strong>separados</strong> del acento de marca. Siempre con
+      etiqueta, nunca color a secas:</p>
+    <div class="sem">
+      <span class="tagc tipo">Marcha procesional</span>
+      <span class="tagc estreno">◆ 1.ª grabación</span>
+      <span class="tagc novedad">● novedad</span>
+      <span class="tagc recup">● recuperación</span>
+    </div>
+    <p class="palette-note">Usos en la ficha: el <strong>tipo de marcha</strong> como
+      distintivo junto al título; la <strong>primera grabación</strong> marcada en la
+      discografía; y, en los listados, la clasificación de cada incorporación. Contraste
+      con significado, sin romper la sobriedad.</p>
+  </section>
+
+  <!-- ════════════ 06 · DIRECCIÓN C ════════════ -->
+  <section id="dir-c">
+    <div class="sec-head"><span class="num">06</span><h2>Dirección elegida: C, refinada</h2></div>
+    <div class="prose">
+      <p>El explorador de datos, ahora con <strong>la ficha como protagonista a todo el
+        ancho</strong> (nunca en un lateral): cabecera potente, una <strong>tira con los
+        datos clave</strong> y, debajo, la ficha completa, el audio y la discografía
+        filtrable. Profundidad real —tres superficies, filete y una sombra—, acento
+        <strong>índigo noche</strong> y <strong>color que codifica</strong> el tipo y la
+        primera grabación.</p>
+    </div>
+    <div class="demo-label">Prototipo C refinado · claro y oscuro · <span style="text-transform:none;letter-spacing:0;">la tabla filtra y ordena de verdad</span></div>
+    <div class="frame">
+      <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marchasdecristo.com/marcha/1693-el-santisimo-cristo-del-amor</span></div>
+      <div class="proto cx">
+        <div class="wrap">
+          <div class="omni"><span>⌕</span><span>Buscar marcha, compositor, banda o disco…</span><span class="kbd">/</span></div>
+          <div class="facets">
+            <span class="chip">tipo: marcha procesional <span class="x">✕</span></span>
+            <span class="chip">provincia: Málaga <span class="x">✕</span></span>
+          </div>
+
+          <article class="card">
+            <div class="head">
+              <div class="eb">Marcha · #1693</div>
+              <span class="tipochip">Marcha procesional</span>
+            </div>
+            <h1>El Santísimo Cristo del Amor</h1>
+            <p class="sub"><a href="#dir-c">Alberto Escámez López</a> · Málaga, 1944</p>
+
+            <div class="strip">
+              <div class="tile"><div class="l">Año</div><div class="n">1944</div></div>
+              <div class="tile"><div class="l">Duración</div><div class="n">3:28</div></div>
+              <div class="tile"><div class="l">Grabaciones</div><div class="n">31</div></div>
+              <div class="tile"><div class="l">1.ª grabación</div><div class="n est">1967</div></div>
+              <div class="tile"><div class="l">Provincia</div><div class="n" style="font-size:1.15rem;">Málaga</div></div>
+            </div>
+
+            <div class="player"><span class="pbtn">▶</span><span class="pt">Escuchar la marcha</span><span class="ps">grabación de referencia · YouTube ↗</span></div>
+
+            <div class="kv2">
+              <div class="r"><span class="k">Compositor</span><span class="v"><a href="#dir-c">Alberto Escámez López</a> <span class="cnt">27 marchas ↗</span></span></div>
+              <div class="r"><span class="k">Estrenada por</span><span class="v"><a href="#dir-c">BCT Bomberos</a> <span class="cnt">26 marchas ↗</span></span></div>
+              <div class="r"><span class="k">Dedicatoria</span><span class="v">Hdad. del Amor</span></div>
+              <div class="r"><span class="k">Localidad</span><span class="v"><a href="#dir-c">Málaga</a> (Málaga)</span></div>
+              <div class="r"><span class="k">Tipo</span><span class="v">Marcha procesional</span></div>
+              <div class="r"><span class="k">Duración</span><span class="v">3:28 (208&nbsp;s)</span></div>
+            </div>
+
+            <div class="disco-bar">
+              <h3>Discografía</h3>
+              <span class="rows" id="c2-count">31 filas</span>
+              <input class="filter" id="c2-filter" type="text" placeholder="filtrar grabaciones…" aria-label="Filtrar grabaciones">
+            </div>
+            <div class="scrollx">
+            <table id="c2-table">
+              <thead><tr>
+                <th data-type="num">Año <span class="ar">↕</span></th>
+                <th>Grabación <span class="ar">↕</span></th>
+                <th data-type="num">Pista <span class="ar">↕</span></th>
+                <th>Estado</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1967</td><td class="disc">Cornetas y Tambores de la Semana Santa de Sevilla</td><td>3</td><td><span class="badge est">◆ 1.ª grabación</span></td></tr>
+                <tr><td>1982</td><td class="disc">Semana Santa en Sevilla — Marchas Procesionales</td><td>10</td><td></td></tr>
+                <tr><td>1982</td><td class="disc">Consolación y Lágrimas</td><td>8</td><td></td></tr>
+                <tr><td>1985</td><td class="disc">Banda Ntra. Sra. del Sol</td><td>8</td><td></td></tr>
+                <tr><td>1985</td><td class="disc">Semana Santa en Andalucía</td><td>5</td><td></td></tr>
+                <tr><td>1988</td><td class="disc">Stmo. Cristo de las Tres Caídas</td><td>10</td><td></td></tr>
+                <tr><td>1990</td><td class="disc">Sonidos de Sevilla</td><td>2</td><td></td></tr>
+                <tr><td>1994</td><td class="disc">Albores de Primavera</td><td>4</td><td></td></tr>
+                <tr><td>1995</td><td class="disc">Al Pasar Cristo</td><td>8</td><td></td></tr>
+                <tr><td>1997</td><td class="disc">Señor de la Madrugá</td><td>1</td><td></td></tr>
+              </tbody>
+            </table>
+            </div>
+            <p class="palette-note" style="margin:.6rem 0 0;font-size:.76rem;">Se listan 10 de 31 grabaciones para el prototipo.</p>
+
+            <div class="rel">
+              <a href="#dir-c">Ver las <b>27 marchas</b> de Alberto Escámez López →</a>
+              <a href="#dir-c">Ver las <b>26 marchas</b> de BCT Bomberos →</a>
+              <a href="#dir-c">Otras marchas de <b>1944</b> →</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+    <p class="palette-note" style="margin-top:.7rem;">Cambia el tema del visor (claro/oscuro)
+      para ver ambas versiones: la tira de datos, el distintivo de tipo y la «1.ª grabación»
+      responden al mismo sistema de color.</p>
+  </section>
+
+  <!-- ════════════ 07 · RECOMENDACIÓN ════════════ -->
   <section id="reco">
-    <div class="sec-head"><span class="num">05</span><h2>Recomendación</h2></div>
-    <p class="prose muted">Según lo que fijaste para este rediseño:</p>
+    <div class="sec-head"><span class="num">07</span><h2>Recomendación y próximos pasos</h2></div>
+    <p class="prose muted">Dirección confirmada contigo en esta iteración:</p>
     <div class="decision">
-      <span class="d">Alcance: <b>reskin + reorganizar ficha</b></span>
-      <span class="d">Técnica: <b>JS ligero permitido</b></span>
+      <span class="d">Base: <b>Explorador (C)</b></span>
+      <span class="d">Ficha: <b>protagonista, a todo el ancho</b></span>
+      <span class="d">Contraste: <b>acento + profundidad</b></span>
+      <span class="d">Color: <b>índigo noche</b></span>
+      <span class="d">Semántica: <b>color = dato</b></span>
       <span class="d">Tema: <b>claro y oscuro</b></span>
-      <span class="d">Destacar: <b>audio · discografía · relaciones · duración/tipo</b></span>
     </div>
     <div class="reco">
-      <span class="pill">Propuesta</span>
-      <h3>B como base, con las afordancias relacionales de C</h3>
-      <p class="prose">El <strong>Dossier patrimonial (B)</strong> es el que mejor encaja
-        con «sobrio, serio y con foco en la información» sin resultar árido, y da sitio
-        natural a los cuatro bloques que quieres destacar. Sobre esa base editorial,
-        se injertan las piezas de <strong>C</strong> que aportan utilidad real:
-        la <strong>discografía como tabla ordenable/filtrable</strong> (tu JS ligero),
-        los <strong>enlaces relacionales con recuento</strong> («27 marchas de este autor»)
-        y el <strong>reproductor de audio embebido</strong>. De <strong>A</strong> se
-        conserva su <em>disciplina de densidad</em> para los listados. Ambos temas,
-        claro y oscuro, con un único acento oxblood.</p>
+      <span class="pill">Plan</span>
+      <h3>Llevar la Dirección C (§06) a producción, por fases</h3>
+      <p class="prose">La ficha manda: cabecera + tira de datos clave + ficha completa +
+        discografía filtrable. Índigo como acento estructural, tres superficies para dar
+        profundidad y color semántico (tipo, 1.ª grabación) separado del acento. Todo en
+        PHP&nbsp;+ una hoja de estilos con tokens y un archivo JS pequeño; nada que rompa el
+        hosting compartido.</p>
       <ol class="steps">
-        <li>Introducir <b>tokens de color</b> (claro/oscuro) y un <b>par tipográfico</b> serif + sans en <span class="mono">app.css</span>, sin tocar plantillas todavía.</li>
-        <li>Rehacer <span class="mono">marcha_detail.php</span> al layout de B: cabecera + ficha técnica lateral + bloques.</li>
-        <li>Añadir el <b>bloque de audio</b> (cuando <span class="mono">AUDIO</span> exista) y exponer duración y tipo.</li>
-        <li>Convertir la discografía en <b>tabla</b> con orden y filtro por JS progresivo (funciona sin JS).</li>
-        <li>Añadir los <b>enlaces relacionales</b> con recuento (una consulta <span class="mono">COUNT</span> por autor/banda).</li>
-        <li>Aplicar el mismo lenguaje a <b>autor</b>, <b>banda</b> y <b>disco</b>, y validar el degradado con registros pobres.</li>
+        <li>Reescribir <span class="mono">app.css</span> con <b>tokens</b> índigo (claro/oscuro) y las <b>tres superficies</b> de elevación.</li>
+        <li>Rehacer <span class="mono">marcha_detail.php</span>: cabecera + <b>tira de datos</b> + ficha 2-col a todo el ancho.</li>
+        <li>Añadir <b>distintivo de tipo</b> y <b>badge «1.ª grabación»</b> con los tokens semánticos (los de ingesta).</li>
+        <li>Discografía como <b>tabla ordenable/filtrable</b> (JS progresivo; funciona sin JS).</li>
+        <li><b>Enlaces relacionales con recuento</b> (un <span class="mono">COUNT</span> por autor/banda/año).</li>
+        <li>Propagar el sistema a <b>autor/banda/disco</b> y a los <b>listados</b> (clasificación en color), y validar el degradado con registros pobres.</li>
       </ol>
     </div>
   </section>
@@ -814,42 +1098,48 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
 </div>
 
 <script>
-/* JS ligero — solo para el prototipo C: filtrar y ordenar la discografía.
+/* JS ligero — filtra y ordena la discografía en los prototipos C.
    Demuestra en vivo la dirección "explorador de datos". */
 (function(){
-  var table = document.getElementById('c-table');
-  if(!table) return;
-  var tbody = table.querySelector('tbody');
-  var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-  var filter = document.getElementById('c-filter');
-  var count = document.getElementById('c-count');
-  var total = rows.length;
+  function initTable(tableId, filterId, countId){
+    var table = document.getElementById(tableId);
+    if(!table) return;
+    var tbody = table.querySelector('tbody');
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+    var total = rows.length;
+    var filter = document.getElementById(filterId);
+    var count = document.getElementById(countId);
 
-  function refreshCount(){
-    var vis = rows.filter(function(r){ return !r.classList.contains('hidden'); }).length;
-    count.textContent = (vis === total ? '31 filas' : vis + ' de 31 filas');
-  }
-  filter.addEventListener('input', function(){
-    var q = filter.value.trim().toLowerCase();
-    rows.forEach(function(r){
-      r.classList.toggle('hidden', q !== '' && r.textContent.toLowerCase().indexOf(q) === -1);
-    });
-    refreshCount();
-  });
-
-  var dir = {};
-  table.querySelectorAll('th').forEach(function(th, i){
-    th.addEventListener('click', function(){
-      var type = th.getAttribute('data-type');
-      dir[i] = !dir[i];
-      var sorted = rows.slice().sort(function(a,b){
-        var x = a.children[i].textContent.trim();
-        var y = b.children[i].textContent.trim();
-        if(type === 'num'){ x = parseFloat(x)||0; y = parseFloat(y)||0; return dir[i] ? x-y : y-x; }
-        return dir[i] ? x.localeCompare(y,'es') : y.localeCompare(x,'es');
+    function refresh(){
+      if(!count) return;
+      var vis = rows.filter(function(r){ return !r.classList.contains('hidden'); }).length;
+      count.textContent = (vis === total ? total + ' filas' : vis + ' de ' + total + ' filas');
+    }
+    if(filter){
+      filter.addEventListener('input', function(){
+        var q = filter.value.trim().toLowerCase();
+        rows.forEach(function(r){
+          r.classList.toggle('hidden', q !== '' && r.textContent.toLowerCase().indexOf(q) === -1);
+        });
+        refresh();
       });
-      sorted.forEach(function(r){ tbody.appendChild(r); });
+    }
+    var dir = {};
+    Array.prototype.forEach.call(table.querySelectorAll('th'), function(th, i){
+      if(th.textContent.trim().toLowerCase().indexOf('estado') === 0) return; // columna no ordenable
+      th.addEventListener('click', function(){
+        var type = th.getAttribute('data-type');
+        dir[i] = !dir[i];
+        rows.slice().sort(function(a,b){
+          var x = a.children[i].textContent.trim();
+          var y = b.children[i].textContent.trim();
+          if(type === 'num'){ x = parseFloat(x)||0; y = parseFloat(y)||0; return dir[i] ? x-y : y-x; }
+          return dir[i] ? x.localeCompare(y,'es') : y.localeCompare(x,'es');
+        }).forEach(function(r){ tbody.appendChild(r); });
+      });
     });
-  });
+  }
+  initTable('c-table', 'c-filter', 'c-count');
+  initTable('c2-table', 'c2-filter', 'c2-count');
 })();
 </script>
