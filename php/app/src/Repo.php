@@ -141,9 +141,9 @@ final class Repo
         }
         if (!empty($params['fechaDesde'])) { $conditions[] = 'm.FECHA >= ?'; $values[] = $params['fechaDesde']; }
         if (!empty($params['fechaHasta'])) { $conditions[] = 'm.FECHA <= ?'; $values[] = $params['fechaHasta']; }
-        if (!empty($params['dedicatoria'])) { $conditions[] = 'm.DEDICATORIA LIKE ?'; $values[] = '%' . $params['dedicatoria'] . '%'; }
-        if (!empty($params['localidad'])) { $conditions[] = 'm.LOCALIDAD LIKE ?'; $values[] = '%' . $params['localidad'] . '%'; }
-        if (!empty($params['provincia'])) { $conditions[] = 'm.PROVINCIA LIKE ?'; $values[] = '%' . $params['provincia'] . '%'; }
+        if (!empty($params['dedicatoria'])) { $conditions[] = 'NOACC(m.DEDICATORIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['dedicatoria']) . '%'; }
+        if (!empty($params['localidad'])) { $conditions[] = 'NOACC(m.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
+        if (!empty($params['provincia'])) { $conditions[] = 'NOACC(m.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
 
         $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
         $baseWhere = "EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA) AND $where";
@@ -300,9 +300,9 @@ final class Repo
         parse_str($query, $params);
         $conditions = [];
         $values = [];
-        if (!empty($params['titulo'])) { $conditions[] = 'b.NOMBRE_COMPLETO LIKE ?'; $values[] = '%' . $params['titulo'] . '%'; }
-        if (!empty($params['localidad'])) { $conditions[] = 'b.LOCALIDAD LIKE ?'; $values[] = '%' . $params['localidad'] . '%'; }
-        if (!empty($params['provincia'])) { $conditions[] = 'b.PROVINCIA LIKE ?'; $values[] = '%' . $params['provincia'] . '%'; }
+        if (!empty($params['titulo'])) { $conditions[] = 'NOACC(b.NOMBRE_COMPLETO) LIKE ?'; $values[] = '%' . Db::noAcc($params['titulo']) . '%'; }
+        if (!empty($params['localidad'])) { $conditions[] = 'NOACC(b.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
+        if (!empty($params['provincia'])) { $conditions[] = 'NOACC(b.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
         $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
 
         $countRow = Db::one("SELECT COUNT(*) AS n FROM banda b WHERE $where", $values);
@@ -361,8 +361,8 @@ final class Repo
     {
         parse_str($query, $params);
         $nombre = (string) ($params['nombre'] ?? '');
-        $where = $nombre !== '' ? 'd.NOMBRE_CD LIKE ?' : '1=1';
-        $values = $nombre !== '' ? ['%' . $nombre . '%'] : [];
+        $where = $nombre !== '' ? 'NOACC(d.NOMBRE_CD) LIKE ?' : '1=1';
+        $values = $nombre !== '' ? ['%' . Db::noAcc($nombre) . '%'] : [];
 
         $countRow = Db::one("SELECT COUNT(*) AS n FROM disco d WHERE $where", $values);
         $totalRows = (int) ($countRow['n'] ?? 0);

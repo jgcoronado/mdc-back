@@ -43,9 +43,28 @@ final class Db
         }
         $pdo->exec('PRAGMA foreign_keys = ON');
         $pdo->exec('PRAGMA busy_timeout = 5000');
+        $pdo->sqliteCreateFunction('NOACC', [self::class, 'noAcc'], 1);
 
         self::$pdo = $pdo;
         return $pdo;
+    }
+
+    /**
+     * Minúsculas + sin diacríticos, para búsquedas LIKE insensibles a mayúsculas
+     * y acentos (p.ej. "redencion" encuentra "Redención"). Expuesta a SQLite como
+     * función NOACC(), y usada también en PHP para normalizar el parámetro del bind.
+     */
+    public static function noAcc(?string $s): string
+    {
+        if ($s === null || $s === '') {
+            return '';
+        }
+        $lower = mb_strtolower($s, 'UTF-8');
+        $decomposed = \Normalizer::normalize($lower, \Normalizer::FORM_D);
+        if ($decomposed === false) {
+            return $lower;
+        }
+        return (string) preg_replace('/\p{Mn}/u', '', $decomposed);
     }
 
     /**
