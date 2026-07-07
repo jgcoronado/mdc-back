@@ -15,6 +15,9 @@ $claseBadge = ['estreno' => 'badge-estreno', 'novedad' => 'badge-novedad', 'recu
 <?php if (isset($_GET['descartado'])): ?>
     <div class="alert alert-info">Candidato descartado.</div>
 <?php endif; ?>
+<?php if (isset($_GET['aceptado'])): ?>
+    <div class="alert alert-success">Marcha añadida correctamente (<a href="/dashboard/marcha/<?= (int) $_GET['aceptado'] ?>" target="_blank">#<?= (int) $_GET['aceptado'] ?> ↗</a>).</div>
+<?php endif; ?>
 
     <div class="row" style="flex-wrap:wrap;gap:0.5rem">
 <?php foreach ($estadoLabels as $key => $label): ?>

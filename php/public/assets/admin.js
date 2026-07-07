@@ -32,6 +32,10 @@
         if (e.target.classList.contains('chip-x')) e.target.closest('.chip').remove();
     });
 
+    // API pública mínima para que otras páginas (p.ej. revisión de ingesta)
+    // puedan añadir un autor ya conocido sin pasar por el cuadro de búsqueda.
+    window.AutorAutocomplete = { addChip, selectedIds };
+
     function closeSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
 
     let timer, controller;

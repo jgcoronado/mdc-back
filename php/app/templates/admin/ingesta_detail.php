@@ -54,12 +54,12 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 <?php if ($flags): ?>
                 <p class="small">Revisar: <?= V::e(implode(', ', $flags)) ?></p>
 <?php endif; ?>
-                <details>
-                    <summary class="small muted" style="cursor:pointer">Ver descripción original del vídeo</summary>
-                    <p class="small" style="white-space:pre-wrap"><?= V::e($cand['VIDEO_DESC']) ?></p>
-                </details>
             </div>
         </div>
+        <details>
+            <summary class="small muted" style="cursor:pointer">Ver descripción original del vídeo</summary>
+            <p class="small" style="white-space:pre-wrap"><?= V::e($cand['VIDEO_DESC']) ?></p>
+        </details>
     </div>
 
 <?php if ($cand['ESTADO'] === 'pendiente'): ?>
@@ -135,10 +135,25 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 </div>
 <script src="/assets/admin.js" defer></script>
 <script>
+// Sugerencias de autor extraídas del vídeo: si el nombre YA existe en la BD,
+// se añade directamente como autor (sin tener que buscarlo y volver a
+// aceptarlo en el desplegable). Si no existe, se deja el nombre en el cuadro
+// de búsqueda para que se vea que no hay coincidencia (usar el enlace "＋ crear").
 document.querySelectorAll('.sugerido-autor').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+    btn.addEventListener('click', async function () {
         var search = document.getElementById('autorSearch');
-        search.value = btn.dataset.nombre;
+        var nombre = btn.dataset.nombre;
+        try {
+            var res = await fetch('/api/autor/fastSearch?nombre=' + encodeURIComponent(nombre), { credentials: 'same-origin' });
+            var data = await res.json();
+            var rows = Array.isArray(data.data) ? data.data : [];
+            if (rows.length && window.AutorAutocomplete) {
+                var r = rows[0];
+                window.AutorAutocomplete.addChip(r.ID_AUTOR, r.NOMBRE_COMPLETO || nombre);
+                return;
+            }
+        } catch (e) { /* red: caemos al buscador manual */ }
+        search.value = nombre;
         search.dispatchEvent(new Event('input'));
         search.focus();
     });

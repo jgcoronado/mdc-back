@@ -329,7 +329,7 @@ final class Admin
         if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED");
 
         $r = AdminRepo::aceptarCandidato($id, $fields, $ids, $guardarAudio);
-        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/marcha/' . $r['marchaId'] . '?created=1');
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/ingesta?aceptado=' . $r['marchaId']);
         Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'));
     }
 
