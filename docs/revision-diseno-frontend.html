@@ -398,82 +398,79 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
   --ink:#181b24;--muted:#59606f;--faint:#8890a1;--acc:#3a4d9e;--acc-tint:#e9ecf9;}
 .proto.cx .wrap{max-width:52rem;margin:0 auto;}
 .proto.cx .omni{display:flex;align-items:center;gap:.55rem;border:1px solid var(--line);
-  border-radius:9px;background:var(--card);padding:.6rem .75rem;font-family:var(--mono);
-  font-size:.8rem;color:var(--muted);box-shadow:0 1px 2px rgba(20,28,60,.05);}
+  border-radius:3px;background:var(--card);padding:.6rem .75rem;font-family:var(--mono);
+  font-size:.8rem;color:var(--muted);}
 .proto.cx .omni .kbd{margin-left:auto;font-size:.66rem;color:var(--faint);
-  border:1px solid var(--line);border-radius:4px;padding:.05rem .35rem;}
+  border:1px solid var(--line);border-radius:3px;padding:.05rem .35rem;}
 .proto.cx .facets{display:flex;flex-wrap:wrap;gap:.4rem;margin:.7rem 0 0;}
 .proto.cx .facets .chip{font-family:var(--mono);font-size:.72rem;color:var(--acc);
   background:var(--acc-tint);border:1px solid color-mix(in oklab,var(--acc) 28%,transparent);
-  border-radius:6px;padding:.2rem .55rem;}
+  border-radius:3px;padding:.2rem .55rem;}
 .proto.cx .facets .chip .x{color:var(--faint);}
-.proto.cx .card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--acc);
-  border-radius:13px;padding:1.4rem 1.5rem 1.5rem;margin-top:1rem;
-  box-shadow:0 1px 2px rgba(20,28,60,.06),0 22px 48px -28px rgba(20,28,60,.42);}
-.proto.cx .head{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;}
-.proto.cx .eb{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+/* Registro como asiento de catálogo: regla de tinta arriba (no de acento),
+   esquinas casi vivas, sombra apenas perceptible. El índigo queda para enlaces. */
+.proto.cx .card{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--ink);
+  border-radius:3px;padding:1.4rem 1.6rem 1.5rem;margin-top:.5rem;
+  box-shadow:0 1px 2px rgba(20,28,60,.05);}
+.proto.cx .crumbs{display:flex;align-items:baseline;justify-content:space-between;gap:.4rem 1.2rem;
+  flex-wrap:wrap;font-family:var(--mono);font-size:.68rem;color:var(--faint);margin:.9rem 0 .5rem;}
+.proto.cx .crumbs a{color:var(--muted);text-decoration:none;}
+.proto.cx .crumbs a:hover{color:var(--acc);}
+.proto.cx .crumbs .regnav a{color:var(--acc);}
+.proto.cx .head{display:flex;align-items:baseline;justify-content:space-between;gap:.8rem;flex-wrap:wrap;}
+.proto.cx .eb{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
   color:var(--acc);font-weight:600;}
-.proto.cx .tipochip{font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--acc);
-  background:var(--acc-tint);border:1px solid color-mix(in oklab,var(--acc) 26%,transparent);
-  border-radius:6px;padding:.2rem .55rem;}
+.proto.cx .sig{font-family:var(--mono);font-size:.7rem;color:var(--faint);letter-spacing:.06em;}
 .proto.cx h1{font-family:var(--serif);font-size:clamp(1.5rem,3.5vw,2.1rem);letter-spacing:-.01em;
-  margin:.5rem 0 .25rem;color:var(--ink);}
-.proto.cx .sub{color:var(--muted);font-size:.98rem;}
-.proto.cx .sub a{color:var(--acc);text-decoration:none;}
-.proto.cx .sub a:hover{text-decoration:underline;}
-.proto.cx .strip{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
-  border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:1.2rem 0;}
-@media(min-width:560px){.proto.cx .strip{grid-template-columns:repeat(5,1fr);}}
-.proto.cx .tile{background:var(--s2);padding:.75rem .9rem;}
-.proto.cx .tile .l{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;
+  margin:.45rem 0 .1rem;color:var(--ink);}
+/* Asiento bibliográfico bajo el título, estilo ISBD (". —" como separador) */
+.proto.cx .asiento{font-family:var(--serif);font-style:italic;font-size:.97rem;color:var(--muted);
+  margin:.15rem 0 0;line-height:1.55;}
+.proto.cx .asiento a{color:var(--acc);text-decoration:none;font-style:normal;}
+.proto.cx .asiento a:hover{text-decoration:underline;}
+/* Descripción: lista etiqueta/valor con puntos de guía, como ficha de cartón */
+.proto.cx dl.desc{display:grid;grid-template-columns:1fr;gap:0 2.4rem;
+  margin:1.05rem 0 0;padding-top:.25rem;border-top:3px double var(--line);}
+@media(min-width:640px){.proto.cx dl.desc{grid-template-columns:1fr 1fr;}}
+.proto.cx dl.desc .f{display:grid;grid-template-columns:8.6rem 1fr;gap:.7rem;
+  padding:.32rem 0;border-bottom:1px dotted var(--line);align-items:baseline;}
+.proto.cx dl.desc dt{margin:0;font-family:var(--mono);font-size:.64rem;letter-spacing:.07em;
   text-transform:uppercase;color:var(--faint);}
-.proto.cx .tile .n{font-family:var(--serif);font-size:1.4rem;font-weight:600;
-  font-variant-numeric:tabular-nums;margin-top:.1rem;}
-.proto.cx .tile .n.est{color:var(--sem-est);}
-.proto.cx .player{display:flex;align-items:center;gap:.65rem;margin:0 0 1.3rem;padding:.6rem .8rem;
-  border-radius:10px;background:var(--acc-tint);
-  border:1px solid color-mix(in oklab,var(--acc) 22%,transparent);font-size:.86rem;color:var(--ink);}
-.proto.cx .player .pbtn{width:2rem;height:2rem;border-radius:50%;flex:none;background:var(--acc);
-  color:#fff;display:grid;place-items:center;font-size:.72rem;}
-.proto.cx .player .pt{font-weight:600;}
-.proto.cx .player .ps{color:var(--muted);font-size:.76rem;margin-left:auto;}
-.proto.cx .kv2{display:grid;grid-template-columns:1fr;gap:0;margin:0 0 .4rem;}
-@media(min-width:560px){.proto.cx .kv2{grid-template-columns:1fr 1fr;column-gap:2rem;}}
-.proto.cx .kv2 .r{display:grid;grid-template-columns:9rem 1fr;gap:.6rem;padding:.5rem 0;
-  border-bottom:1px solid var(--line);align-items:baseline;}
-.proto.cx .kv2 .k{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--faint);}
-.proto.cx .kv2 .v{font-size:.92rem;}
-.proto.cx .kv2 .v a{color:var(--acc);text-decoration:none;}
-.proto.cx .kv2 .v a:hover{text-decoration:underline;}
-.proto.cx .kv2 .cnt{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
-.proto.cx .disco-bar{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:1.7rem 0 .5rem;}
-.proto.cx .disco-bar h3{font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--muted);font-weight:600;}
-.proto.cx .disco-bar .rows{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
+.proto.cx dl.desc dd{margin:0;font-size:.88rem;}
+.proto.cx dl.desc dd a{color:var(--acc);text-decoration:none;}
+.proto.cx dl.desc dd a:hover{text-decoration:underline;}
+.proto.cx dl.desc .cnt{font-family:var(--mono);font-size:.68rem;color:var(--faint);}
+/* Cabecera de sección con regla de tinta, recuento entre paréntesis */
+.proto.cx .shead{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;
+  margin:1.7rem 0 .4rem;padding-bottom:.3rem;border-bottom:2px solid var(--ink);}
+.proto.cx .shead h3{font-family:var(--serif);font-size:1.05rem;font-weight:600;margin:0;}
+.proto.cx .shead .n{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
+.proto.cx .shead .filter{margin-left:auto;}
+/* Véase también: remisiones de catálogo, no botones */
+.proto.cx ul.vease{list-style:none;margin:.15rem 0 0;padding:0;}
+.proto.cx ul.vease li{padding:.32rem 0;border-bottom:1px dotted var(--line);font-size:.87rem;}
+.proto.cx ul.vease a{color:var(--acc);text-decoration:none;}
+.proto.cx ul.vease a:hover{text-decoration:underline;}
+.proto.cx ul.vease .cnt{font-family:var(--mono);font-size:.68rem;color:var(--faint);}
+/* Identificadores del registro (permalink, formatos, fecha de revisión) */
+.proto.cx .ids{display:flex;flex-wrap:wrap;gap:.35rem 1.2rem;margin-top:1.6rem;padding-top:.55rem;
+  border-top:1px solid var(--line);font-family:var(--mono);font-size:.68rem;color:var(--faint);}
+.proto.cx .ids a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--faint);}
+.proto.cx .ids a:hover{color:var(--acc);border-bottom-color:var(--acc);}
 .proto.cx .filter{margin-left:auto;font-family:var(--mono);font-size:.76rem;border:1px solid var(--line);
-  border-radius:6px;padding:.34rem .55rem;background:var(--card);color:var(--ink);min-width:11rem;}
+  border-radius:3px;padding:.34rem .55rem;background:var(--card);color:var(--ink);min-width:11rem;}
 .proto.cx .filter::placeholder{color:var(--faint);}
 .proto.cx table{width:100%;border-collapse:collapse;font-size:.83rem;font-variant-numeric:tabular-nums;}
 .proto.cx thead th{text-align:left;font-family:var(--mono);font-size:.64rem;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1.5px solid var(--line);
-  padding:.42rem .7rem;cursor:pointer;user-select:none;white-space:nowrap;background:var(--s2);}
+  text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);
+  padding:.42rem .7rem;cursor:pointer;user-select:none;white-space:nowrap;}
 .proto.cx thead th .ar{color:var(--faint);}
 .proto.cx tbody td{padding:.4rem .7rem;border-bottom:1px solid var(--line);}
 .proto.cx tbody tr:hover td{background:var(--acc-tint);}
 .proto.cx td .disc{color:var(--acc);}
 .proto.cx .badge.est{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--sem-est);
   background:var(--sem-est-bg);border-radius:5px;padding:.12rem .45rem;white-space:nowrap;}
-.proto.cx .rel{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.5rem;}
-.proto.cx .rel a{font-size:.82rem;text-decoration:none;color:var(--ink);background:var(--s2);
-  border:1px solid var(--line);border-radius:8px;padding:.5rem .8rem;}
-.proto.cx .rel a:hover{border-color:var(--acc);color:var(--acc);}
-.proto.cx .rel a b{color:var(--acc);}
 .proto.cx .hidden{display:none;}
-.proto.cx .tile .n.txt{font-family:var(--sans);font-size:.98rem;font-weight:600;line-height:1.25;}
-.proto.cx .tile .n.txt a{color:var(--acc);text-decoration:none;}
-.proto.cx .tile .n.txt a:hover{text-decoration:underline;}
-
 /* ═══ §07 · Vista de listado (explorador) ═══ */
 .proto.cx .toolbar{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin:1rem 0 .2rem;}
 .proto.cx .toolbar .rescount{font-family:var(--serif);font-size:1.2rem;font-weight:600;}
@@ -481,18 +478,21 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
 .proto.cx .toolbar .sortby{font-family:var(--mono);font-size:.72rem;color:var(--muted);}
 .proto.cx .results-layout{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:.9rem;}
 @media(min-width:720px){.proto.cx .results-layout{grid-template-columns:13.5rem 1fr;align-items:start;}}
+/* Facetas al estilo de catálogo bibliotecario: enlaces con recuento, no checkboxes */
 .proto.cx .facet-rail{display:flex;flex-direction:column;gap:1.15rem;}
-.proto.cx .fgroup .ftitle{font-family:var(--mono);font-size:.64rem;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--faint);margin-bottom:.4rem;padding-bottom:.3rem;
+.proto.cx .rail-title{font-family:var(--serif);font-size:.95rem;font-weight:600;
+  padding-bottom:.3rem;border-bottom:2px solid var(--ink);margin-bottom:.15rem;}
+.proto.cx .fgroup .ftitle{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:.25rem;padding-bottom:.25rem;
   border-bottom:1px solid var(--line);}
-.proto.cx .fopt{display:flex;align-items:center;gap:.5rem;font-size:.8rem;padding:.2rem 0;color:var(--ink);cursor:pointer;}
-.proto.cx .fopt .box{width:.85rem;height:.85rem;border:1.5px solid var(--line);border-radius:3px;
-  flex:none;display:grid;place-items:center;font-size:.58rem;color:#fff;line-height:1;}
-.proto.cx .fopt.on .box{background:var(--acc);border-color:var(--acc);}
-.proto.cx .fopt.on{color:var(--acc);font-weight:600;}
-.proto.cx .fopt .fdot{width:.5rem;height:.5rem;border-radius:2px;flex:none;}
-.proto.cx .fopt .fcount{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--faint);
+.proto.cx a.fopt{display:flex;align-items:baseline;gap:.5rem;font-size:.8rem;padding:.18rem 0;
+  color:var(--ink);text-decoration:none;border-bottom:1px dotted transparent;}
+.proto.cx a.fopt:hover{color:var(--acc);}
+.proto.cx a.fopt.on{color:var(--acc);font-weight:600;}
+.proto.cx a.fopt .x{font-family:var(--mono);color:var(--faint);font-size:.72rem;}
+.proto.cx a.fopt .fcount{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--faint);
   font-variant-numeric:tabular-nums;}
+.proto.cx .fmore{font-family:var(--mono);font-size:.68rem;color:var(--faint);padding-top:.2rem;}
 .proto.cx table.rl{width:100%;border-collapse:collapse;font-size:.82rem;}
 .proto.cx table.rl td{padding:.44rem .7rem;border-bottom:1px solid var(--line);vertical-align:middle;
   white-space:nowrap;}
@@ -502,11 +502,11 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
 .proto.cx table.rl a.lk:hover{text-decoration:underline;}
 .proto.cx table.rl .muted{color:var(--faint);}
 .proto.cx .gcell{display:flex;align-items:center;gap:.5rem;justify-content:flex-end;}
-.proto.cx .gbar{height:.45rem;border-radius:999px;background:color-mix(in oklab,var(--acc) 60%,var(--card));}
+.proto.cx .gbar{height:.42rem;border-radius:1px;background:color-mix(in oklab,var(--acc) 55%,var(--card));}
 .proto.cx .gnum{font-variant-numeric:tabular-nums;min-width:1.3rem;text-align:right;font-family:var(--mono);}
 .proto.cx .pager{display:flex;align-items:center;justify-content:center;gap:.3rem;margin-top:1rem;
   font-family:var(--mono);font-size:.76rem;flex-wrap:wrap;}
-.proto.cx .pager a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:6px;
+.proto.cx .pager a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:3px;
   padding:.2rem .5rem;min-width:1.9rem;text-align:center;}
 .proto.cx .pager a.cur{background:var(--acc);color:#fff;border-color:var(--acc);}
 .proto.cx .pager a:hover:not(.cur){border-color:var(--acc);color:var(--acc);}
@@ -519,7 +519,7 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
 .proto.cx table.rl td{padding:.3rem .6rem;}
 
 /* ═══ Bloque "Escuchar" (audio TODO · multi-servicio) ═══ */
-.proto.cx .listen{margin:0 0 1.3rem;padding:.7rem .85rem;border-radius:10px;
+.proto.cx .listen{margin:1.1rem 0 0;padding:.7rem .85rem;border-radius:3px;
   background:var(--s2);border:1px dashed var(--line);}
 .proto.cx .listen-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.55rem;}
 .proto.cx .listen-head .pt{font-weight:600;font-size:.9rem;}
@@ -527,7 +527,7 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
   color:var(--sem-rec);background:var(--sem-rec-bg);border-radius:5px;padding:.12rem .42rem;font-weight:700;}
 .proto.cx .svcs{display:flex;flex-wrap:wrap;gap:.4rem;}
 .proto.cx .svc{font-family:var(--sans);font-size:.76rem;color:var(--muted);background:var(--card);
-  border:1px solid var(--line);border-radius:7px;padding:.28rem .6rem;}
+  border:1px solid var(--line);border-radius:3px;padding:.28rem .6rem;}
 
 /* ═══ Ficha de entidad: biografía ausente (degradado) ═══ */
 .proto.cx .bio-empty{color:var(--faint);font-style:italic;font-size:.88rem;
@@ -549,7 +549,7 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
       <span><b>Proyecto:</b> marchasdecristo.com</span>
       <span><b>Stack:</b> PHP 8.4 · SQLite/FTS5 · sin build</span>
       <span><b>Registro de ejemplo:</b> #1693 «El Santísimo Cristo del Amor»</span>
-      <span><b>Fecha:</b> 2026-07-07</span>
+      <span><b>Fecha:</b> 2026-07-08</span>
     </div>
     <nav class="toc">
       <a href="#que-es">01 · Qué es</a>
@@ -680,6 +680,11 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
           académico, prestigio—; <a href="https://web.archive.org/">archive.org</a> es
           <em>utilitario y denso</em> —cero adorno, autoridad por austeridad—. A ellas
           sumo Discogs (discografía), IMSLP (partitura) y Datasette (explorador).</p>
+        <p class="muted" style="margin-top:.6rem;">Y de <a href="https://datos.bne.es/">datos.bne.es</a>,
+          el patrón de <strong>registro de autoridad</strong>: encabezamiento normalizado
+          («Apellidos, Nombre (fechas)»), descripción etiqueta/valor, remisiones
+          «véase también» e identificadores con permalink. Es el modelo que gobierna
+          la Dirección C (§06–§08).</p>
       </div>
       <div class="prose">
         <p class="muted">De ahí, cuatro principios para las tres propuestas:</p>
@@ -1034,12 +1039,17 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
   <section id="dir-c">
     <div class="sec-head"><span class="num">06</span><h2>Dirección elegida: C, refinada</h2></div>
     <div class="prose">
-      <p>El explorador de datos, ahora con <strong>la ficha como protagonista a todo el
-        ancho</strong> (nunca en un lateral): cabecera potente, una <strong>tira con los
-        datos clave</strong> y, debajo, la ficha completa, el audio y la discografía
-        filtrable. Profundidad real —tres superficies, filete y una sombra—, acento
-        <strong>índigo noche</strong> y <strong>color que codifica</strong> el tipo y la
-        primera grabación.</p>
+      <p>El explorador de datos, ejecutado con <strong>gramática de catálogo real</strong>
+        —no de panel SaaS—. Del registro de autoridad de la BNE toma el
+        <strong>encabezamiento</strong> («Apellidos, Nombre (fechas)») y el pie de
+        <strong>identificadores</strong>; de Patrimonio Musical, la descripción
+        etiqueta/valor y la discografía cronológica enlazada; de Discogs, la
+        <strong>signatura</strong> del registro (M-1693) y los recuentos por sección.
+        La ficha es la protagonista a todo el ancho: <strong>asiento bibliográfico</strong>
+        bajo el título, descripción con puntos de guía como una ficha de cartón,
+        grabaciones filtrables y remisiones «véase también». El índigo queda solo para
+        lo consultable (enlaces, acciones); la estructura se dibuja con
+        <strong>reglas de tinta</strong>.</p>
     </div>
     <div class="demo-label">Prototipo C refinado · claro y oscuro · <span style="text-transform:none;letter-spacing:0;">la tabla filtra y ordena de verdad</span></div>
     <div class="frame">
@@ -1047,26 +1057,30 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
       <div class="proto cx">
         <div class="wrap">
           <div class="omni"><span>⌕</span><span>Buscar marcha, compositor, banda o disco…</span><span class="kbd">/</span></div>
-          <div class="facets">
-            <span class="chip">tipo: marcha procesional <span class="x">✕</span></span>
-            <span class="chip">provincia: Málaga <span class="x">✕</span></span>
+          <div class="crumbs">
+            <span><a href="#dir-c">Inicio</a> › <a href="#dir-c">Marchas</a> › <a href="#dir-c">1944</a> › M-1693</span>
+            <span class="regnav"><a href="#dir-c">‹ M-1692</a> · registro 1.693 de 4.230 · <a href="#dir-c">M-1694 ›</a></span>
           </div>
 
           <article class="card">
             <div class="head">
-              <div class="eb">Marcha · #1693</div>
-              <span class="tipochip">Marcha procesional</span>
+              <span class="eb">Marcha procesional</span>
+              <span class="sig">MDC · M-1693</span>
             </div>
             <h1>El Santísimo Cristo del Amor</h1>
-            <p class="sub"><a href="#dir-c">Alberto Escámez López</a> · Málaga, 1944</p>
+            <p class="asiento"><a href="#entidades">Escámez López, Alberto</a> (1896–1970). —
+              Málaga, 1944. — 3 min 28 s.</p>
 
-            <div class="strip">
-              <div class="tile"><div class="l">Año</div><div class="n">1944</div></div>
-              <div class="tile"><div class="l">Compositor</div><div class="n txt"><a href="#dir-c">A. Escámez López</a></div></div>
-              <div class="tile"><div class="l">Banda de estreno</div><div class="n txt"><a href="#dir-c">BCT Bomberos</a></div></div>
-              <div class="tile"><div class="l">Grabaciones</div><div class="n">31</div></div>
-              <div class="tile"><div class="l">Provincia</div><div class="n txt">Málaga</div></div>
-            </div>
+            <dl class="desc">
+              <div class="f"><dt>Compositor</dt><dd><a href="#entidades">Escámez López, Alberto</a> <span class="cnt">(27 marchas)</span></dd></div>
+              <div class="f"><dt>Dedicatoria</dt><dd>Hermandad del Amor</dd></div>
+              <div class="f"><dt>Año</dt><dd>1944</dd></div>
+              <div class="f"><dt>Localidad</dt><dd>Málaga (Málaga)</dd></div>
+              <div class="f"><dt>Tipo</dt><dd>Marcha procesional</dd></div>
+              <div class="f"><dt>Estreno</dt><dd><a href="#entidades">BCT Bomberos</a>, Málaga <span class="cnt">(26 estrenos)</span></dd></div>
+              <div class="f"><dt>Duración</dt><dd>3 min 28 s <span class="cnt">(208 s)</span></dd></div>
+              <div class="f"><dt>Grabaciones</dt><dd>31 <span class="cnt">· primera en 1967</span></dd></div>
+            </dl>
 
             <div class="listen">
               <div class="listen-head"><span class="pt">Escuchar</span><span class="todo">TODO · enlaces por servicio</span></div>
@@ -1078,18 +1092,9 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
               </div>
             </div>
 
-            <div class="kv2">
-              <div class="r"><span class="k">Compositor</span><span class="v"><a href="#dir-c">Alberto Escámez López</a> <span class="cnt">27 marchas ↗</span></span></div>
-              <div class="r"><span class="k">Estrenada por</span><span class="v"><a href="#dir-c">BCT Bomberos</a> <span class="cnt">26 marchas ↗</span></span></div>
-              <div class="r"><span class="k">Dedicatoria</span><span class="v">Hdad. del Amor</span></div>
-              <div class="r"><span class="k">Localidad</span><span class="v"><a href="#dir-c">Málaga</a> (Málaga)</span></div>
-              <div class="r"><span class="k">Tipo</span><span class="v">Marcha procesional</span></div>
-              <div class="r"><span class="k">Duración</span><span class="v">3:28 (208&nbsp;s)</span></div>
-            </div>
-
-            <div class="disco-bar">
-              <h3>Discografía</h3>
-              <span class="rows" id="c2-count">31 filas</span>
+            <div class="shead">
+              <h3>Grabaciones</h3>
+              <span class="n" id="c2-count">31 · orden cronológico</span>
               <input class="filter" id="c2-filter" type="text" placeholder="filtrar grabaciones…" aria-label="Filtrar grabaciones">
             </div>
             <div class="scrollx">
@@ -1116,10 +1121,19 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
             </div>
             <p class="palette-note" style="margin:.6rem 0 0;font-size:.76rem;">Se listan 10 de 31 grabaciones para el prototipo.</p>
 
-            <div class="rel">
-              <a href="#dir-c">Ver las <b>27 marchas</b> de Alberto Escámez López →</a>
-              <a href="#dir-c">Ver las <b>26 marchas</b> de BCT Bomberos →</a>
-              <a href="#dir-c">Otras marchas de <b>1944</b> →</a>
+            <div class="shead"><h3>Véase también</h3></div>
+            <ul class="vease">
+              <li>→ <a href="#entidades">Escámez López, Alberto</a> — las 27 marchas del compositor <span class="cnt">(A-84)</span></li>
+              <li>→ <a href="#entidades">BCT Bomberos</a> — los 26 estrenos de la banda <span class="cnt">(B-130)</span></li>
+              <li>→ <a href="#listado">Marchas del año 1944</a> <span class="cnt">(3 registros)</span></li>
+              <li>→ <a href="#listado">Marchas de la provincia de Málaga</a> <span class="cnt">(230 registros)</span></li>
+            </ul>
+
+            <div class="ids">
+              <span>permalink: marchasdecristo.com/marcha/1693</span>
+              <a href="#dir-c">JSON-LD</a>
+              <a href="#dir-c">citar este registro</a>
+              <span>revisado: 2026-07-08</span>
             </div>
           </article>
         </div>
@@ -1147,34 +1161,36 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
         <div class="wrap">
           <div class="omni"><span>⌕</span><span>Buscar marcha, compositor, banda o disco…</span><span class="kbd">/</span></div>
           <div class="toolbar">
-            <span class="rescount"><b>4.230</b> marchas</span>
+            <span class="rescount">Marchas — <b>4.230</b> registros</span>
             <span class="sortby">· orden: nº de grabaciones ↓</span>
             <input class="filter" id="l-filter" type="text" placeholder="filtrar en esta página…" aria-label="Filtrar resultados" style="margin-left:auto;">
           </div>
           <div class="results-layout">
             <aside class="facet-rail">
+              <div class="rail-title">Refinar por</div>
               <div class="fgroup">
                 <div class="ftitle">Tipo</div>
-                <div class="fopt on"><span class="box">✓</span><span class="fdot" style="background:var(--acc)"></span>Marcha procesional<span class="fcount">4.182</span></div>
-                <div class="fopt"><span class="box"></span><span class="fdot" style="background:var(--sem-rec)"></span>Adaptación · banda<span class="fcount">13</span></div>
-                <div class="fopt"><span class="box"></span><span class="fdot" style="background:var(--sem-rec)"></span>Adapt. · religiosa<span class="fcount">9</span></div>
-                <div class="fopt"><span class="box"></span><span class="fdot" style="background:var(--sem-rec)"></span>Adapt. · popular<span class="fcount">8</span></div>
+                <a class="fopt on" href="#listado">Marcha procesional <span class="x">×</span><span class="fcount">4.182</span></a>
+                <a class="fopt" href="#listado">Adaptación · banda<span class="fcount">13</span></a>
+                <a class="fopt" href="#listado">Adapt. · religiosa<span class="fcount">9</span></a>
+                <a class="fopt" href="#listado">Adapt. · popular<span class="fcount">8</span></a>
               </div>
               <div class="fgroup">
                 <div class="ftitle">Provincia</div>
-                <div class="fopt"><span class="box"></span>Sevilla<span class="fcount">1.187</span></div>
-                <div class="fopt"><span class="box"></span>Cádiz<span class="fcount">306</span></div>
-                <div class="fopt"><span class="box"></span>Córdoba<span class="fcount">242</span></div>
-                <div class="fopt"><span class="box"></span>Málaga<span class="fcount">230</span></div>
-                <div class="fopt"><span class="box"></span>Jaén<span class="fcount">201</span></div>
-                <div class="fopt"><span class="box"></span>Granada<span class="fcount">139</span></div>
+                <a class="fopt" href="#listado">Sevilla<span class="fcount">1.187</span></a>
+                <a class="fopt" href="#listado">Cádiz<span class="fcount">306</span></a>
+                <a class="fopt" href="#listado">Córdoba<span class="fcount">242</span></a>
+                <a class="fopt" href="#listado">Málaga<span class="fcount">230</span></a>
+                <a class="fopt" href="#listado">Jaén<span class="fcount">201</span></a>
+                <a class="fopt" href="#listado">Granada<span class="fcount">139</span></a>
+                <div class="fmore">+ 15 provincias más…</div>
               </div>
               <div class="fgroup">
                 <div class="ftitle">Década</div>
-                <div class="fopt"><span class="box"></span>2010s<span class="fcount">1.593</span></div>
-                <div class="fopt"><span class="box"></span>2000s<span class="fcount">1.403</span></div>
-                <div class="fopt"><span class="box"></span>1990s<span class="fcount">689</span></div>
-                <div class="fopt"><span class="box"></span>1980s<span class="fcount">180</span></div>
+                <a class="fopt" href="#listado">2010s<span class="fcount">1.593</span></a>
+                <a class="fopt" href="#listado">2000s<span class="fcount">1.403</span></a>
+                <a class="fopt" href="#listado">1990s<span class="fcount">689</span></a>
+                <a class="fopt" href="#listado">1980s<span class="fcount">180</span></a>
               </div>
             </aside>
             <div>
@@ -1226,10 +1242,11 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
     <div class="sec-head"><span class="num">08</span><h2>Compositor y banda como registro</h2></div>
     <div class="prose">
       <p>El mismo lenguaje se propaga a las demás entidades: cada compositor y cada banda
-        es también un <strong>registro</strong> con su cabecera, su tira de datos y su
-        tabla de obra, en densidad <strong>compacta</strong>. Aquí se ve además el
+        es un <strong>registro de autoridad</strong> —encabezamiento normalizado
+        («Escámez López, Alberto», como en la BNE), asiento, descripción, obra en tabla
+        compacta, remisiones e identificadores—. Aquí se ve además el
         <strong>degradado con gracia</strong>: cuando no hay biografía (lo habitual en la
-        BD), el bloque lo dice en vez de romperse.</p>
+        BD), el registro lo declara en vez de romperse.</p>
     </div>
 
     <div class="demo-label">Prototipo · ficha de compositor</div>
@@ -1238,21 +1255,29 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
       <div class="proto cx">
         <div class="wrap">
           <div class="omni"><span>⌕</span><span>Buscar marcha, compositor, banda o disco…</span><span class="kbd">/</span></div>
+          <div class="crumbs">
+            <span><a href="#entidades">Inicio</a> › <a href="#entidades">Compositores</a> › E › A-84</span>
+            <span class="regnav">registro 84 de 829</span>
+          </div>
           <article class="card">
-            <div class="head"><div class="eb">Compositor · #84</div><span class="tipochip">27 marchas</span></div>
-            <h1>Alberto Escámez López</h1>
-            <p class="sub">Linares, 1896 – 1970</p>
-            <div class="strip">
-              <div class="tile"><div class="l">Marchas</div><div class="n">27</div></div>
-              <div class="tile"><div class="l">Activo</div><div class="n txt">1923–1956</div></div>
-              <div class="tile"><div class="l">Grabaciones</div><div class="n">237</div></div>
-              <div class="tile"><div class="l">Nacimiento</div><div class="n txt">Linares</div></div>
-              <div class="tile"><div class="l">Provincia ppal.</div><div class="n txt">Málaga</div></div>
+            <div class="head">
+              <span class="eb">Compositor</span>
+              <span class="sig">MDC · A-84</span>
             </div>
+            <h1>Escámez López, Alberto</h1>
+            <p class="asiento">Linares, 1896 — 1970. — Actividad documentada: 1923–1956.</p>
+            <dl class="desc">
+              <div class="f"><dt>Nacimiento</dt><dd>Linares, 1896</dd></div>
+              <div class="f"><dt>Marchas</dt><dd>27 <span class="cnt">· la primera de 1923</span></dd></div>
+              <div class="f"><dt>Fallecimiento</dt><dd>1970</dd></div>
+              <div class="f"><dt>Grabaciones de su obra</dt><dd>237</dd></div>
+              <div class="f"><dt>Actividad</dt><dd>1923–1956</dd></div>
+              <div class="f"><dt>Vinculación ppal.</dt><dd><a href="#entidades">BCT Bomberos</a>, Málaga <span class="cnt">(20 estrenos)</span></dd></div>
+            </dl>
             <p class="bio-empty">Sin biografía documentada todavía.</p>
-            <div class="disco-bar">
-              <h3>Marchas del compositor</h3>
-              <span class="rows">27 filas</span>
+            <div class="shead">
+              <h3>Obra</h3>
+              <span class="n">27 marchas · por grabaciones</span>
               <input class="filter" id="a-filter" type="text" placeholder="filtrar…" aria-label="Filtrar marchas del compositor">
             </div>
             <div class="scrollx">
@@ -1279,6 +1304,20 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
             </table>
             </div>
             <p class="palette-note" style="margin:.6rem 0 0;font-size:.76rem;">Se listan 10 de 27 marchas para el prototipo.</p>
+
+            <div class="shead"><h3>Véase también</h3></div>
+            <ul class="vease">
+              <li>→ <a href="#entidades">BCT Bomberos</a> — banda que estrenó 20 de sus marchas <span class="cnt">(B-130)</span></li>
+              <li>→ <a href="#listado">Compositores por apellido: E</a> <span class="cnt">(16 registros)</span></li>
+              <li>→ <a href="#listado">Marchas de la provincia de Málaga</a> <span class="cnt">(230 registros)</span></li>
+            </ul>
+
+            <div class="ids">
+              <span>permalink: marchasdecristo.com/autor/84</span>
+              <a href="#entidades">JSON-LD</a>
+              <a href="#entidades">citar este registro</a>
+              <span>revisado: 2026-07-08</span>
+            </div>
           </article>
         </div>
       </div>
@@ -1290,20 +1329,29 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
       <div class="proto cx">
         <div class="wrap">
           <div class="omni"><span>⌕</span><span>Buscar marcha, compositor, banda o disco…</span><span class="kbd">/</span></div>
+          <div class="crumbs">
+            <span><a href="#entidades">Inicio</a> › <a href="#entidades">Bandas</a> › Málaga › B-130</span>
+            <span class="regnav">registro 130 de 268</span>
+          </div>
           <article class="card">
-            <div class="head"><div class="eb">Banda · #130</div><span class="tipochip">Activa desde 1911</span></div>
-            <h1>BCT Bomberos</h1>
-            <p class="sub">Banda de Cornetas y Tambores del Real Cuerpo de Bomberos · Málaga</p>
-            <div class="strip">
-              <div class="tile"><div class="l">Fundación</div><div class="n">1911</div></div>
-              <div class="tile"><div class="l">Localidad</div><div class="n txt">Málaga</div></div>
-              <div class="tile"><div class="l">Estrenos</div><div class="n">26</div></div>
-              <div class="tile"><div class="l">Discos</div><div class="n">4</div></div>
-              <div class="tile"><div class="l">Dir. musical</div><div class="n txt">J. L. Gil</div></div>
+            <div class="head">
+              <span class="eb">Banda de cornetas y tambores</span>
+              <span class="sig">MDC · B-130</span>
             </div>
-            <div class="disco-bar">
+            <h1>BCT Bomberos</h1>
+            <p class="asiento">Banda de Cornetas y Tambores del Real Cuerpo de Bomberos. —
+              Málaga, fundada en 1911. — En activo.</p>
+            <dl class="desc">
+              <div class="f"><dt>Nombre completo</dt><dd>BCT del Real Cuerpo de Bomberos</dd></div>
+              <div class="f"><dt>Estrenos</dt><dd>26 <span class="cnt">· el primero de 1923</span></dd></div>
+              <div class="f"><dt>Localidad</dt><dd>Málaga</dd></div>
+              <div class="f"><dt>Discos propios</dt><dd>4</dd></div>
+              <div class="f"><dt>Fundación</dt><dd>1911</dd></div>
+              <div class="f"><dt>Dir. musical</dt><dd>José Luis Gil de la Cruz</dd></div>
+            </dl>
+            <div class="shead">
               <h3>Marchas estrenadas</h3>
-              <span class="rows">26 filas</span>
+              <span class="n">26 · por grabaciones</span>
               <input class="filter" id="b-filter" type="text" placeholder="filtrar…" aria-label="Filtrar marchas estrenadas">
             </div>
             <div class="scrollx">
@@ -1327,6 +1375,20 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
             </table>
             </div>
             <p class="palette-note" style="margin:.6rem 0 0;font-size:.76rem;">Se listan 8 de 26 marchas para el prototipo.</p>
+
+            <div class="shead"><h3>Véase también</h3></div>
+            <ul class="vease">
+              <li>→ <a href="#entidades">Escámez López, Alberto</a> — compositor de 20 de sus estrenos <span class="cnt">(A-84)</span></li>
+              <li>→ <a href="#listado">Bandas de Málaga</a> <span class="cnt">(7 registros)</span></li>
+              <li>→ <a href="#listado">Discografía de la banda</a> <span class="cnt">(4 discos)</span></li>
+            </ul>
+
+            <div class="ids">
+              <span>permalink: marchasdecristo.com/banda/130</span>
+              <a href="#entidades">JSON-LD</a>
+              <a href="#entidades">citar este registro</a>
+              <span>revisado: 2026-07-08</span>
+            </div>
           </article>
         </div>
       </div>
@@ -1368,7 +1430,7 @@ footer.foot{padding:2.5rem 0 0;color:var(--faint);font-family:var(--mono);
     <span>Marchas de Cristo · revisión de diseño</span>
     <span>rama design/frontend-review</span>
     <span>datos reales · registro #1693 (mdc.db)</span>
-    <span>2026-07-07</span>
+    <span>2026-07-08</span>
   </footer>
 </div>
 
