@@ -1,0 +1,353 @@
+<title>El Santísimo Cristo del Amor · Marchas de Cristo — prototipo</title>
+<style>
+/* ============================================================
+   PROTOTIPO · Ficha de marcha a página completa
+   Dirección C — «Índigo noche», gramática de catálogo.
+   Registro real: M-1693 «El Santísimo Cristo del Amor» (mdc.db)
+   ============================================================ */
+
+:root{
+  --bg:#eaecf2;          /* fondo app, gris con sesgo índigo */
+  --card:#ffffff;        /* superficie del registro */
+  --s2:#f2f4fa;          /* superficie secundaria */
+  --line:#dce0eb;        /* filete */
+  --ink:#181b24;         /* tinta */
+  --muted:#59606f;
+  --faint:#8890a1;
+  --acc:#3a4d9e;         /* índigo: solo enlaces y acciones */
+  --acc-tint:#e9ecf9;
+  --est:#1c6b3c; --est-bg:#e6f3ea;      /* semántico: 1.ª grabación */
+  --todo:#8a5a1f; --todo-bg:#f6ecd9;    /* semántico: pendiente */
+  --serif:Georgia,"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  --wrap:54rem;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e1016; --card:#161a24; --s2:#1c2130; --line:#2a3350;
+    --ink:#e7eaf4; --muted:#9aa3b8; --faint:#6a7488;
+    --acc:#8ea0ec; --acc-tint:#1e2540;
+    --est:#7cc39a; --est-bg:#16281d; --todo:#d7a866; --todo-bg:#2c2416;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#eaecf2; --card:#ffffff; --s2:#f2f4fa; --line:#dce0eb;
+  --ink:#181b24; --muted:#59606f; --faint:#8890a1;
+  --acc:#3a4d9e; --acc-tint:#e9ecf9;
+  --est:#1c6b3c; --est-bg:#e6f3ea; --todo:#8a5a1f; --todo-bg:#f6ecd9;
+}
+:root[data-theme="dark"]{
+  --bg:#0e1016; --card:#161a24; --s2:#1c2130; --line:#2a3350;
+  --ink:#e7eaf4; --muted:#9aa3b8; --faint:#6a7488;
+  --acc:#8ea0ec; --acc-tint:#1e2540;
+  --est:#7cc39a; --est-bg:#16281d; --todo:#d7a866; --todo-bg:#2c2416;
+}
+
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  line-height:1.55;font-size:16px;min-height:100vh;display:flex;flex-direction:column;}
+a{color:var(--acc);}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:2px;}
+.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding:0 1.1rem;}
+.mono{font-family:var(--mono);}
+
+/* ── Cabecera del sitio ─────────────────────────────────── */
+header{background:var(--card);border-bottom:2px solid var(--ink);}
+header .wrap{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;
+  padding-top:.75rem;padding-bottom:.75rem;}
+.brand{font-family:var(--serif);font-weight:700;font-size:1.15rem;color:var(--ink);
+  text-decoration:none;letter-spacing:-.01em;white-space:nowrap;}
+.brand .db{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;color:var(--faint);
+  text-transform:uppercase;display:block;margin-top:-.15rem;}
+nav.main{display:flex;gap:.15rem;flex-wrap:wrap;}
+nav.main a{font-size:.86rem;color:var(--muted);text-decoration:none;
+  padding:.3rem .55rem;border-bottom:2px solid transparent;}
+nav.main a:hover{color:var(--acc);}
+nav.main a[aria-current="page"]{color:var(--ink);font-weight:600;border-bottom-color:var(--acc);}
+.site-search{margin-left:auto;display:flex;align-items:center;gap:.45rem;
+  border:1px solid var(--line);border-radius:3px;background:var(--bg);
+  padding:.34rem .6rem;font-family:var(--mono);font-size:.76rem;color:var(--muted);
+  min-width:14rem;flex:0 1 17rem;}
+.site-search input{border:0;background:none;font:inherit;color:var(--ink);
+  width:100%;padding:0;outline:none;}
+.site-search input::placeholder{color:var(--faint);}
+.site-search .kbd{font-size:.62rem;color:var(--faint);border:1px solid var(--line);
+  border-radius:3px;padding:.02rem .32rem;flex:none;}
+
+/* ── Migas y navegación de registro ─────────────────────── */
+.crumbs{display:flex;align-items:baseline;justify-content:space-between;gap:.4rem 1.2rem;
+  flex-wrap:wrap;font-family:var(--mono);font-size:.68rem;color:var(--faint);
+  margin:1rem 0 .55rem;}
+.crumbs a{color:var(--muted);text-decoration:none;}
+.crumbs a:hover{color:var(--acc);}
+.crumbs .regnav a{color:var(--acc);}
+
+/* ── El registro ────────────────────────────────────────── */
+main{flex:1;}
+.record{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--ink);
+  border-radius:3px;padding:1.5rem 1.7rem 1.6rem;margin-bottom:1.6rem;
+  box-shadow:0 1px 2px rgba(20,28,60,.05);}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:.8rem;flex-wrap:wrap;}
+.eb{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--acc);font-weight:600;}
+.sig{font-family:var(--mono);font-size:.7rem;color:var(--faint);letter-spacing:.06em;}
+h1{font-family:var(--serif);font-size:clamp(1.6rem,4.5vw,2.3rem);letter-spacing:-.01em;
+  margin:.45rem 0 .1rem;line-height:1.12;text-wrap:balance;}
+.asiento{font-family:var(--serif);font-style:italic;font-size:1rem;color:var(--muted);
+  margin:.2rem 0 0;line-height:1.55;}
+.asiento a{color:var(--acc);text-decoration:none;font-style:normal;}
+.asiento a:hover{text-decoration:underline;}
+
+/* Descripción con puntos de guía */
+dl.desc{display:grid;grid-template-columns:1fr;gap:0 2.4rem;
+  margin:1.1rem 0 0;padding-top:.25rem;border-top:3px double var(--line);}
+@media(min-width:640px){dl.desc{grid-template-columns:1fr 1fr;}}
+dl.desc .f{display:grid;grid-template-columns:8.6rem 1fr;gap:.7rem;
+  padding:.34rem 0;border-bottom:1px dotted var(--line);align-items:baseline;}
+dl.desc dt{margin:0;font-family:var(--mono);font-size:.64rem;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--faint);}
+dl.desc dd{margin:0;font-size:.9rem;}
+dl.desc dd a{color:var(--acc);text-decoration:none;}
+dl.desc dd a:hover{text-decoration:underline;}
+.cnt{font-family:var(--mono);font-size:.68rem;color:var(--faint);}
+
+/* Escuchar — TODO multi-servicio */
+.listen{margin:1.15rem 0 0;padding:.7rem .85rem;border-radius:3px;
+  background:var(--s2);border:1px dashed var(--line);}
+.listen-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;}
+.listen-head .pt{font-weight:600;font-size:.9rem;}
+.todo{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--todo);background:var(--todo-bg);border-radius:3px;padding:.12rem .42rem;font-weight:700;}
+.svcs{display:flex;flex-wrap:wrap;gap:.4rem;}
+.svc{font-size:.76rem;color:var(--muted);background:var(--card);
+  border:1px solid var(--line);border-radius:3px;padding:.26rem .6rem;}
+
+/* Secciones con regla de tinta */
+.shead{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;
+  margin:1.8rem 0 .4rem;padding-bottom:.3rem;border-bottom:2px solid var(--ink);}
+.shead h2{font-family:var(--serif);font-size:1.1rem;font-weight:600;margin:0;}
+.shead .n{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
+.filter{margin-left:auto;font-family:var(--mono);font-size:.76rem;border:1px solid var(--line);
+  border-radius:3px;padding:.32rem .55rem;background:var(--card);color:var(--ink);min-width:11rem;}
+.filter::placeholder{color:var(--faint);}
+
+/* Tabla de grabaciones — densidad compacta */
+.scrollx{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;font-variant-numeric:tabular-nums;}
+thead th{text-align:left;font-family:var(--mono);font-size:.64rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);
+  padding:.3rem .6rem;cursor:pointer;user-select:none;white-space:nowrap;}
+thead th .ar{color:var(--faint);font-size:.7rem;}
+tbody td{padding:.28rem .6rem;border-bottom:1px solid var(--line);vertical-align:baseline;}
+tbody tr:hover td{background:var(--acc-tint);}
+td.num{text-align:right;font-family:var(--mono);font-size:.76rem;}
+th.num{text-align:right;}
+a.disc{color:var(--acc);text-decoration:none;}
+a.disc:hover{text-decoration:underline;}
+a.lk{color:var(--acc);text-decoration:none;}
+a.lk:hover{text-decoration:underline;}
+.badge-est{font-family:var(--mono);font-size:.62rem;font-weight:700;color:var(--est);
+  background:var(--est-bg);border-radius:3px;padding:.08rem .4rem;white-space:nowrap;
+  margin-left:.45rem;vertical-align:.06em;}
+.hidden{display:none;}
+
+/* Véase también */
+ul.vease{list-style:none;margin:.15rem 0 0;padding:0;}
+ul.vease li{padding:.32rem 0;border-bottom:1px dotted var(--line);font-size:.88rem;}
+ul.vease a{color:var(--acc);text-decoration:none;}
+ul.vease a:hover{text-decoration:underline;}
+
+/* Identificadores */
+.ids{display:flex;flex-wrap:wrap;gap:.35rem 1.2rem;margin-top:1.7rem;padding-top:.55rem;
+  border-top:1px solid var(--line);font-family:var(--mono);font-size:.68rem;color:var(--faint);}
+.ids a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--faint);}
+.ids a:hover{color:var(--acc);border-bottom-color:var(--acc);}
+
+/* ── Pie del sitio ──────────────────────────────────────── */
+footer{border-top:1px solid var(--line);background:var(--card);}
+footer .wrap{padding-top:.9rem;padding-bottom:.9rem;display:flex;flex-wrap:wrap;
+  gap:.3rem 1.4rem;align-items:baseline;justify-content:space-between;
+  font-size:.74rem;color:var(--muted);}
+footer .counts{font-variant-numeric:tabular-nums;}
+footer a{color:var(--muted);}
+
+@media (max-width:560px){
+  .site-search{flex-basis:100%;order:9;}
+  dl.desc .f{grid-template-columns:7.2rem 1fr;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#">Marchas de Cristo<span class="db">Base de datos de música procesional</span></a>
+    <nav class="main" aria-label="Secciones">
+      <a href="#" aria-current="page">Marchas</a>
+      <a href="#">Compositores</a>
+      <a href="#">Bandas</a>
+      <a href="#">Discos</a>
+      <a href="#">Estadísticas</a>
+    </nav>
+    <div class="site-search">
+      <span aria-hidden="true">⌕</span>
+      <input id="q" type="search" placeholder="Buscar en el catálogo…" aria-label="Buscar en el catálogo">
+      <span class="kbd">/</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="crumbs">
+      <span><a href="#">Inicio</a> › <a href="#">Marchas</a> › <a href="#">1944</a> › M-1693</span>
+      <span class="regnav"><a href="#">‹ M-1692</a> · registro 1.693 de 4.230 · <a href="#">M-1694 ›</a></span>
+    </div>
+
+    <article class="record">
+      <div class="head">
+        <span class="eb">Marcha procesional</span>
+        <span class="sig">MDC · M-1693</span>
+      </div>
+      <h1>El Santísimo Cristo del Amor</h1>
+      <p class="asiento"><a href="#">Escámez López, Alberto</a> (1896–1970). —
+        Málaga, 1944. — 3 min 28 s.</p>
+
+      <dl class="desc">
+        <div class="f"><dt>Compositor</dt><dd><a href="#">Escámez López, Alberto</a> <span class="cnt">(27 marchas)</span></dd></div>
+        <div class="f"><dt>Dedicatoria</dt><dd>Hermandad del Amor</dd></div>
+        <div class="f"><dt>Año</dt><dd>1944</dd></div>
+        <div class="f"><dt>Localidad</dt><dd>Málaga (Málaga)</dd></div>
+        <div class="f"><dt>Tipo</dt><dd>Marcha procesional</dd></div>
+        <div class="f"><dt>Estreno</dt><dd><a href="#">BCT Bomberos</a>, Málaga <span class="cnt">(26 estrenos)</span></dd></div>
+        <div class="f"><dt>Duración</dt><dd>3 min 28 s <span class="cnt">(208 s)</span></dd></div>
+        <div class="f"><dt>Grabaciones</dt><dd>31 <span class="cnt">· primera en 1967</span></dd></div>
+      </dl>
+
+      <div class="listen">
+        <div class="listen-head"><span class="pt">Escuchar</span><span class="todo">TODO · enlaces por servicio</span></div>
+        <div class="svcs">
+          <span class="svc">▶ YouTube</span>
+          <span class="svc">♪ Apple Music</span>
+          <span class="svc">● Spotify</span>
+          <span class="svc">≋ Tidal</span>
+        </div>
+      </div>
+
+      <div class="shead">
+        <h2>Grabaciones</h2>
+        <span class="n" id="count">31 · orden cronológico</span>
+        <input class="filter" id="f" type="text" placeholder="filtrar grabaciones…" aria-label="Filtrar grabaciones">
+      </div>
+      <div class="scrollx">
+      <table id="t">
+        <thead><tr>
+          <th data-type="num">Año <span class="ar">↕</span></th>
+          <th>Grabación <span class="ar">↕</span></th>
+          <th>Banda <span class="ar">↕</span></th>
+          <th class="num" data-type="num">Pista <span class="ar">↕</span></th>
+        </tr></thead>
+        <tbody>
+          <tr><td>1967</td><td><a class="disc" href="#">Cornetas y Tambores de la Semana Santa de Sevilla</a><span class="badge-est">◆ 1.ª grabación</span></td><td><a class="lk" href="#">BCT Policía Armada</a></td><td class="num">3</td></tr>
+          <tr><td>1982</td><td><a class="disc" href="#">Consolación y Lágrimas</a></td><td><a class="lk" href="#">BCT Las Cigarreras</a></td><td class="num">8</td></tr>
+          <tr><td>1982</td><td><a class="disc" href="#">Semana Santa en Sevilla — Marchas Cofradieras</a></td><td><a class="lk" href="#">BCT Centuria Romana Macarena</a></td><td class="num">10</td></tr>
+          <tr><td>1982</td><td><a class="disc" href="#">Semana Santa en Sevilla — Marchas Procesionales</a></td><td><a class="lk" href="#">BCT Patón</a></td><td class="num">10</td></tr>
+          <tr><td>1985</td><td><a class="disc" href="#">Banda Ntra. Sra. del Sol</a></td><td><a class="lk" href="#">BCT Sol</a></td><td class="num">8</td></tr>
+          <tr><td>1985</td><td><a class="disc" href="#">Semana Santa en Andalucía</a></td><td><a class="lk" href="#">BCT Bomberos</a></td><td class="num">5</td></tr>
+          <tr><td>1988</td><td><a class="disc" href="#">Banda de Cornetas y Tambores Stmo. Cristo de las Tres Caídas</a></td><td><a class="lk" href="#">BCT Tres Caidas</a></td><td class="num">10</td></tr>
+          <tr><td>1990</td><td><a class="disc" href="#">Sonidos de Sevilla</a></td><td><a class="lk" href="#">BCT Sol</a></td><td class="num">2</td></tr>
+          <tr><td>1994</td><td><a class="disc" href="#">Albores de Primavera</a></td><td><a class="lk" href="#">BCT Cristo de la Sed</a></td><td class="num">4</td></tr>
+          <tr><td>1995</td><td><a class="disc" href="#">Al Pasar Cristo</a></td><td><a class="lk" href="#">BCT Vera+Cruz</a></td><td class="num">8</td></tr>
+          <tr><td>1995</td><td><a class="disc" href="#">Amanece Viernes Santo</a></td><td><a class="lk" href="#">BCT JHS</a></td><td class="num">5</td></tr>
+          <tr><td>1997</td><td><a class="disc" href="#">Señor de la Madrugá</a></td><td><a class="lk" href="#">AM La Salud</a></td><td class="num">1</td></tr>
+          <tr><td>1998</td><td><a class="disc" href="#">… y Sevilla la vió nacer</a></td><td><a class="lk" href="#">BCT Desamparados</a></td><td class="num">2</td></tr>
+          <tr><td>1998</td><td><a class="disc" href="#">80 años de historia</a></td><td><a class="lk" href="#">BCT Bomberos</a></td><td class="num">10</td></tr>
+          <tr><td>1999</td><td><a class="disc" href="#">Lágrimas por un clarín</a></td><td><a class="lk" href="#">AM Rosario Civitas Solis</a></td><td class="num">2</td></tr>
+          <tr><td>1999</td><td><a class="disc" href="#">Marchas Clásicas</a></td><td><a class="lk" href="#">BCT Mercedes</a></td><td class="num">9</td></tr>
+          <tr><td>1999</td><td><a class="disc" href="#">XX Aniversario</a></td><td><a class="lk" href="#">BCT Las Cigarreras</a></td><td class="num">1</td></tr>
+          <tr><td>2001</td><td><a class="disc" href="#">Victoria</a></td><td><a class="lk" href="#">BCT Victoria</a></td><td class="num">4</td></tr>
+          <tr><td>2001</td><td><a class="disc" href="#">X aniversario</a></td><td><a class="lk" href="#">BCT Prado-Pasión</a></td><td class="num">3</td></tr>
+          <tr><td>2003</td><td><a class="disc" href="#">En tu honor, mi silencio</a></td><td><a class="lk" href="#">BCT Cristo de la Elevación</a></td><td class="num">1</td></tr>
+          <tr><td>2005</td><td><a class="disc" href="#">El Carmen</a></td><td><a class="lk" href="#">BCT Carmen</a></td><td class="num">3</td></tr>
+          <tr><td>2005</td><td><a class="disc" href="#">En un mismo Cielo</a></td><td><a class="lk" href="#">BCT La Cruz</a></td><td class="num">9</td></tr>
+          <tr><td>2005</td><td><a class="disc" href="#">X anivesrario</a></td><td><a class="lk" href="#">BCT Victoria</a></td><td class="num">6</td></tr>
+          <tr><td>2006</td><td><a class="disc" href="#">El ayer de hoy XXV aniversario</a></td><td><a class="lk" href="#">BCT Vera+Cruz</a></td><td class="num">2</td></tr>
+          <tr><td>2008</td><td><a class="disc" href="#">Así suena la Semana Santa en España</a></td><td><a class="lk" href="#">BCT Vera-Cruz</a></td><td class="num">14</td></tr>
+          <tr><td>2009</td><td><a class="disc" href="#">Evocación I</a></td><td><a class="lk" href="#">BCT Centuria Romana Macarena</a></td><td class="num">1</td></tr>
+          <tr><td>2009</td><td><a class="disc" href="#">La llegada</a></td><td><a class="lk" href="#">BCT Desamparados</a></td><td class="num">8</td></tr>
+          <tr><td>2009</td><td><a class="disc" href="#">Siempre de Frente</a></td><td><a class="lk" href="#">BCT Humildad</a></td><td class="num">4</td></tr>
+          <tr><td>2009</td><td><a class="disc" href="#">Un Regalo para Sevilla…</a></td><td><a class="lk" href="#">BCT Esencia</a></td><td class="num">13</td></tr>
+          <tr><td>2014</td><td><a class="disc" href="#">300 Años de devoción</a></td><td><a class="lk" href="#">BCT Rescatado</a></td><td class="num">2</td></tr>
+          <tr><td>2014</td><td><a class="disc" href="#">A tus pies, señor</a></td><td><a class="lk" href="#">BCT Toro</a></td><td class="num">8</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="shead"><h2>Véase también</h2></div>
+      <ul class="vease">
+        <li>→ <a href="#">Escámez López, Alberto</a> — las 27 marchas del compositor <span class="cnt">(A-84)</span></li>
+        <li>→ <a href="#">BCT Bomberos</a> — los 26 estrenos de la banda <span class="cnt">(B-130)</span></li>
+        <li>→ <a href="#">Marchas del año 1944</a> <span class="cnt">(3 registros)</span></li>
+        <li>→ <a href="#">Marchas de la provincia de Málaga</a> <span class="cnt">(230 registros)</span></li>
+      </ul>
+
+      <div class="ids">
+        <span>permalink: marchasdecristo.com/marcha/1693</span>
+        <a href="#">JSON-LD</a>
+        <a href="#">citar este registro</a>
+        <span>revisado: 2026-07-08</span>
+      </div>
+    </article>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="counts">4.230 marchas · 829 compositores · 268 bandas · 431 discos</span>
+    <span>Javier Guerra — <a href="https://x.com/JaviWarSVQ">@JaviWarSVQ</a></span>
+  </div>
+</footer>
+
+<script>
+/* JS ligero del prototipo: filtro y orden de la tabla de grabaciones,
+   y "/" para saltar al buscador. Todo funciona sin JS (mejora progresiva). */
+(function(){
+  var table = document.getElementById('t');
+  var tbody = table.querySelector('tbody');
+  var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+  var total = rows.length;
+  var filter = document.getElementById('f');
+  var count = document.getElementById('count');
+
+  filter.addEventListener('input', function(){
+    var q = filter.value.trim().toLowerCase();
+    rows.forEach(function(r){
+      r.classList.toggle('hidden', q !== '' && r.textContent.toLowerCase().indexOf(q) === -1);
+    });
+    var vis = rows.filter(function(r){ return !r.classList.contains('hidden'); }).length;
+    count.textContent = (q === '' ? total + ' · orden cronológico' : vis + ' de ' + total + ' grabaciones');
+  });
+
+  var dir = {};
+  Array.prototype.forEach.call(table.querySelectorAll('thead th'), function(th, i){
+    th.addEventListener('click', function(){
+      var type = th.getAttribute('data-type');
+      dir[i] = !dir[i];
+      rows.slice().sort(function(a,b){
+        var x = a.children[i].textContent.trim();
+        var y = b.children[i].textContent.trim();
+        if(type === 'num'){ x = parseFloat(x)||0; y = parseFloat(y)||0; return dir[i] ? x-y : y-x; }
+        return dir[i] ? x.localeCompare(y,'es') : y.localeCompare(x,'es');
+      }).forEach(function(r){ tbody.appendChild(r); });
+    });
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === '/' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
+      e.preventDefault();
+      document.getElementById('q').focus();
+    }
+  });
+})();
+</script>
