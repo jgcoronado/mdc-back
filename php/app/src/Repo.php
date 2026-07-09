@@ -98,7 +98,8 @@ final class Repo
     {
         $marcha = Db::one(
             "SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.PROVINCIA, m.AUDIO, m.FECHA,
-                    m.BANDA_ESTRENO, m.DETALLES_MARCHA,
+                    m.BANDA_ESTRENO, m.DETALLES_MARCHA, m.TIPO, m.DURACION_SEG,
+                    b.NOMBRE_BREVE AS BANDA_NOMBRE, b.LOCALIDAD AS BANDA_LOC,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM marcha m
              LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
@@ -282,9 +283,12 @@ final class Repo
             return null;
         }
         $marchas = Db::all(
-            "SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.DEDICATORIA
+            "SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.DEDICATORIA, m.PROVINCIA,
+                    m.BANDA_ESTRENO, b.NOMBRE_BREVE AS BANDA_BREVE,
+                    (SELECT COUNT(*) FROM disco_marcha dm WHERE dm.IDMARCHA = m.ID_MARCHA) AS N_GRAB
              FROM marcha m
              INNER JOIN marcha_autor ma ON ma.ID_MARCHA = m.ID_MARCHA
+             LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
              WHERE ma.ID_AUTOR = ? ORDER BY m.FECHA ASC",
             [$id]
         );
@@ -294,6 +298,23 @@ final class Repo
         unset($r);
         $autor['marchasLength'] = count($marchas);
         $autor['marchas'] = $marchas;
+
+        // Ficha de catálogo: grabaciones totales, periodo de actividad,
+        // banda con más estrenos de su obra y posición del registro.
+        $autor['N_GRAB_TOTAL'] = array_sum(array_map(static fn(array $x): int => (int) $x['N_GRAB'], $marchas));
+        $years = array_values(array_filter(array_map(static fn(array $x): int => (int) $x['FECHA'], $marchas), static fn(int $y): bool => $y > 1000));
+        $autor['ACT_DESDE'] = $years !== [] ? min($years) : 0;
+        $autor['ACT_HASTA'] = $years !== [] ? max($years) : 0;
+        $autor['BANDA_PPAL'] = Db::one(
+            "SELECT b.ID_BANDA, b.NOMBRE_BREVE, COUNT(*) AS N
+             FROM marcha m
+             INNER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
+             INNER JOIN marcha_autor ma ON ma.ID_MARCHA = m.ID_MARCHA
+             WHERE ma.ID_AUTOR = ? GROUP BY b.ID_BANDA ORDER BY N DESC LIMIT 1",
+            [$id]
+        );
+        $autor['REG_TOTAL'] = (int) (Db::one('SELECT COUNT(*) AS n FROM autor')['n'] ?? 0);
+        $autor['REG_POS'] = (int) (Db::one('SELECT COUNT(*) AS n FROM autor WHERE ID_AUTOR <= ?', [$id])['n'] ?? 0);
         return $autor;
     }
 
@@ -395,7 +416,8 @@ final class Repo
         );
 
         $marchas = Db::all(
-            "SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA
+            "SELECT m.TITULO, m.ID_MARCHA, m.DEDICATORIA, m.LOCALIDAD, m.FECHA,
+                    (SELECT COUNT(*) FROM disco_marcha dm WHERE dm.IDMARCHA = m.ID_MARCHA) AS N_GRAB
              FROM marcha m
              WHERE m.BANDA_ESTRENO = ?
                AND EXISTS (SELECT 1 FROM marcha_autor am WHERE am.ID_MARCHA = m.ID_MARCHA)
@@ -407,10 +429,30 @@ final class Repo
         usort($timeline, static fn(array $a, array $b): int => (int) $a['FECHA_FUND'] <=> (int) $b['FECHA_FUND']);
 
         $banda['timeline'] = $timeline;
+        $banda['linaje'] = self::bandaLinaje($id);
         $banda['discosLength'] = count($discos);
         $banda['discos'] = $discos;
         $banda['marchasLength'] = count($marchas);
         $banda['marchas'] = $marchas;
+
+        // Estrenos por formación (línea de sucesión) y posición del registro.
+        $ids = [(int) $banda['ID_BANDA']];
+        if ($banda['linaje'] !== null) {
+            foreach (array_merge($banda['linaje']['up'], $banda['linaje']['down']) as $lvl) {
+                foreach ($lvl as $n) $ids[] = (int) $n['ID'];
+            }
+            foreach (array_merge($banda['linaje']['juveniles'], $banda['linaje']['madres']) as $n) {
+                $ids[] = (int) $n['ID_BANDA'];
+            }
+        }
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $map = [];
+        foreach (Db::all("SELECT BANDA_ESTRENO AS B, COUNT(*) AS N FROM marcha WHERE BANDA_ESTRENO IN ($ph) GROUP BY BANDA_ESTRENO", $ids) as $r) {
+            $map[(int) $r['B']] = (int) $r['N'];
+        }
+        $banda['ESTRENOS_MAP'] = $map;
+        $banda['REG_TOTAL'] = (int) (Db::one('SELECT COUNT(*) AS n FROM banda')['n'] ?? 0);
+        $banda['REG_POS'] = (int) (Db::one('SELECT COUNT(*) AS n FROM banda WHERE ID_BANDA <= ?', [$id])['n'] ?? 0);
         return $banda;
     }
 
@@ -439,12 +481,146 @@ final class Repo
         return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
     }
 
+    /** Fila cruda de banda (para el panel de relaciones). */
+    public static function fetchBandaRaw(string $id): ?array
+    {
+        return Db::one('SELECT * FROM banda WHERE ID_BANDA = ?', [$id]);
+    }
+
+    /**
+     * Bandas cuyo NOMBRE_BREVE, NOMBRE_COMPLETO o LOCALIDAD contienen (subcadena,
+     * insensible a mayúsculas/acentos) cada palabra de $q. Para el autocompletar
+     * del selector "otra banda" en las relaciones de linaje.
+     *
+     * @return list<array{ID_BANDA:int,NOMBRE_BREVE:string,LOCALIDAD:?string,LABEL:string}>
+     */
+    public static function bandaCandidatosPorTexto(string $q, int $limit = 15): array
+    {
+        $tokens = preg_split('/\s+/u', trim(Db::noAcc($q)), -1, PREG_SPLIT_NO_EMPTY);
+        if ($tokens === []) return [];
+
+        $conditions = [];
+        $values = [];
+        foreach ($tokens as $t) {
+            $conditions[] = '(NOACC(NOMBRE_BREVE) LIKE ? OR NOACC(NOMBRE_COMPLETO) LIKE ? OR NOACC(LOCALIDAD) LIKE ?)';
+            $needle = '%' . $t . '%';
+            array_push($values, $needle, $needle, $needle);
+        }
+        $where = implode(' AND ', $conditions);
+
+        return Db::all(
+            "SELECT ID_BANDA, NOMBRE_BREVE, LOCALIDAD,
+                    (NOMBRE_BREVE || CASE WHEN LOCALIDAD IS NOT NULL AND LOCALIDAD <> ''
+                                          THEN ' (' || LOCALIDAD || ')' ELSE '' END) AS LABEL
+             FROM banda WHERE $where
+             ORDER BY NOMBRE_BREVE ASC LIMIT ?",
+            [...$values, $limit]
+        );
+    }
+
+    /**
+     * Relaciones de linaje en las que participa una banda (como origen o destino),
+     * con el nombre de las dos puntas resuelto. Ordenadas por tipo y fecha.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function bandaRelaciones(string $id): array
+    {
+        return Db::all(
+            "SELECT r.ID_RELACION, r.TIPO, r.FECHA_INICIO, r.FECHA_FIN, r.NOTA,
+                    r.ID_ORIGEN, r.ID_DESTINO,
+                    bo.NOMBRE_BREVE AS ORIGEN_NOMBRE, bo.LOCALIDAD AS ORIGEN_LOC,
+                    bd.NOMBRE_BREVE AS DESTINO_NOMBRE, bd.LOCALIDAD AS DESTINO_LOC
+             FROM banda_relacion r
+             LEFT JOIN banda bo ON bo.ID_BANDA = r.ID_ORIGEN
+             LEFT JOIN banda bd ON bd.ID_BANDA = r.ID_DESTINO
+             WHERE r.ID_ORIGEN = ? OR r.ID_DESTINO = ?
+             ORDER BY r.TIPO ASC, r.FECHA_INICIO ASC",
+            [$id, $id]
+        );
+    }
+
+    /**
+     * Linaje de una banda para la ficha pública. Recorre `banda_relacion` por
+     * niveles (BFS) hacia atrás (predecesoras) y hacia delante (sucesoras), más
+     * las juveniles (lateral) y la madre si la banda es juvenil. Cada nodo lleva
+     * el TIPO de la arista que lo conecta hacia el lado del foco (para el chip).
+     * De-duplica por banda y corta a 5 niveles y en ciclos.
+     *
+     * @return array{focus:array,up:list<list<array>>,down:list<list<array>>,juveniles:list<array>,madres:list<array>}|null
+     */
+    public static function bandaLinaje(string $id): ?array
+    {
+        $focus = Db::one(
+            'SELECT ID_BANDA, NOMBRE_BREVE, LOCALIDAD, FECHA_FUND, FECHA_EXT FROM banda WHERE ID_BANDA = ?',
+            [$id]
+        );
+        if ($focus === null) return null;
+        $fid = (int) $focus['ID_BANDA'];
+
+        $bfs = static function (string $dir) use ($fid): array {
+            // 'up' = predecesoras (aristas cuyo DESTINO es el nodo → tomamos ORIGEN).
+            $anchor = $dir === 'up' ? 'ID_DESTINO' : 'ID_ORIGEN';
+            $take   = $dir === 'up' ? 'ID_ORIGEN' : 'ID_DESTINO';
+            $levels = [];
+            $frontier = [$fid];
+            $visited = [$fid => true];
+            $depth = 0;
+            while ($frontier !== [] && $depth < 5) {
+                $ph = implode(',', array_fill(0, count($frontier), '?'));
+                $rows = Db::all(
+                    "SELECT r.TIPO, r.$take AS BID, b.NOMBRE_BREVE, b.LOCALIDAD, b.FECHA_FUND, b.FECHA_EXT
+                     FROM banda_relacion r JOIN banda b ON b.ID_BANDA = r.$take
+                     WHERE r.$anchor IN ($ph) AND r.TIPO IN ('renombrado','fusion','division')
+                     ORDER BY b.FECHA_FUND ASC, b.NOMBRE_BREVE ASC",
+                    $frontier
+                );
+                $nodes = [];
+                $next = [];
+                foreach ($rows as $r) {
+                    $bid = (int) $r['BID'];
+                    if (isset($visited[$bid])) continue;
+                    $visited[$bid] = true;
+                    $nodes[] = [
+                        'ID' => $bid, 'NOMBRE' => $r['NOMBRE_BREVE'], 'LOC' => $r['LOCALIDAD'],
+                        'FUND' => $r['FECHA_FUND'], 'EXT' => $r['FECHA_EXT'], 'TIPO' => $r['TIPO'],
+                    ];
+                    $next[] = $bid;
+                }
+                if ($nodes === []) break;
+                $levels[] = $nodes;
+                $frontier = $next;
+                $depth++;
+            }
+            return $levels;
+        };
+
+        $up = $bfs('up');
+        $down = $bfs('down');
+        $juveniles = Db::all(
+            "SELECT r.FECHA_INICIO, r.FECHA_FIN, b.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
+             FROM banda_relacion r JOIN banda b ON b.ID_BANDA = r.ID_DESTINO
+             WHERE r.ID_ORIGEN = ? AND r.TIPO = 'juvenil' ORDER BY r.FECHA_INICIO ASC",
+            [$fid]
+        );
+        $madres = Db::all(
+            "SELECT r.FECHA_INICIO, r.FECHA_FIN, b.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
+             FROM banda_relacion r JOIN banda b ON b.ID_BANDA = r.ID_ORIGEN
+             WHERE r.ID_DESTINO = ? AND r.TIPO = 'juvenil' ORDER BY r.FECHA_INICIO ASC",
+            [$fid]
+        );
+
+        if ($up === [] && $down === [] && $juveniles === [] && $madres === []) return null;
+        return ['focus' => $focus, 'up' => $up, 'down' => $down, 'juveniles' => $juveniles, 'madres' => $madres];
+    }
+
     // ── Disco ──────────────────────────────────────────────────────────────
 
     public static function fetchDisco(string $id): ?array
     {
         $disco = Db::one(
             "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, d.d_DETALLES, b.ID_BANDA,
+                    b.NOMBRE_BREVE AS BANDA_BREVE, b.LOCALIDAD AS BANDA_LOC,
                     (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) AS DISCOS,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM disco d LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
@@ -454,6 +630,8 @@ final class Repo
         if ($disco === null) {
             return null;
         }
+        $disco['REG_TOTAL'] = (int) (Db::one('SELECT COUNT(*) AS n FROM disco')['n'] ?? 0);
+        $disco['REG_POS'] = (int) (Db::one('SELECT COUNT(*) AS n FROM disco WHERE ID_DISCO <= ?', [$id])['n'] ?? 0);
         $marchas = Db::all(
             "SELECT dm.N_DISCO, dm.NUMEROMARCHA, m.ID_MARCHA, m.TITULO, m.FECHA,
                     CASE WHEN dm.DM_ENLAZADA IS NULL THEN 0 ELSE 1 END AS ENLAZADA
