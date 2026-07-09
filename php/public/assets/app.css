@@ -211,6 +211,32 @@ ul.vease li { padding: 0.32rem 0; border-bottom: 1px dotted var(--line); font-si
 .ids a { color: var(--muted-c); text-decoration: none; border-bottom: 1px dotted var(--faint); }
 .ids a:hover { color: var(--acc); border-bottom-color: var(--acc); text-decoration: none; }
 
+/* ── Explorador (listado con facetas) ───────────────────────────────────── */
+.toolbar { display: flex; align-items: baseline; gap: 0.9rem; flex-wrap: wrap; }
+.toolbar .rescount { font-family: var(--serif); font-size: 1.15rem; font-weight: 600; }
+.toolbar .rescount b { color: var(--acc); font-variant-numeric: tabular-nums; }
+.toolbar .sortby { font-family: var(--mono); font-size: 0.72rem; color: var(--muted-c); }
+.toolbar .sortby a { color: var(--muted-c); text-decoration: none; }
+.toolbar .sortby a:hover { color: var(--acc); }
+.toolbar .sortby a.on { color: var(--acc); font-weight: 700; }
+.toolbar .clearall { margin-left: auto; font-family: var(--mono); font-size: 0.72rem; color: var(--muted-c); text-decoration: none; }
+.toolbar .clearall:hover { color: var(--acc); }
+details.adv > summary { cursor: pointer; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); list-style: none; }
+details.adv > summary::-webkit-details-marker { display: none; }
+details.adv > summary::before { content: "▸ "; }
+details.adv[open] > summary::before { content: "▾ "; }
+details.adv[open] > summary { margin-bottom: 0.5rem; }
+.results-layout { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: start; }
+@media (min-width: 720px) { .results-layout { grid-template-columns: 12.5rem 1fr; } }
+.facet-rail { display: flex; flex-direction: column; gap: 1.1rem; }
+.rail-title { font-family: var(--serif); font-size: 0.95rem; font-weight: 600; padding-bottom: 0.3rem; border-bottom: 2px solid var(--ink); margin-bottom: 0.15rem; }
+.fgroup .ftitle { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin-bottom: 0.25rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+a.fopt { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.8rem; padding: 0.18rem 0; color: var(--ink); text-decoration: none; }
+a.fopt:hover { color: var(--acc); text-decoration: none; }
+a.fopt.on { color: var(--acc); font-weight: 600; }
+a.fopt .x { font-family: var(--mono); color: var(--faint); font-size: 0.72rem; }
+a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+
 /* ── Tablas (listados generales) ────────────────────────────────────────── */
 .tableList { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); width: 100%; max-width: var(--wrap); margin: 0 auto; }
 .table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }

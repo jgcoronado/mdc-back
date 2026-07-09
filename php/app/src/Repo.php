@@ -173,37 +173,57 @@ final class Repo
         return $marcha;
     }
 
-    public static function searchMarchas(string $query, int $page = 1, int $limit = 20): array
+    /**
+     * WHERE + values de la búsqueda de marchas. $exclude omite un criterio
+     * (para calcular facetas sin su propio filtro; 'fecha' excluye desde+hasta).
+     * @return array{0:string,1:list<mixed>}
+     */
+    private static function marchaWhere(array $params, ?string $exclude = null): array
     {
-        parse_str($query, $params);
         $conditions = [];
         $values = [];
+        $on = static fn(string $k): bool => $k !== $exclude && !empty($params[$k]);
 
-        $titulo = (string) ($params['titulo'] ?? '');
+        $titulo = $exclude !== 'titulo' ? (string) ($params['titulo'] ?? '') : '';
         $fts = $titulo !== '' ? self::buildFtsQuery($titulo) : null;
         if ($fts !== null) {
             $conditions[] = 'm.ID_MARCHA IN (SELECT rowid FROM marcha_fts WHERE marcha_fts MATCH ?)';
             $values[] = $fts;
         }
-        if (!empty($params['fechaDesde'])) { $conditions[] = 'm.FECHA >= ?'; $values[] = $params['fechaDesde']; }
-        if (!empty($params['fechaHasta'])) { $conditions[] = 'm.FECHA <= ?'; $values[] = $params['fechaHasta']; }
-        if (!empty($params['dedicatoria'])) { $conditions[] = 'NOACC(m.DEDICATORIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['dedicatoria']) . '%'; }
-        if (!empty($params['localidad'])) { $conditions[] = 'NOACC(m.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
-        if (!empty($params['provincia'])) { $conditions[] = 'NOACC(m.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
+        if ($exclude !== 'fecha' && !empty($params['fechaDesde'])) { $conditions[] = 'm.FECHA >= ?'; $values[] = $params['fechaDesde']; }
+        if ($exclude !== 'fecha' && !empty($params['fechaHasta'])) { $conditions[] = 'm.FECHA <= ?'; $values[] = $params['fechaHasta']; }
+        if ($on('dedicatoria')) { $conditions[] = 'NOACC(m.DEDICATORIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['dedicatoria']) . '%'; }
+        if ($on('localidad')) { $conditions[] = 'NOACC(m.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
+        if ($on('provincia')) { $conditions[] = 'NOACC(m.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
+        if ($on('tipo')) { $conditions[] = 'm.TIPO = ?'; $values[] = $params['tipo']; }
 
         $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
-        $baseWhere = "EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA) AND $where";
+        return ["EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA) AND $where", $values];
+    }
+
+    public static function searchMarchas(string $query, int $page = 1, int $limit = 20): array
+    {
+        parse_str($query, $params);
+        [$baseWhere, $values] = self::marchaWhere($params);
+
+        $orderBy = match ((string) ($params['orden'] ?? '')) {
+            'grabaciones' => 'N_GRAB DESC, m.TITULO ASC',
+            'fecha' => 'm.FECHA DESC, m.TITULO ASC',
+            default => 'm.TITULO ASC',
+        };
 
         $countRow = Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE $baseWhere", $values);
         $totalRows = (int) ($countRow['n'] ?? 0);
         $offset = ($page - 1) * $limit;
 
         $rows = Db::all(
-            "SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.AUDIO, m.FECHA,
-                    CASE WHEN EXISTS (SELECT 1 FROM disco_marcha dm WHERE dm.IDMARCHA = m.ID_MARCHA) THEN 1 ELSE 0 END AS GRABADA
+            "SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.PROVINCIA, m.AUDIO, m.FECHA,
+                    m.BANDA_ESTRENO, b.NOMBRE_BREVE AS BANDA_BREVE,
+                    (SELECT COUNT(*) FROM disco_marcha dm WHERE dm.IDMARCHA = m.ID_MARCHA) AS N_GRAB
              FROM marcha m
+             LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
              WHERE $baseWhere
-             ORDER BY m.TITULO ASC LIMIT ? OFFSET ?",
+             ORDER BY $orderBy LIMIT ? OFFSET ?",
             [...$values, $limit, $offset]
         );
         foreach ($rows as &$r) {
@@ -213,6 +233,33 @@ final class Repo
         self::attachAutores($rows);
 
         return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
+    }
+
+    /**
+     * Facetas del explorador de marchas: tipo, provincia y década, cada una
+     * contada sobre el resultado filtrado sin su propio criterio.
+     * @return array{tipo:list<array>,provincia:list<array>,decada:list<array>}
+     */
+    public static function marchaFacets(string $query): array
+    {
+        parse_str($query, $params);
+
+        [$w, $v] = self::marchaWhere($params, 'tipo');
+        $tipo = Db::all("SELECT m.TIPO AS K, COUNT(*) AS N FROM marcha m
+                         WHERE $w AND m.TIPO IS NOT NULL AND m.TIPO != ''
+                         GROUP BY m.TIPO ORDER BY N DESC LIMIT 6", $v);
+
+        [$w, $v] = self::marchaWhere($params, 'provincia');
+        $prov = Db::all("SELECT m.PROVINCIA AS K, COUNT(*) AS N FROM marcha m
+                         WHERE $w AND m.PROVINCIA IS NOT NULL AND m.PROVINCIA != ''
+                         GROUP BY m.PROVINCIA ORDER BY N DESC LIMIT 8", $v);
+
+        [$w, $v] = self::marchaWhere($params, 'fecha');
+        $dec = Db::all("SELECT (m.FECHA / 10) * 10 AS K, COUNT(*) AS N FROM marcha m
+                        WHERE $w AND m.FECHA > 1900
+                        GROUP BY K ORDER BY K DESC LIMIT 8", $v);
+
+        return ['tipo' => $tipo, 'provincia' => $prov, 'decada' => $dec];
     }
 
     // ── Admin: cargadores en crudo (para formularios de edición) ─────────────

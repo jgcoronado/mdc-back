@@ -51,9 +51,12 @@ final class Pages
     public static function marchaList(): void
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
-        $result = $hasQuery ? Repo::searchMarchas(http_build_query($criteria), $page, $limit) : null;
-        $result !== null ? Http::noStore() : Http::cachePublic(3600);
-        View::render('marcha_list', compact('criteria', 'result', 'page', 'limit'), [
+        // El explorador lista siempre (sin filtros = catálogo completo paginado).
+        $qs = http_build_query($criteria);
+        $result = Repo::searchMarchas($qs, $page, $limit);
+        $facets = Repo::marchaFacets($qs);
+        $hasQuery ? Http::noStore() : Http::cachePublic(3600);
+        View::render('marcha_list', compact('criteria', 'result', 'page', 'limit', 'facets'), [
             'title' => 'Buscador de marchas procesionales — Marchas de Cristo',
             'description' => 'Busca marchas procesionales por título, fecha, dedicatoria, localidad y provincia.',
             'noindex' => true,
