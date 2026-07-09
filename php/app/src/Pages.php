@@ -112,7 +112,7 @@ final class Pages
         $autores = implode(', ', array_map(static fn(array $a): string => (string) $a['nombre'], $m['AUTOR']));
 
         Http::cachePublic(3600);
-        View::render('marcha_detail', ['m' => $m], [
+        View::render('marcha_detail', ['m' => $m, 'url' => $url], [
             'title' => $m['TITULO'] . ' — Marchas de Cristo',
             'description' => 'Marcha procesional "' . $m['TITULO'] . '" compuesta por ' . $autores . '.'
                 . (!empty($m['DEDICATORIA']) ? ' Dedicada a ' . $m['DEDICATORIA'] . '.' : ''),

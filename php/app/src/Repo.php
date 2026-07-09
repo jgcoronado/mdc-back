@@ -113,17 +113,62 @@ final class Repo
         $mid = (int) $marcha['ID_MARCHA'];
         $marcha['AUTOR'] = self::autoresFor([$mid])[$mid] ?? [];
 
+        // Autores en forma de autoridad ("Apellidos, Nombre") con recuento de obra,
+        // para el asiento y la descripción de la ficha de catálogo.
+        $marcha['AUTORES_FICHA'] = Db::all(
+            "SELECT a.ID_AUTOR, a.NOMBRE, a.APELLIDOS, a.F_NAC, a.F_DEF,
+                    (SELECT COUNT(*) FROM marcha_autor x WHERE x.ID_AUTOR = a.ID_AUTOR) AS N_MARCHAS
+             FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
+             WHERE ma.ID_MARCHA = ? ORDER BY a.APELLIDOS",
+            [$id]
+        );
+
+        $marcha['BANDA_ESTRENOS'] = 0;
+        if (!empty($marcha['BANDA_ESTRENO'])) {
+            $row = Db::one('SELECT COUNT(*) AS n FROM marcha WHERE BANDA_ESTRENO = ?', [$marcha['BANDA_ESTRENO']]);
+            $marcha['BANDA_ESTRENOS'] = (int) ($row['n'] ?? 0);
+        }
+
+        // Grabaciones: una fila por aparición en disco, con pista y banda intérprete
+        // (la del vínculo dm.DM_BANDA si existe; si no, la banda propietaria del disco).
         $discos = Db::all(
-            "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA,
-                    (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
+            "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, dm.NUMEROMARCHA,
+                    COALESCE(bi.ID_BANDA, b.ID_BANDA) AS ID_BANDA,
+                    COALESCE(bi.NOMBRE_BREVE, b.NOMBRE_BREVE) AS BANDA_BREVE,
+                    (COALESCE(bi.NOMBRE_BREVE, b.NOMBRE_BREVE) || ' (' || COALESCE(bi.LOCALIDAD, b.LOCALIDAD) || ')') AS BANDA
              FROM disco d
-             LEFT OUTER JOIN disco_marcha dm ON dm.ID_DISCO = d.ID_DISCO
-             LEFT OUTER JOIN banda b ON b.ID_BANDA = d.BANDADISCO
-             WHERE dm.IDMARCHA = ? ORDER BY d.FECHA_CD ASC",
+             INNER JOIN disco_marcha dm ON dm.ID_DISCO = d.ID_DISCO
+             LEFT OUTER JOIN banda b  ON b.ID_BANDA  = d.BANDADISCO
+             LEFT OUTER JOIN banda bi ON bi.ID_BANDA = dm.DM_BANDA
+             WHERE dm.IDMARCHA = ? ORDER BY CAST(d.FECHA_CD AS REAL) ASC, d.NOMBRE_CD ASC",
             [$id]
         );
         $marcha['discosLength'] = count($discos);
         $marcha['discos'] = $discos;
+
+        $primera = null;
+        foreach ($discos as $d) {
+            $y = (int) (float) ($d['FECHA_CD'] ?? 0);
+            if ($y > 1800 && ($primera === null || $y < $primera)) $primera = $y;
+        }
+        $marcha['PRIMERA_GRABACION'] = $primera;
+
+        // Posición en el catálogo y registros vecinos (‹ M-x · n de N · M-y ›).
+        $valid = 'EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)';
+        $marcha['REG_TOTAL'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE $valid")['n'] ?? 0);
+        $marcha['REG_POS'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE m.ID_MARCHA <= ? AND $valid", [$id])['n'] ?? 0);
+        $marcha['REG_PREV'] = Db::one("SELECT m.ID_MARCHA, m.TITULO FROM marcha m WHERE m.ID_MARCHA < ? AND $valid ORDER BY m.ID_MARCHA DESC LIMIT 1", [$id]);
+        $marcha['REG_NEXT'] = Db::one("SELECT m.ID_MARCHA, m.TITULO FROM marcha m WHERE m.ID_MARCHA > ? AND $valid ORDER BY m.ID_MARCHA ASC LIMIT 1", [$id]);
+
+        // Recuentos para las remisiones «véase también».
+        $marcha['N_MISMO_ANIO'] = 0;
+        if (!empty($marcha['FECHA'])) {
+            $marcha['N_MISMO_ANIO'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE m.FECHA = ? AND $valid", [$marcha['FECHA']])['n'] ?? 0);
+        }
+        $marcha['N_MISMA_PROV'] = 0;
+        if (!empty($marcha['PROVINCIA'])) {
+            $marcha['N_MISMA_PROV'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE m.PROVINCIA = ? AND $valid", [$marcha['PROVINCIA']])['n'] ?? 0);
+        }
         return $marcha;
     }
 
