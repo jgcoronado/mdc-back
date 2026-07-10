@@ -1,8 +1,9 @@
 <?php use App\View as V; use App\Auth; use App\Slug as S;
 /** @var string $mode @var array $session @var string $action
- *  @var array<string,mixed> $autor @var array|null $notice @var string|null $error */
+ *  @var array<string,mixed> $autor @var bool $proposalMode @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
 $isEdit = $mode === 'edit';
+$proposalMode = $proposalMode ?? false;
 $val = static fn(string $k): string => V::e($autor[$k] ?? '');
 
 $fields = [
@@ -27,6 +28,7 @@ $fields = [
 
 <?php if ($error): ?><div class="alert alert-error">Error: <?= V::e($error) ?></div><?php endif; ?>
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
+<?php if ($proposalMode): ?><div class="alert alert-info">Se enviará como <strong>propuesta</strong> para que un administrador la revise; no se guardará directamente.</div><?php endif; ?>
 
     <form class="panel" action="<?= V::e($action) ?>" method="POST">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
@@ -40,6 +42,6 @@ $fields = [
             <label class="field-label" for="BIO">Biografía</label>
             <textarea class="input" id="BIO" name="BIO" rows="4"><?= $val('BIO') ?></textarea>
         </div>
-        <div><button class="btn btn-neutral" type="submit"><?= $isEdit ? 'Guardar cambios' : 'Crear compositor' ?></button></div>
+        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Enviar propuesta' : ($isEdit ? 'Guardar cambios' : 'Crear compositor') ?></button></div>
     </form>
 </div>

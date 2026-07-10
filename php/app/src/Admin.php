@@ -44,9 +44,40 @@ final class Admin
         if (isset($_GET['moved'])) return ['type' => 'ok', 'msg' => 'Variante reasignada.'];
         if (isset($_GET['split'])) return ['type' => 'ok', 'msg' => 'Variante separada en una nueva dedicatoria.'];
         if (isset($_GET['unified'])) return ['type' => 'ok', 'msg' => 'Variantes unificadas · ' . (int) $_GET['unified'] . ' marchas reescritas.'];
+        if (isset($_GET['propuesta'])) return ['type' => 'ok', 'msg' => 'Propuesta enviada. El administrador la revisará antes de aplicarla.'];
+        if (isset($_GET['aplicada'])) return ['type' => 'ok', 'msg' => 'Propuesta aceptada y aplicada a la base de datos.'];
+        if (isset($_GET['rechazada'])) return ['type' => 'info', 'msg' => 'Propuesta rechazada.'];
         if (isset($_GET['nochanges'])) return ['type' => 'info', 'msg' => 'No había cambios que guardar.'];
         if (isset($_GET['err'])) return ['type' => 'error', 'msg' => 'Error: ' . preg_replace('/[^A-Z_]/', '', (string) $_GET['err'])];
         return null;
+    }
+
+    private static function isAdmin(array $session): bool
+    {
+        return Roles::isAdmin($session['rol'] ?? null);
+    }
+
+    /** Recoge del POST los campos de $editable presentes (para una propuesta). */
+    private static function postDatos(array $editable): array
+    {
+        $d = [];
+        foreach ($editable as $f) {
+            if (array_key_exists($f, $_POST)) $d[$f] = $_POST[$f];
+        }
+        return $d;
+    }
+
+    /**
+     * Encola una propuesta del editor (no toca la BD) y redirige al panel con
+     * aviso de confirmación.
+     *
+     * @param array<string,mixed> $datos
+     * @param list<int> $autoresIds
+     */
+    private static function enqueueProposal(array $session, string $entidad, string $accion, ?int $targetId, array $datos, array $autoresIds): never
+    {
+        PropuestaRepo::create($entidad, $accion, $targetId, $datos, $autoresIds, (string) ($session['user'] ?? ''));
+        Http::redirect('/dashboard?propuesta=1', 302);
     }
 
     // ── Login / logout ─────────────────────────────────────────────────────
@@ -124,32 +155,42 @@ final class Admin
         if ($qb !== '') {
             $bandas = array_slice(Repo::searchBandas('titulo=' . rawurlencode($qb))['data'], 0, 15);
         }
-        View::render('admin/dashboard', compact('q', 'qb', 'marchas', 'autores', 'bandas', 'session'),
+        $notice = self::noticeFromQuery();
+        $pendientes = self::isAdmin($session) ? PropuestaRepo::countPendientes() : 0;
+        View::render('admin/dashboard', compact('q', 'qb', 'marchas', 'autores', 'bandas', 'session', 'notice', 'pendientes'),
             ['title' => 'Panel de administración — Marchas de Cristo', 'noindex' => true]);
     }
 
     // ── Marcha: edición ──────────────────────────────────────────────────────
     public static function marchaEditForm(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('marcha.edit');
         $id = (string) $p['id'];
         $marcha = Repo::fetchMarchaRaw($id);
         if ($marcha === null) Http::notFound();
         View::render('admin/marcha_form', [
             'mode' => 'edit', 'session' => $session, 'action' => "/dashboard/marcha/$id",
             'marcha' => $marcha, 'authors' => Repo::currentAutoresForMarcha($id),
+            'proposalMode' => !self::isAdmin($session),
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => "Editar marcha #$id — Marchas de Cristo", 'noindex' => true]);
     }
 
     public static function marchaEditPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('marcha.edit');
         $id = (string) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/marcha/$id?err=CSRF", 302);
 
         $current = Repo::fetchMarchaRaw($id);
         if ($current === null) Http::notFound();
+
+        // Editor: no escribe en la BD, envía una propuesta con los campos del form.
+        if (!self::isAdmin($session)) {
+            $ids = self::postAutoresIds();
+            if ($ids === []) Http::redirect("/dashboard/marcha/$id?err=AUTHORS_REQUIRED", 302);
+            self::enqueueProposal($session, 'marcha', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_MARCHA), $ids);
+        }
 
         // Delta de campos editables.
         $keys = [];
@@ -185,16 +226,17 @@ final class Admin
     // ── Marcha: alta ─────────────────────────────────────────────────────────
     public static function marchaAddForm(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('marcha.add');
         View::render('admin/marcha_form', [
             'mode' => 'add', 'session' => $session, 'action' => '/dashboard/marcha/add',
-            'marcha' => [], 'authors' => [], 'notice' => null, 'error' => null,
+            'marcha' => [], 'authors' => [], 'proposalMode' => !self::isAdmin($session),
+            'notice' => null, 'error' => null,
         ], ['title' => 'Añadir marcha — Marchas de Cristo', 'noindex' => true]);
     }
 
     public static function marchaAddPost(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('marcha.add');
         $fields = [];
         foreach (AdminRepo::INSERTABLE_MARCHA as $f) $fields[$f] = $_POST[$f] ?? '';
         $ids = self::postAutoresIds();
@@ -203,11 +245,19 @@ final class Admin
             http_response_code(400);
             View::render('admin/marcha_form', [
                 'mode' => 'add', 'session' => $session, 'action' => '/dashboard/marcha/add',
-                'marcha' => $fields, 'authors' => Repo::autoresByIds($ids), 'notice' => null, 'error' => $err,
+                'marcha' => $fields, 'authors' => Repo::autoresByIds($ids),
+                'proposalMode' => !self::isAdmin($session), 'notice' => null, 'error' => $err,
             ], ['title' => 'Añadir marcha — Marchas de Cristo', 'noindex' => true]);
         };
 
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { $reRender('CSRF'); return; }
+
+        // Editor: propuesta en lugar de escritura directa.
+        if (!self::isAdmin($session)) {
+            if ($ids === []) { $reRender('AUTHORS_REQUIRED'); return; }
+            self::enqueueProposal($session, 'marcha', 'add', null, $fields, $ids);
+        }
+
         $r = AdminRepo::addMarcha($fields, $ids);
         if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/marcha/' . $r['marchaId'] . '?created=1', 302);
         $reRender($r['code'] ?? 'ERROR');
@@ -216,7 +266,7 @@ final class Admin
     // ── Marcha: curación de estilo (CCTT / AM) ──────────────────────────────
     public static function estiloList(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $filters = [
             'estado' => (string) ($_GET['estado'] ?? 'pendiente'),
             'q' => trim((string) ($_GET['q'] ?? '')),
@@ -242,7 +292,7 @@ final class Admin
 
     public static function estiloAssignPost(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $back = self::estiloBackQuery((string) ($_POST['ref'] ?? ''));
         $sep = $back !== '' ? '&' : '';
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/estilos?$back{$sep}err=CSRF", 302);
@@ -257,24 +307,30 @@ final class Admin
     // ── Autor: edición ───────────────────────────────────────────────────────
     public static function autorEditForm(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('autor.edit');
         $id = (string) $p['id'];
         $autor = Repo::fetchAutorRaw($id);
         if ($autor === null) Http::notFound();
         View::render('admin/autor_form', [
             'mode' => 'edit', 'session' => $session, 'action' => "/dashboard/autor/$id",
-            'autor' => $autor, 'notice' => self::noticeFromQuery(), 'error' => null,
+            'autor' => $autor, 'proposalMode' => !self::isAdmin($session),
+            'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => "Editar compositor #$id — Marchas de Cristo", 'noindex' => true]);
     }
 
     public static function autorEditPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('autor.edit');
         $id = (string) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/autor/$id?err=CSRF", 302);
 
         $current = Repo::fetchAutorRaw($id);
         if ($current === null) Http::notFound();
+
+        // Editor: propuesta en lugar de escritura directa.
+        if (!self::isAdmin($session)) {
+            self::enqueueProposal($session, 'autor', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_AUTOR), []);
+        }
 
         $keys = [];
         $values = [];
@@ -295,7 +351,7 @@ final class Admin
     // ── Autor: alta ──────────────────────────────────────────────────────────
     public static function autorAddForm(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('autor.add');
         // Prefill opcional desde ?nombre=Nombre Apellidos (p.ej. enlace "crear
         // compositor" desde la revisión de ingesta): el último token se asume
         // apellidos, el resto nombre. Es solo un punto de partida editable.
@@ -308,13 +364,14 @@ final class Admin
         }
         View::render('admin/autor_form', [
             'mode' => 'add', 'session' => $session, 'action' => '/dashboard/autor/add',
-            'autor' => $autor, 'notice' => null, 'error' => null,
+            'autor' => $autor, 'proposalMode' => !self::isAdmin($session),
+            'notice' => null, 'error' => null,
         ], ['title' => 'Añadir compositor — Marchas de Cristo', 'noindex' => true]);
     }
 
     public static function autorAddPost(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('autor.add');
         $fields = [];
         foreach (AdminRepo::EDITABLE_AUTOR as $f) $fields[$f] = $_POST[$f] ?? '';
 
@@ -322,11 +379,17 @@ final class Admin
             http_response_code(400);
             View::render('admin/autor_form', [
                 'mode' => 'add', 'session' => $session, 'action' => '/dashboard/autor/add',
-                'autor' => $fields, 'notice' => null, 'error' => $err,
+                'autor' => $fields, 'proposalMode' => !self::isAdmin($session), 'notice' => null, 'error' => $err,
             ], ['title' => 'Añadir compositor — Marchas de Cristo', 'noindex' => true]);
         };
 
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { $reRender('CSRF'); return; }
+
+        // Editor: propuesta en lugar de escritura directa.
+        if (!self::isAdmin($session)) {
+            self::enqueueProposal($session, 'autor', 'add', null, $fields, []);
+        }
+
         $r = AdminRepo::addAutor($fields);
         if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/autor/' . $r['autorId'] . '?created=1', 302);
         $reRender($r['code'] ?? 'ERROR');
@@ -335,26 +398,33 @@ final class Admin
     // ── Banda: edición + relaciones de linaje (banda_relacion) ───────────────
     public static function bandaEditForm(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('banda.edit');
         $id = (string) $p['id'];
         $banda = Repo::fetchBandaRaw($id);
         if ($banda === null) Http::notFound();
+        $showLinaje = self::isAdmin($session); // el linaje es curación avanzada, solo admin
         View::render('admin/banda_form', [
             'session' => $session, 'banda' => $banda, 'action' => "/dashboard/banda/$id",
-            'relaciones' => Repo::bandaRelaciones($id),
+            'relaciones' => $showLinaje ? Repo::bandaRelaciones($id) : [],
             'tipos' => AdminRepo::RELACION_TIPOS,
+            'showLinaje' => $showLinaje, 'proposalMode' => !self::isAdmin($session),
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => "Editar banda #$id — Marchas de Cristo", 'noindex' => true]);
     }
 
     public static function bandaEditPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireCap('banda.edit');
         $id = (string) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
 
         $current = Repo::fetchBandaRaw($id);
         if ($current === null) Http::notFound();
+
+        // Editor: propuesta en lugar de escritura directa (solo campos básicos).
+        if (!self::isAdmin($session)) {
+            self::enqueueProposal($session, 'banda', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_BANDA), []);
+        }
 
         $keys = [];
         $values = [];
@@ -372,9 +442,46 @@ final class Admin
         Http::redirect("/dashboard/banda/$id?saved=1", 302);
     }
 
+    // ── Banda: alta ──────────────────────────────────────────────────────────
+    public static function bandaAddForm(): void
+    {
+        $session = Auth::requireCap('banda.add');
+        View::render('admin/banda_add', [
+            'session' => $session, 'banda' => [], 'action' => '/dashboard/banda/add',
+            'proposalMode' => !self::isAdmin($session), 'notice' => null, 'error' => null,
+        ], ['title' => 'Añadir banda — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function bandaAddPost(): void
+    {
+        $session = Auth::requireCap('banda.add');
+        $fields = [];
+        foreach (AdminRepo::EDITABLE_BANDA as $f) $fields[$f] = $_POST[$f] ?? '';
+
+        $reRender = static function (string $err) use ($session, $fields): void {
+            http_response_code(400);
+            View::render('admin/banda_add', [
+                'session' => $session, 'banda' => $fields, 'action' => '/dashboard/banda/add',
+                'proposalMode' => !self::isAdmin($session), 'notice' => null, 'error' => $err,
+            ], ['title' => 'Añadir banda — Marchas de Cristo', 'noindex' => true]);
+        };
+
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { $reRender('CSRF'); return; }
+
+        // Editor: propuesta en lugar de escritura directa.
+        if (!self::isAdmin($session)) {
+            if (trim((string) ($fields['NOMBRE_BREVE'] ?? '')) === '') { $reRender('NOMBRE_REQUERIDO'); return; }
+            self::enqueueProposal($session, 'banda', 'add', null, $fields, []);
+        }
+
+        $r = AdminRepo::addBanda($fields);
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/banda/' . $r['bandaId'] . '?created=1', 302);
+        $reRender($r['code'] ?? 'ERROR');
+    }
+
     public static function bandaRelacionAddPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
 
@@ -391,7 +498,7 @@ final class Admin
 
     public static function bandaRelacionDeletePost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         $rel = (int) $p['rel'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
@@ -419,7 +526,7 @@ final class Admin
     // ── Dedicatorias: curación de advocaciones (hubs N-01 / N-02) ────────────
     public static function dedicatoriasList(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $q = trim((string) ($_GET['q'] ?? ''));
         $soloPersonales = isset($_GET['personales']);
         View::render('admin/dedicatoria_list', [
@@ -431,7 +538,7 @@ final class Admin
 
     public static function dedicatoriaEditForm(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (string) $p['id'];
         $dedic = Repo::fetchDedicatoriaAdmin($id);
         if ($dedic === null) Http::notFound();
@@ -443,7 +550,7 @@ final class Admin
 
     public static function dedicatoriaEditPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
         $r = AdminRepo::renameDedicatoria(
@@ -459,7 +566,7 @@ final class Admin
 
     public static function dedicatoriaAliasMovePost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
         $r = AdminRepo::moverAlias(
@@ -475,7 +582,7 @@ final class Admin
 
     public static function dedicatoriaAliasSplitPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
         $r = AdminRepo::separarAlias((string) ($_POST['variante'] ?? ''), (string) ($_POST['localidad'] ?? ''));
@@ -486,7 +593,7 @@ final class Admin
 
     public static function dedicatoriaUnifyPost(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
         $dedic = Repo::fetchDedicatoriaAdmin((string) $id);
@@ -504,7 +611,7 @@ final class Admin
     // ── Ingesta (revisión de candidatos de YouTube) ─────────────────────────
     public static function ingestaList(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $filters = [
             'estado' => (string) ($_GET['estado'] ?? 'pendiente'),
             'banda' => (string) ($_GET['banda'] ?? ''),
@@ -532,7 +639,7 @@ final class Admin
 
     public static function ingestaDetail(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         $cand = IngestaRepo::fetchCandidato($id);
         if ($cand === null) Http::notFound();
@@ -559,7 +666,7 @@ final class Admin
 
     public static function ingestaAceptar(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         $back = self::ingestaBackQuery((string) ($_POST['ref'] ?? ''));
         $backSuffix = $back !== '' ? "&ref=$back" : '';
@@ -582,7 +689,7 @@ final class Admin
 
     public static function ingestaDescartar(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         $back = self::ingestaBackQuery((string) ($_POST['ref'] ?? ''));
         $backSuffix = $back !== '' ? "&ref=$back" : '';
@@ -598,7 +705,7 @@ final class Admin
     /** Descarte masivo desde el listado (checkboxes + modal de confirmación), sin motivo. */
     public static function ingestaDescartarMultiple(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $back = self::ingestaBackQuery((string) ($_POST['ref'] ?? ''));
         $sep = $back !== '' ? '&' : '';
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta?$back{$sep}err=CSRF", 302);
@@ -612,7 +719,7 @@ final class Admin
     // ── Enlaces de streaming: curación (Spotify / Apple / Deezer) ────────────
     public static function enlaceList(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $filters = [
             'estado' => (string) ($_GET['estado'] ?? 'pendiente'),
             'servicio' => (string) ($_GET['servicio'] ?? ''),
@@ -639,7 +746,7 @@ final class Admin
 
     public static function enlaceAprobar(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         $back = self::enlaceBackQuery((string) ($_POST['ref'] ?? ''));
         $sep = $back !== '' ? '&' : '';
@@ -652,7 +759,7 @@ final class Admin
 
     public static function enlaceRechazar(array $p): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $id = (int) $p['id'];
         $back = self::enlaceBackQuery((string) ($_POST['ref'] ?? ''));
         $sep = $back !== '' ? '&' : '';
@@ -665,7 +772,7 @@ final class Admin
 
     public static function enlaceRechazarMultiple(): void
     {
-        $session = Auth::requireAuth();
+        $session = Auth::requireAdmin();
         $back = self::enlaceBackQuery((string) ($_POST['ref'] ?? ''));
         $sep = $back !== '' ? '&' : '';
         if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/enlaces?$back{$sep}err=CSRF", 302);
@@ -705,5 +812,157 @@ final class Admin
         if (mb_strlen($nombre) < 3) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
         $data = Repo::autorCandidatosPorTexto($nombre, 15);
         echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    // ── Gestión de usuarios (solo admin) ─────────────────────────────────────
+
+    /**
+     * Render del listado de usuarios. La contraseña recién generada ($nuevaClave)
+     * se muestra una única vez y NUNCA viaja por la URL (no PRG en ese caso), para
+     * no dejarla en el historial ni en logs de acceso.
+     *
+     * @param array<string,mixed> $extra
+     */
+    private static function renderUsuarios(array $session, array $extra = [], int $status = 200): void
+    {
+        if ($status !== 200) http_response_code($status);
+        View::render('admin/usuarios_list', array_merge([
+            'session' => $session,
+            'usuarios' => UserRepo::all(),
+            'roles' => Roles::ALL,
+            'labels' => Roles::LABELS,
+            'notice' => self::noticeFromQuery(),
+            'nuevaClave' => null,
+            'nuevoUsuario' => null,
+            'error' => null,
+        ], $extra), ['title' => 'Usuarios — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function usuariosList(): void
+    {
+        $session = Auth::requireAdmin();
+        self::renderUsuarios($session);
+    }
+
+    public static function usuariosCrearPost(): void
+    {
+        $session = Auth::requireAdmin();
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { self::renderUsuarios($session, ['error' => 'CSRF'], 400); return; }
+        $r = UserRepo::create((string) ($_POST['usuario'] ?? ''));
+        if (($r['code'] ?? '') === 'CREATED') {
+            self::renderUsuarios($session, [
+                'nuevoUsuario' => $r['usuario'], 'nuevaClave' => $r['clave'],
+                'notice' => ['type' => 'ok', 'msg' => 'Usuario creado con rol Editor.'],
+            ]);
+            return;
+        }
+        self::renderUsuarios($session, ['error' => $r['code'] ?? 'ERROR'], 400);
+    }
+
+    public static function usuariosRolPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect('/dashboard/usuarios?err=CSRF', 302);
+        $r = UserRepo::changeRole((int) $p['id'], (string) ($_POST['rol'] ?? ''));
+        $code = $r['code'] ?? 'ERROR';
+        if ($code === 'UPDATED') Http::redirect('/dashboard/usuarios?saved=1', 302);
+        if ($code === 'NO_CHANGE') Http::redirect('/dashboard/usuarios?nochanges=1', 302);
+        Http::redirect('/dashboard/usuarios?err=' . $code, 302);
+    }
+
+    public static function usuariosResetPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) { self::renderUsuarios($session, ['error' => 'CSRF'], 400); return; }
+        $r = UserRepo::resetPassword((int) $p['id']);
+        if (($r['code'] ?? '') === 'RESET') {
+            self::renderUsuarios($session, [
+                'nuevoUsuario' => $r['usuario'], 'nuevaClave' => $r['clave'],
+                'notice' => ['type' => 'ok', 'msg' => 'Contraseña restablecida.'],
+            ]);
+            return;
+        }
+        self::renderUsuarios($session, ['error' => $r['code'] ?? 'ERROR'], 400);
+    }
+
+    // ── Propuestas de editores (revisión, solo admin) ────────────────────────
+
+    /** Conjunto de campos editables según entidad/acción de una propuesta. */
+    private static function editableFor(string $entidad, string $accion): array
+    {
+        return match ($entidad) {
+            'marcha' => $accion === 'add' ? AdminRepo::INSERTABLE_MARCHA : AdminRepo::EDITABLE_MARCHA,
+            'autor' => AdminRepo::EDITABLE_AUTOR,
+            'banda' => AdminRepo::EDITABLE_BANDA,
+            default => [],
+        };
+    }
+
+    /** Valores actuales en la BD local, para el diff (solo propuestas de edición). */
+    private static function propuestaActual(array $prop): ?array
+    {
+        if (($prop['accion'] ?? '') !== 'edit' || $prop['target_id'] === null) return null;
+        $id = (string) $prop['target_id'];
+        return match ($prop['entidad'] ?? '') {
+            'marcha' => Repo::fetchMarchaRaw($id),
+            'autor' => Repo::fetchAutorRaw($id),
+            'banda' => Repo::fetchBandaRaw($id),
+            default => null,
+        };
+    }
+
+    public static function propuestaList(): void
+    {
+        $session = Auth::requireAdmin();
+        View::render('admin/propuesta_list', [
+            'session' => $session,
+            'items' => PropuestaRepo::pendientes(),
+            'notice' => self::noticeFromQuery(),
+        ], ['title' => 'Propuestas de editores — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function propuestaDetail(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $prop = PropuestaRepo::fetchPendiente((string) $p['id']);
+        if ($prop === null) Http::notFound();
+        $authors = ($prop['entidad'] ?? '') === 'marcha'
+            ? Repo::autoresByIds(array_map('intval', (array) ($prop['autoresIds'] ?? [])))
+            : [];
+        View::render('admin/propuesta_detail', [
+            'session' => $session, 'prop' => $prop, 'authors' => $authors,
+            'actual' => self::propuestaActual($prop),
+            'editable' => self::editableFor((string) ($prop['entidad'] ?? ''), (string) ($prop['accion'] ?? '')),
+            'notice' => self::noticeFromQuery(), 'error' => null,
+        ], ['title' => 'Revisar propuesta — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function propuestaAceptar(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (string) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/propuesta/$id?err=CSRF", 302);
+        $prop = PropuestaRepo::fetchPendiente($id);
+        if ($prop === null) Http::notFound();
+
+        // El admin puede ajustar los campos antes de aceptar (el form los reenvía).
+        $editable = self::editableFor((string) $prop['entidad'], (string) $prop['accion']);
+        $overrideDatos = self::postDatos($editable);
+        $overrideAutores = ($prop['entidad'] ?? '') === 'marcha' ? self::postAutoresIds() : null;
+
+        $r = PropuestaRepo::aplicar($id, (string) ($session['user'] ?? ''), $overrideDatos, $overrideAutores);
+        if (in_array($r['code'] ?? '', ['CREATED', 'UPDATED'], true)) Http::redirect('/dashboard/propuestas?aplicada=1', 302);
+        Http::redirect("/dashboard/propuesta/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    public static function propuestaRechazar(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (string) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/propuesta/$id?err=CSRF", 302);
+        $motivo = trim((string) ($_POST['motivo'] ?? ''));
+        $r = PropuestaRepo::rechazar($id, (string) ($session['user'] ?? ''), $motivo !== '' ? $motivo : null);
+        if (($r['code'] ?? '') !== 'REJECTED') Http::redirect("/dashboard/propuesta/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect('/dashboard/propuestas?rechazada=1', 302);
     }
 }

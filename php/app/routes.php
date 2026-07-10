@@ -97,6 +97,9 @@ $router->get('/dashboard/autor/add', [Admin::class, 'autorAddForm']);
 $router->post('/dashboard/autor/add', [Admin::class, 'autorAddPost']);
 $router->get('/dashboard/autor/{id}', [Admin::class, 'autorEditForm']);
 $router->post('/dashboard/autor/{id}', [Admin::class, 'autorEditPost']);
+// Alta de banda (antes del catch-all /{id}).
+$router->get('/dashboard/banda/add', [Admin::class, 'bandaAddForm']);
+$router->post('/dashboard/banda/add', [Admin::class, 'bandaAddPost']);
 // Edición de banda + relaciones de linaje (banda_relacion).
 $router->get('/dashboard/banda/{id}', [Admin::class, 'bandaEditForm']);
 $router->post('/dashboard/banda/{id}', [Admin::class, 'bandaEditPost']);
@@ -112,6 +115,18 @@ $router->post('/dashboard/dedicatoria/{id}', [Admin::class, 'dedicatoriaEditPost
 $router->post('/dashboard/dedicatoria/{id}/alias/mover', [Admin::class, 'dedicatoriaAliasMovePost']);
 $router->post('/dashboard/dedicatoria/{id}/alias/separar', [Admin::class, 'dedicatoriaAliasSplitPost']);
 $router->post('/dashboard/dedicatoria/{id}/unificar', [Admin::class, 'dedicatoriaUnifyPost']);
+
+// ── Gestión de usuarios y roles (solo admin) ─────────────────────────────────
+$router->get('/dashboard/usuarios', [Admin::class, 'usuariosList']);
+$router->post('/dashboard/usuarios/crear', [Admin::class, 'usuariosCrearPost']);
+$router->post('/dashboard/usuarios/{id}/rol', [Admin::class, 'usuariosRolPost']);
+$router->post('/dashboard/usuarios/{id}/reset', [Admin::class, 'usuariosResetPost']);
+
+// ── Propuestas de editores (revisión, solo admin) ────────────────────────────
+$router->get('/dashboard/propuestas', [Admin::class, 'propuestaList']);
+$router->get('/dashboard/propuesta/{id}', [Admin::class, 'propuestaDetail']);
+$router->post('/dashboard/propuesta/{id}/aceptar', [Admin::class, 'propuestaAceptar']);
+$router->post('/dashboard/propuesta/{id}/rechazar', [Admin::class, 'propuestaRechazar']);
 
 // ── Ingesta (revisión de candidatos de YouTube, ver tools/ingest/) ───────────
 $router->get('/dashboard/ingesta', [Admin::class, 'ingestaList']);

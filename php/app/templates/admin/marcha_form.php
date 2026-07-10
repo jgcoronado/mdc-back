@@ -1,9 +1,10 @@
 <?php use App\View as V; use App\Auth; use App\Slug as S;
 /** @var string $mode @var array $session @var string $action
  *  @var array<string,mixed> $marcha @var list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string}> $authors
- *  @var array|null $notice @var string|null $error */
+ *  @var bool $proposalMode @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
 $isEdit = $mode === 'edit';
+$proposalMode = $proposalMode ?? false;
 $val = static fn(string $k): string => V::e($marcha[$k] ?? '');
 
 $fields = [
@@ -30,6 +31,7 @@ $estilo = (string) ($marcha['ESTILO'] ?? '');
 
 <?php if ($error): ?><div class="alert alert-error">Error: <?= V::e($error) ?></div><?php endif; ?>
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
+<?php if ($proposalMode): ?><div class="alert alert-info">Se enviará como <strong>propuesta</strong> para que un administrador la revise; no se guardará directamente.</div><?php endif; ?>
 
     <form class="panel" action="<?= V::e($action) ?>" method="POST" id="marchaForm">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
@@ -71,7 +73,7 @@ $estilo = (string) ($marcha['ESTILO'] ?? '');
             <p class="muted">Debe haber al menos un autor.</p>
         </div>
 
-        <div><button class="btn btn-neutral" type="submit"><?= $isEdit ? 'Guardar cambios' : 'Crear marcha' ?></button></div>
+        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Enviar propuesta' : ($isEdit ? 'Guardar cambios' : 'Crear marcha') ?></button></div>
     </form>
 </div>
 <script src="/assets/admin.js" defer></script>

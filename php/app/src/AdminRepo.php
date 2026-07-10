@@ -203,6 +203,36 @@ final class AdminRepo
         return ['code' => 'UPDATED'];
     }
 
+    // ── addBanda ───────────────────────────────────────────────────────────
+    /**
+     * Alta de banda. NOMBRE_BREVE es obligatorio (es lo que se muestra en todo
+     * el catálogo); el resto de campos son opcionales. Mismos años de 4 dígitos
+     * que editBanda.
+     *
+     * @param array<string,mixed> $banda  campo => valor
+     * @return array{code:string, bandaId?:int}
+     */
+    public static function addBanda(array $banda): array
+    {
+        $safe = [];
+        foreach (self::EDITABLE_BANDA as $f) {
+            if (array_key_exists($f, $banda)) $safe[$f] = self::normalize($banda[$f]);
+        }
+        if (self::normalize($safe['NOMBRE_BREVE'] ?? null) === null) return ['code' => 'NOMBRE_REQUERIDO'];
+        foreach (['FECHA_FUND', 'FECHA_EXT'] as $f) {
+            if (array_key_exists($f, $safe) && $safe[$f] !== null && !preg_match('/^\d{4}$/', (string) $safe[$f])) {
+                return ['code' => 'INVALID_FECHA'];
+            }
+        }
+        $cols = array_keys($safe);
+        $ph = implode(', ', array_fill(0, count($cols), '?'));
+        Db::run('INSERT INTO banda (' . implode(', ', $cols) . ") VALUES ($ph)", array_values($safe));
+        $bandaId = Db::lastInsertId();
+        if (!$bandaId) return ['code' => 'INTERNAL_ERROR'];
+        Db::logAdmin('INSERT', 'banda', $bandaId, ['campos' => $cols]);
+        return ['code' => 'CREATED', 'bandaId' => $bandaId];
+    }
+
     // ── Relaciones de linaje entre bandas (banda_relacion) ──────────────────
     public const RELACION_TIPOS = ['renombrado', 'fusion', 'division', 'juvenil'];
 

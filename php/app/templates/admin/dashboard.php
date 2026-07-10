@@ -1,23 +1,44 @@
-<?php use App\View as V; use App\Auth;
-/** @var string $q @var string $qb @var list<array<string,mixed>> $marchas @var list<array<string,mixed>> $autores @var list<array<string,mixed>> $bandas @var array $session */
+<?php use App\View as V; use App\Auth; use App\Roles;
+/** @var string $q @var string $qb @var list<array<string,mixed>> $marchas @var list<array<string,mixed>> $autores @var list<array<string,mixed>> $bandas @var array $session @var array|null $notice @var int $pendientes */
 $csrf = Auth::csrfToken($session);
+$rol = $session['rol'] ?? Roles::EDITOR;
+$isAdmin = Roles::isAdmin($rol);
 ?>
 <div class="stack">
     <div class="admin-bar">
         <h1>Panel de administración</h1>
         <div class="row">
+            <span class="muted small">Sesión: <strong><?= V::e($session['user'] ?? '') ?></strong> · <?= V::e(Roles::label($rol)) ?></span>
+<?php if (Roles::has($rol, 'marcha.add')): ?>
             <a class="btn btn-sm" href="/dashboard/marcha/add">+ Marcha</a>
+<?php endif; ?>
+<?php if (Roles::has($rol, 'autor.add')): ?>
             <a class="btn btn-sm" href="/dashboard/autor/add">+ Compositor</a>
+<?php endif; ?>
+<?php if (Roles::has($rol, 'banda.add')): ?>
+            <a class="btn btn-sm" href="/dashboard/banda/add">+ Banda</a>
+<?php endif; ?>
+<?php if ($isAdmin): ?>
+            <a class="btn btn-sm btn-ghost" href="/dashboard/propuestas">Propuestas<?= $pendientes > 0 ? ' <span class="chip">' . (int) $pendientes . '</span>' : '' ?></a>
+            <a class="btn btn-sm btn-ghost" href="/dashboard/usuarios">Usuarios</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/ingesta">Ingesta YouTube</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/enlaces">Enlaces streaming</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/dedicatorias">Dedicatorias</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/estilos">Estilos CCTT/AM</a>
+<?php endif; ?>
             <form action="/logout" method="POST" class="inline-form">
                 <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
                 <button class="btn btn-sm btn-ghost" type="submit">Cerrar sesión</button>
             </form>
         </div>
     </div>
+
+<?php if ($notice): ?>
+    <div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div>
+<?php endif; ?>
+<?php if (!$isAdmin): ?>
+    <div class="alert alert-info">Trabajas como <strong>Editor</strong>. Tus altas y cambios se envían como <strong>propuestas</strong>; un administrador las revisa antes de aplicarlas.</div>
+<?php endif; ?>
 
     <form class="panel" action="/dashboard" method="GET">
         <input type="hidden" name="qb" value="<?= V::e($qb) ?>">

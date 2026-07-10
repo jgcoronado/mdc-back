@@ -113,7 +113,29 @@ final class Auth
         return self::verifySession($_COOKIE[self::cookieName()] ?? null);
     }
 
-    /** Guard: exige sesión válida o redirige a /login. */
+    /**
+     * Rol del usuario, leído de la BD (no de la cookie) para que un cambio de rol
+     * o un reset surtan efecto de inmediato. Compatibilidad hacia atrás: si la
+     * columna ROL aún no existe (BD sin migrar), se trata al usuario como admin
+     * —el comportamiento previo, cuando el panel tenía un solo administrador—.
+     */
+    public static function roleOf(string $user): string
+    {
+        try {
+            $row = Db::one('SELECT ROL FROM usuarios WHERE usuario = ? LIMIT 1', [$user]);
+        } catch (\PDOException) {
+            return Roles::ADMIN; // BD pre-migración: sin columna ROL
+        }
+        if ($row === null) return Roles::EDITOR;
+        return Roles::normalize(is_string($row['ROL'] ?? null) ? (string) $row['ROL'] : null);
+    }
+
+    /**
+     * Guard: exige sesión válida o redirige a /login. Enriquece el payload con
+     * 'rol' (desde la BD) y fija el usuario de auditoría para admin_log.
+     *
+     * @return array{user:string,rol:string,jti?:string,iat?:int,exp?:int}
+     */
     public static function requireAuth(): array
     {
         Http::noStore(); // el contenido de admin nunca se cachea
@@ -121,7 +143,34 @@ final class Auth
         if ($payload === null) {
             Http::redirect('/login', 302);
         }
+        $user = (string) ($payload['user'] ?? '');
+        $payload['rol'] = self::roleOf($user);
+        Db::setAuditUser($user !== '' ? $user : 'system');
         return $payload;
+    }
+
+    /**
+     * Guard con capacidad: exige sesión y que el rol tenga $cap; si no, 403.
+     *
+     * @return array{user:string,rol:string,jti?:string,iat?:int,exp?:int}
+     */
+    public static function requireCap(string $cap): array
+    {
+        $session = self::requireAuth();
+        if (!Roles::has($session['rol'] ?? null, $cap)) {
+            Http::forbidden();
+        }
+        return $session;
+    }
+
+    /** Guard: exige rol admin; si no, 403. */
+    public static function requireAdmin(): array
+    {
+        $session = self::requireAuth();
+        if (!Roles::isAdmin($session['rol'] ?? null)) {
+            Http::forbidden();
+        }
+        return $session;
     }
 
     // ── CSRF ───────────────────────────────────────────────────────────────
@@ -159,6 +208,21 @@ final class Auth
     public static function isLegacyMd5(string $stored): bool
     {
         return (bool) preg_match('/^[a-f0-9]{32}$/i', $stored);
+    }
+
+    /**
+     * Contraseña aleatoria legible para altas y resets (se muestra una sola vez).
+     * Alfabeto sin caracteres ambiguos (0/O, 1/l/I) para dictarla sin errores.
+     */
+    public static function generatePassword(int $length = 14): string
+    {
+        $alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $max = strlen($alphabet) - 1;
+        $out = '';
+        for ($i = 0; $i < $length; $i++) {
+            $out .= $alphabet[random_int(0, $max)];
+        }
+        return $out;
     }
 
     // ── Rate limiting (persistido en fichero) ───────────────────────────────

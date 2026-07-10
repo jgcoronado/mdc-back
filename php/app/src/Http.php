@@ -21,6 +21,15 @@ final class Http
         exit;
     }
 
+    /** 403 para accesos sin la capacidad requerida (rol insuficiente). */
+    public static function forbidden(): never
+    {
+        http_response_code(403);
+        self::noStore();
+        View::render('403', [], ['title' => 'Acceso restringido — Marchas de Cristo', 'noindex' => true]);
+        exit;
+    }
+
     /** Cacheable por navegador/proxy (páginas públicas estables). */
     public static function cachePublic(int $seconds): void
     {
