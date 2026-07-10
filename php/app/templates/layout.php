@@ -35,6 +35,17 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
 // Sección activa para aria-current (primer segmento de la ruta, sin query string).
 $reqPath = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $current = '/' . (explode('/', trim($reqPath, '/'))[0] ?? '');
+
+// Buscador de cabecera: solo en las secciones con búsqueda de texto propia
+// (Dedicatorias filtra por localidad/provincia y Estadísticas no tiene
+// buscador, así que ahí el cuadro no se muestra).
+$searchBySection = [
+    '/marcha' => ['action' => '/marcha', 'param' => 'titulo', 'label' => 'marchas'],
+    '/autor' => ['action' => '/autor', 'param' => 'nombre', 'label' => 'compositores'],
+    '/banda' => ['action' => '/banda', 'param' => 'titulo', 'label' => 'bandas'],
+    '/disco' => ['action' => '/disco', 'param' => 'nombre', 'label' => 'discos'],
+];
+$search = $searchBySection[$current] ?? null;
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -72,11 +83,6 @@ $current = '/' . (explode('/', trim($reqPath, '/'))[0] ?? '');
                 <li><a href="<?= $href ?>"<?= $current === $href ? ' aria-current="page"' : '' ?>><?= $label ?></a></li>
 <?php endforeach; ?>
             </ul>
-            <form class="site-search" action="/marcha" method="get" role="search">
-                <span aria-hidden="true">⌕</span>
-                <input id="site-q" type="search" name="titulo" placeholder="Buscar en el catálogo…" aria-label="Buscar marcha por título">
-                <span class="kbd">/</span>
-            </form>
             <details class="nav-mobile">
                 <summary aria-label="Menú">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -89,6 +95,15 @@ $current = '/' . (explode('/', trim($reqPath, '/'))[0] ?? '');
                 </ul>
             </details>
         </nav>
+<?php if ($search !== null): ?>
+        <div class="site-search-row">
+            <form class="site-search" action="<?= $e($search['action']) ?>" method="get" role="search">
+                <span aria-hidden="true">⌕</span>
+                <input id="site-q" type="search" name="<?= $e($search['param']) ?>" placeholder="<?= $e('Buscar en ' . $search['label'] . '…') ?>" aria-label="<?= $e('Buscar en ' . $search['label']) ?>">
+                <span class="kbd">/</span>
+            </form>
+        </div>
+<?php endif; ?>
     </header>
 
     <main><?= $content ?></main>
