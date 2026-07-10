@@ -1,8 +1,9 @@
 # Análisis de base de datos — SQLite (estado actual)
 
-> Actualizado: 2026-07-08 (modelo de linaje de bandas) · 2026-06-05 (sesión 2)
+> Actualizado: 2026-07-10 (estilo de marcha) · 2026-07-08 (modelo de linaje de bandas) · 2026-06-05 (sesión 2)
 > El documento original analizaba el esquema MySQL (2026-06-01). Ese análisis es histórico — todos los bugs de motores mixtos, collation y FULLTEXT con `%` quedaron resueltos o irrelevantes al migrar a SQLite en la Fase 3b.
 > 2026-07-08: el linaje de bandas dejó de guardarse en columnas `FORMACION_ANT/SIG` y pasó a la tabla `banda_relacion` (ver §Modelo de linaje).
+> 2026-07-10: nueva columna `marcha.ESTILO` (`CCTT`/`AM`/`NULL`), ver §Estilo de marcha.
 
 ---
 
@@ -30,7 +31,7 @@
 ## Campos principales por tabla
 
 ```
-marcha      : ID_MARCHA, TITULO, DEDICATORIA, LOCALIDAD, PROVINCIA, AUDIO, FECHA, BANDA_ESTRENO, DETALLES_MARCHA
+marcha      : ID_MARCHA, TITULO, DEDICATORIA, LOCALIDAD, PROVINCIA, AUDIO, FECHA, BANDA_ESTRENO, ESTILO, DETALLES_MARCHA
 autor       : ID_AUTOR, NOMBRE, APELLIDOS, NOMBRE_ART, F_NAC, LUGAR_NAC, F_DEF, BIO
 banda        : ID_BANDA, NOMBRE_COMPLETO, NOMBRE_BREVE, LOCALIDAD, PROVINCIA, FECHA_FUND, FECHA_EXT, DIRECTOR_ACTUAL, DIR_MUS_ACTUAL, WEB, LINK_FORO
 banda_relacion: ID_RELACION, ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO, FECHA_FIN, NOTA
@@ -67,6 +68,37 @@ Cada fila es un vínculo dirigido `ID_ORIGEN → ID_DESTINO`; el significado lo 
 - Tiene FK reales a `banda(ID_BANDA)` y `UNIQUE(ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO)`.
 - **Migración**: los 15 vínculos lineales previos entraron como `renombrado`, menos la arista inversa anómala `41→68` (par recíproco: se conservó solo `68→41`, 2003). Resultado: 14 filas.
 - **Pendiente**: `Repo::fetchBanda` aún no lee esta tabla (el `timeline` es de un solo elemento); el render del linaje está por construir.
+
+---
+
+## Estilo de marcha (`marcha.ESTILO`)
+
+Columna nueva (`TEXT CHECK (ESTILO IN ('CCTT','AM'))`, `NULL` = sin asignar),
+añadida y rellenada por la migración one-shot
+[`app/tools/migrate_marcha_estilo.php`](../php/app/tools/migrate_marcha_estilo.php).
+El estilo no se guarda en `banda` — no hay columna de tipo de banda — sino que
+se deriva por nombre cada vez que se ejecuta el backfill:
+
+1. Se clasifica cada banda por su nombre: `NOMBRE_COMPLETO` con "Cornetas y
+   Tambores" → `CCTT`; con "Agrupación Musical" (o el prefijo `AM `) → `AM`.
+   Si el nombre completo no lo deja claro se cae a `NOMBRE_BREVE` (prefijo
+   `AM `/`BCT `). Sin ninguna de las dos señales, la banda queda sin estilo
+   (2 de 268: `banda#0` "Varias bandas" y `banda#80`, banda militar sin
+   nomenclatura CCTT/AM).
+2. Cada marcha toma el estilo de su banda de estreno (`marcha.BANDA_ESTRENO`).
+3. Si no hay estreno (o la banda de estreno no tiene estilo claro), toma el
+   estilo de la banda de su primera grabación documentada — mismo criterio y
+   orden que usa `Repo::fetchMarcha()` para "primera grabación": `disco_marcha`
+   + `disco`, `ORDER BY FECHA_CD ASC, NOMBRE_CD ASC`, banda = `DM_BANDA` si
+   existe, si no `BANDADISCO`.
+4. Si ninguna de las dos resuelve, la marcha queda `ESTILO = NULL` (pendiente
+   de asignar a mano desde el panel admin).
+
+Resultado del backfill (2026-07-10, 4 271 marchas): 1 586 `CCTT`, 2 087 `AM`,
+598 pendientes. Editable por marcha desde `/dashboard/marcha/{id}` (campo
+"Estilo"), o en bloque desde `/dashboard/estilos` (ver
+[admin-panel.md §8](admin-panel.md)) — pensada para resolver las pendientes;
+se muestra en la ficha pública cuando está asignado.
 
 ---
 

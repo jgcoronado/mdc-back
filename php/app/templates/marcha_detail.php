@@ -33,6 +33,11 @@ $vida = static function (array $a): string {
 
 $mid = (int) $m['ID_MARCHA'];
 $tipo = $t($m['TIPO'] ?? null) ? ucfirst(mb_strtolower((string) $m['TIPO'])) : 'Marcha';
+$estilo = match ($m['ESTILO'] ?? null) {
+    'CCTT' => 'Cornetas y Tambores',
+    'AM' => 'Agrupación Musical',
+    default => '',
+};
 $duracion = $dur($m['DURACION_SEG'] ?? 0);
 $autores = $m['AUTORES_FICHA'] ?? [];
 
@@ -101,6 +106,9 @@ $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
 <?php endif; ?>
 <?php if ($t($m['TIPO'])): ?>
         <div class="f"><dt>Tipo</dt><dd><?= V::e($tipo) ?></dd></div>
+<?php endif; ?>
+<?php if ($estilo !== ''): ?>
+        <div class="f"><dt>Estilo</dt><dd><?= V::e($estilo) ?></dd></div>
 <?php endif; ?>
 <?php if ($duracion !== ''): ?>
         <div class="f"><dt>Duración</dt><dd><?= V::e($duracion) ?> <span class="cnt">(<?= (int) $m['DURACION_SEG'] ?> s)</span></dd></div>

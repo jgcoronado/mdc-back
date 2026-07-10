@@ -10,8 +10,8 @@ namespace App;
  */
 final class AdminRepo
 {
-    public const EDITABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'AUDIO', 'BANDA_ESTRENO', 'DETALLES_MARCHA'];
-    public const INSERTABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'DETALLES_MARCHA'];
+    public const EDITABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'AUDIO', 'BANDA_ESTRENO', 'ESTILO', 'DETALLES_MARCHA'];
+    public const INSERTABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'ESTILO', 'DETALLES_MARCHA'];
     public const EDITABLE_AUTOR = ['NOMBRE', 'APELLIDOS', 'NOMBRE_ART', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO'];
     public const EDITABLE_BANDA = ['NOMBRE_COMPLETO', 'NOMBRE_BREVE', 'LOCALIDAD', 'PROVINCIA', 'FECHA_FUND', 'FECHA_EXT', 'DIRECTOR_ACTUAL', 'DIR_MUS_ACTUAL', 'WEB', 'LINK_FORO'];
 
@@ -51,6 +51,9 @@ final class AdminRepo
         if (array_key_exists('FECHA', $safe) && $safe['FECHA'] !== null && !preg_match('/^\d{4}$/', (string) $safe['FECHA'])) {
             return ['code' => 'INVALID_FECHA'];
         }
+        if (array_key_exists('ESTILO', $safe) && $safe['ESTILO'] !== null && !in_array($safe['ESTILO'], ['CCTT', 'AM'], true)) {
+            return ['code' => 'INVALID_ESTILO'];
+        }
 
         $set = implode(', ', array_map(static fn(string $k): string => "$k = ?", array_keys($safe)));
         $changes = Db::run("UPDATE marcha SET $set WHERE ID_MARCHA = ?", [...array_values($safe), $marchaId]);
@@ -78,6 +81,9 @@ final class AdminRepo
 
         if (array_key_exists('FECHA', $safe) && $safe['FECHA'] !== null && !preg_match('/^\d{4}$/', (string) $safe['FECHA'])) {
             return ['code' => 'INVALID_FECHA'];
+        }
+        if (array_key_exists('ESTILO', $safe) && $safe['ESTILO'] !== null && !in_array($safe['ESTILO'], ['CCTT', 'AM'], true)) {
+            return ['code' => 'INVALID_ESTILO'];
         }
 
         $ids = array_values(array_unique(array_filter(
@@ -324,6 +330,29 @@ final class AdminRepo
         if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING', 'count' => 0];
         Db::logAdmin('DISCARD', 'ingest_candidato', null, ['ids' => $ids, 'count' => $changes]);
         return ['code' => 'DISCARDED', 'count' => $changes];
+    }
+
+    // ── Marchas: curación de estilo (CCTT / AM) ───────────────────────────────
+
+    /**
+     * Asigna un estilo a varias marchas a la vez, desde /dashboard/estilos
+     * (clic rápido por fila o selección múltiple). Sobrescribe el ESTILO
+     * actual si ya tenía uno, para permitir corregir asignaciones previas.
+     *
+     * @param list<int> $ids
+     * @return array{code:string, count:int}
+     */
+    public static function assignEstiloVarios(array $ids, string $estilo): array
+    {
+        if (!in_array($estilo, ['CCTT', 'AM'], true)) return ['code' => 'INVALID_ESTILO', 'count' => 0];
+        $ids = array_values(array_unique(array_filter($ids, static fn(int $n): bool => $n > 0)));
+        if ($ids === []) return ['code' => 'BAD_REQUEST', 'count' => 0];
+
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $changes = Db::run("UPDATE marcha SET ESTILO = ? WHERE ID_MARCHA IN ($ph)", [$estilo, ...$ids]);
+        if ($changes === 0) return ['code' => 'NOT_FOUND', 'count' => 0];
+        Db::logAdmin('UPDATE', 'marcha', null, ['campos' => ['ESTILO'], 'ids' => $ids, 'estilo' => $estilo, 'count' => $changes]);
+        return ['code' => 'ASSIGNED', 'count' => $changes];
     }
 
     // ── Dedicatorias: curación de advocaciones (hubs N-01 / N-02) ────────────

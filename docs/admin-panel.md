@@ -1,6 +1,6 @@
 # Panel de administración — marchasdecristo.com
 
-> Última actualización: 2026-07-08 (relaciones de linaje de bandas)
+> Última actualización: 2026-07-10 (curación de estilo CCTT/AM) · 2026-07-08 (relaciones de linaje de bandas)
 > Documento complementario de [context.md](context.md) y [roadmap.md](roadmap.md).
 >
 > ⚠️ **Nota de implementación**: tras el cutover a PHP (2026-07-04) el panel se sirve
@@ -33,14 +33,14 @@ El middleware verifica el token inline (sin HTTP round-trip). Los Client Compone
 - Botones: "Nueva marcha" → `/dashboard/marcha/add`, "Nuevo autor" → `/dashboard/autor/add`, "Logout".
 
 ### `/dashboard/marcha/[id]` — Edición de marcha
-Campos editables: `TITULO`, `FECHA`, `DEDICATORIA`, `LOCALIDAD`, `AUDIO`, `BANDA_ESTRENO` (ID numérico a ciegas), `DETALLES_MARCHA`.
+Campos editables: `TITULO`, `FECHA`, `DEDICATORIA`, `LOCALIDAD`, `AUDIO`, `BANDA_ESTRENO` (ID numérico a ciegas), `ESTILO` (CCTT/AM/sin asignar — ver `docs/db-analysis.md#estilo-de-marcha`), `DETALLES_MARCHA`.
 
 **Faltante**: `PROVINCIA` está en la BD y en el alta pero no en este formulario. Los autores se muestran en modo lectura — no se pueden añadir ni quitar.
 
 Muestra previsualización de cambios (diff viejo/nuevo) y SQL preparada con parámetros antes de guardar.
 
 ### `/dashboard/marcha/add` — Alta de marcha
-Campos: `TITULO`, `FECHA`, `DEDICATORIA`, `LOCALIDAD`, `PROVINCIA`, `BANDA_ESTRENO` (autocomplete por nombre), `DETALLES_MARCHA`, autores (autocomplete multi, mínimo 6 caracteres).
+Campos: `TITULO`, `FECHA`, `DEDICATORIA`, `LOCALIDAD`, `PROVINCIA`, `BANDA_ESTRENO` (autocomplete por nombre), `ESTILO`, `DETALLES_MARCHA`, autores (autocomplete multi, mínimo 6 caracteres).
 
 Muestra SQL y parámetros antes de crear.
 
@@ -162,3 +162,46 @@ PRG (`?created` / `?deleted` / `?err=CODE`). Prepared statements en todas las qu
 La ficha **pública** de banda todavía no muestra el linaje: `Repo::fetchBanda` construye
 un `timeline` de un solo elemento y `Html::timeline` solo pinta fundación/extinción. El
 render público del linaje (recorrer `banda_relacion`) está por hacer.
+
+---
+
+## 8. Curación de estilo de marcha — CCTT/AM (PHP)
+
+> Añadido 2026-07-10. Gestiona `marcha.ESTILO` — ver
+> [db-analysis.md §Estilo de marcha](db-analysis.md). Implementación PHP nativa
+> (no hay equivalente Next.js: es posterior al cutover).
+
+Página de asignación manual para las marchas que la migración
+[`migrate_marcha_estilo.php`](../php/app/tools/migrate_marcha_estilo.php) dejó sin
+resolver (sin banda de estreno con estilo claro ni grabación documentada), y para
+corregir asignaciones automáticas si hiciera falta.
+
+### Página `/dashboard/estilos`
+- Pestañas de filtro por estado: **Pendientes** (`ESTILO IS NULL`, filtro por defecto),
+  **Todas**, **Cornetas y Tambores** (`CCTT`), **Agrupación Musical** (`AM`) — cada una
+  con el recuento total.
+- Buscador por título (`q`, `NOACC(TITULO) LIKE`).
+- Tabla paginada (50/página) con, por marcha: título (enlaza a `/dashboard/marcha/{id}`),
+  año, contexto para decidir (banda de estreno si la hay; si no, la banda de su primera
+  grabación documentada — mismo criterio que usa el backfill) y el estilo actual.
+- **Asignación rápida**: dos botones (`CCTT` / `AM`) por fila, sin salir de la página.
+- **Asignación por lote**: checkboxes + "Asignar CCTT/AM a seleccionadas", para marcar
+  varias marchas del mismo compositor/banda de un vistazo (patrón igual al descarte
+  múltiple de `/dashboard/ingesta`).
+
+### Rutas
+| Ruta | Método | Handler | Descripción |
+|------|--------|---------|-------------|
+| `/dashboard/estilos` | GET | `Admin::estiloList` | Listado filtrable y paginado |
+| `/dashboard/estilos/asignar` | POST | `Admin::estiloAssignPost` | Asigna `ESTILO` a uno o varios `ids[]` |
+
+### Escritura (`AdminRepo`)
+- `assignEstiloVarios(ids, estilo)` — valida `estilo` en `CCTT`/`AM`; `UPDATE ... WHERE
+  ID_MARCHA IN (...)`, sobrescribe el valor si ya tenía uno (permite corregir). Código
+  `ASSIGNED` (+ `count`), o `INVALID_ESTILO` / `BAD_REQUEST` / `NOT_FOUND`.
+- Registra en `admin_log` (`UPDATE marcha`, con los IDs y el estilo asignado).
+
+### Seguridad
+Mismo patrón que el resto del panel: `Auth::requireAuth()` + CSRF (`Auth::checkCsrf`) +
+PRG (`?asignadas=N` / `?err=CODE`), preservando los filtros activos (`ref`) para volver
+a la misma pestaña/página tras guardar.

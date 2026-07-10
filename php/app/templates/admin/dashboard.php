@@ -10,6 +10,7 @@ $csrf = Auth::csrfToken($session);
             <a class="btn btn-sm" href="/dashboard/autor/add">+ Compositor</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/ingesta">Ingesta YouTube</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/dedicatorias">Dedicatorias</a>
+            <a class="btn btn-sm btn-ghost" href="/dashboard/estilos">Estilos CCTT/AM</a>
             <form action="/logout" method="POST" class="inline-form">
                 <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
                 <button class="btn btn-sm btn-ghost" type="submit">Cerrar sesión</button>

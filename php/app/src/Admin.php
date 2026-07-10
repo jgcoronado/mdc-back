@@ -213,6 +213,47 @@ final class Admin
         $reRender($r['code'] ?? 'ERROR');
     }
 
+    // ── Marcha: curación de estilo (CCTT / AM) ──────────────────────────────
+    public static function estiloList(): void
+    {
+        $session = Auth::requireAuth();
+        $filters = [
+            'estado' => (string) ($_GET['estado'] ?? 'pendiente'),
+            'q' => trim((string) ($_GET['q'] ?? '')),
+        ];
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $result = Repo::marchasEstiloAdmin($filters, $page);
+        $backParams = array_filter($filters, static fn(string $v): bool => $v !== '');
+        if ($page > 1) $backParams['page'] = $page;
+        View::render('admin/estilo_list', [
+            'session' => $session, 'filters' => $filters, 'page' => $page,
+            'result' => $result, 'counts' => Repo::marchaEstiloCounts(), 'backQs' => http_build_query($backParams),
+            'notice' => self::noticeFromQuery(),
+        ], ['title' => 'Estilo de marcha (CCTT/AM) — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    /** Reconstruye de forma segura la query de filtros de /dashboard/estilos a partir de un string arbitrario. */
+    private static function estiloBackQuery(string $raw): string
+    {
+        parse_str($raw, $parsed);
+        $allowed = array_intersect_key($parsed, array_flip(['estado', 'q', 'page']));
+        return http_build_query($allowed);
+    }
+
+    public static function estiloAssignPost(): void
+    {
+        $session = Auth::requireAuth();
+        $back = self::estiloBackQuery((string) ($_POST['ref'] ?? ''));
+        $sep = $back !== '' ? '&' : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/estilos?$back{$sep}err=CSRF", 302);
+
+        $ids = array_map('intval', (array) ($_POST['ids'] ?? []));
+        $estilo = (string) ($_POST['estilo'] ?? '');
+        $r = AdminRepo::assignEstiloVarios($ids, $estilo);
+        if (($r['code'] ?? '') !== 'ASSIGNED') Http::redirect("/dashboard/estilos?$back{$sep}err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/estilos?$back{$sep}asignadas=" . $r['count'], 302);
+    }
+
     // ── Autor: edición ───────────────────────────────────────────────────────
     public static function autorEditForm(array $p): void
     {

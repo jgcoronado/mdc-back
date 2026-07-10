@@ -98,7 +98,7 @@ final class Repo
     {
         $marcha = Db::one(
             "SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.PROVINCIA, m.AUDIO, m.FECHA,
-                    m.BANDA_ESTRENO, m.DETALLES_MARCHA, m.TIPO, m.DURACION_SEG,
+                    m.BANDA_ESTRENO, m.DETALLES_MARCHA, m.TIPO, m.ESTILO, m.DURACION_SEG,
                     b.NOMBRE_BREVE AS BANDA_NOMBRE, b.LOCALIDAD AS BANDA_LOC,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM marcha m
@@ -268,6 +268,81 @@ final class Repo
     public static function fetchMarchaRaw(string $id): ?array
     {
         return Db::one('SELECT * FROM marcha WHERE ID_MARCHA = ?', [$id]);
+    }
+
+    // ── Admin: curación de estilo (CCTT / AM) ─────────────────────────────────
+
+    /**
+     * Listado paginado de marchas para /dashboard/estilos, con la banda de
+     * estreno y la de la primera grabación como contexto para decidir el
+     * estilo a mano (mismo criterio que usa migrate_marcha_estilo.php).
+     * @param array{estado?:string,q?:string} $filters
+     * @return array{rowsReturned:int,totalRows:int,data:list<array<string,mixed>>}
+     */
+    public static function marchasEstiloAdmin(array $filters, int $page = 1, int $limit = 50): array
+    {
+        $conditions = [];
+        $values = [];
+
+        $estado = (string) ($filters['estado'] ?? 'pendiente');
+        if ($estado === 'pendiente') {
+            $conditions[] = 'm.ESTILO IS NULL';
+        } elseif (in_array($estado, ['CCTT', 'AM'], true)) {
+            $conditions[] = 'm.ESTILO = ?';
+            $values[] = $estado;
+        } // 'todos' → sin condición
+
+        $q = trim((string) ($filters['q'] ?? ''));
+        if ($q !== '') {
+            $conditions[] = 'NOACC(m.TITULO) LIKE ?';
+            $values[] = '%' . Db::noAcc($q) . '%';
+        }
+        $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
+
+        $countRow = Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE $where", $values);
+        $total = (int) ($countRow['n'] ?? 0);
+        $offset = ($page - 1) * $limit;
+
+        $rows = Db::all(
+            "SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.ESTILO, m.BANDA_ESTRENO,
+                    be.NOMBRE_BREVE AS BANDA_ESTRENO_NOMBRE,
+                    (SELECT bg.NOMBRE_BREVE
+                       FROM disco_marcha dm
+                       INNER JOIN disco d ON d.ID_DISCO = dm.ID_DISCO
+                       LEFT OUTER JOIN banda bg ON bg.ID_BANDA = COALESCE(dm.DM_BANDA, d.BANDADISCO)
+                      WHERE dm.IDMARCHA = m.ID_MARCHA
+                      ORDER BY CAST(d.FECHA_CD AS REAL) ASC, d.NOMBRE_CD ASC LIMIT 1) AS PRIMERA_GRAB_BANDA
+             FROM marcha m
+             LEFT OUTER JOIN banda be ON be.ID_BANDA = m.BANDA_ESTRENO
+             WHERE $where
+             ORDER BY m.TITULO ASC
+             LIMIT ? OFFSET ?",
+            [...$values, $limit, $offset]
+        );
+        foreach ($rows as &$r) {
+            self::normalizeFecha($r);
+        }
+        unset($r);
+
+        return ['rowsReturned' => count($rows), 'totalRows' => $total, 'data' => $rows];
+    }
+
+    /** Recuentos por estado para las pestañas de /dashboard/estilos. */
+    public static function marchaEstiloCounts(): array
+    {
+        $row = Db::one(
+            "SELECT COUNT(*) AS TODOS,
+                    SUM(CASE WHEN ESTILO IS NULL THEN 1 ELSE 0 END) AS PENDIENTE,
+                    SUM(CASE WHEN ESTILO = 'CCTT' THEN 1 ELSE 0 END) AS CCTT,
+                    SUM(CASE WHEN ESTILO = 'AM' THEN 1 ELSE 0 END) AS AM
+             FROM marcha"
+        ) ?? [];
+        return [
+            'todos' => (int) ($row['TODOS'] ?? 0),
+            'pendiente' => (int) ($row['PENDIENTE'] ?? 0),
+            'CCTT' => (int) ($row['CCTT'] ?? 0),
+            'AM' => (int) ($row['AM'] ?? 0),
+        ];
     }
 
     /** Autores actuales de una marcha: [{ID_AUTOR, NOMBRE_COMPLETO}]. */

@@ -15,6 +15,7 @@ $fields = [
 ];
 if ($isEdit) $fields[] = ['AUDIO', 'Audio (URL)', 'text'];
 $fields[] = ['BANDA_ESTRENO', 'ID de la banda de estreno', 'number'];
+$estilo = (string) ($marcha['ESTILO'] ?? '');
 ?>
 <div class="stack admin-form">
     <div class="admin-bar">
@@ -38,6 +39,15 @@ $fields[] = ['BANDA_ESTRENO', 'ID de la banda de estreno', 'number'];
             <input class="input" id="<?= $key ?>" name="<?= $key ?>" type="<?= $type ?>" value="<?= $val($key) ?>">
         </div>
 <?php endforeach; ?>
+        <div class="field">
+            <label class="field-label" for="ESTILO">Estilo</label>
+            <select class="input" id="ESTILO" name="ESTILO">
+                <option value="" <?= $estilo === '' ? 'selected' : '' ?>>— Sin asignar —</option>
+                <option value="CCTT" <?= $estilo === 'CCTT' ? 'selected' : '' ?>>Cornetas y Tambores (CCTT)</option>
+                <option value="AM" <?= $estilo === 'AM' ? 'selected' : '' ?>>Agrupación Musical (AM)</option>
+            </select>
+        </div>
+
         <div class="field">
             <label class="field-label" for="DETALLES_MARCHA">Detalles</label>
             <textarea class="input" id="DETALLES_MARCHA" name="DETALLES_MARCHA" rows="4"><?= $val('DETALLES_MARCHA') ?></textarea>

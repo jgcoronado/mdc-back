@@ -90,6 +90,9 @@ $router->get('/dashboard/marcha/add', [Admin::class, 'marchaAddForm']);
 $router->post('/dashboard/marcha/add', [Admin::class, 'marchaAddPost']);
 $router->get('/dashboard/marcha/{id}', [Admin::class, 'marchaEditForm']);
 $router->post('/dashboard/marcha/{id}', [Admin::class, 'marchaEditPost']);
+// Curación de estilo (CCTT/AM), asignación manual por lote.
+$router->get('/dashboard/estilos', [Admin::class, 'estiloList']);
+$router->post('/dashboard/estilos/asignar', [Admin::class, 'estiloAssignPost']);
 $router->get('/dashboard/autor/add', [Admin::class, 'autorAddForm']);
 $router->post('/dashboard/autor/add', [Admin::class, 'autorAddPost']);
 $router->get('/dashboard/autor/{id}', [Admin::class, 'autorEditForm']);
