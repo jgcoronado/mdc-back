@@ -94,12 +94,22 @@ function ftpList(string $baseUrl, string $user, string $pass, string $dir): arra
     return array_map('basename', $names); // por si el servidor devuelve rutas completas
 }
 
-/** Ejecuta comandos FTP crudos (RNFR/RNTO, etc.) contra el directorio dado. */
-function ftpQuote(string $baseUrl, string $user, string $pass, string $dir, array $commands): bool
+/**
+ * Ejecuta comandos FTP crudos (RNFR/RNTO, etc.) con rutas completas desde la
+ * raíz de la cuenta.
+ *
+ * OJO: CURLOPT_QUOTE se ejecuta justo tras el login, ANTES de que curl haga
+ * el CWD implícito al directorio de CURLOPT_URL (ese CWD forma parte de la
+ * preparación de la transferencia, no del paso de "quote"). Por eso los
+ * comandos deben llevar siempre la ruta completa (p.ej. "RNFR private/mdc.db")
+ * y la URL debe apuntar a la raíz — si no, RNFR/RNTO fallan con 550 porque
+ * se ejecutan estando aún en "/", no en el directorio esperado.
+ */
+function ftpQuote(string $baseUrl, string $user, string $pass, array $commands): bool
 {
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => $baseUrl . $dir . '/',
+        CURLOPT_URL => $baseUrl,
         CURLOPT_USERPWD => "$user:$pass",
         CURLOPT_QUOTE => $commands,
         CURLOPT_RETURNTRANSFER => true,
@@ -182,9 +192,9 @@ if ($args['skipMove']) {
     echo "--skip-move: no se mueve el .db actual (ya hay un backup reciente que cubre el rollback).\n";
 } else {
     echo "Moviendo private/mdc.db → private/backups/$nombrePreSync (red de seguridad)…\n";
-    $renombrado = ftpQuote($baseUrl, $user, $pass, $privateDir, [
-        'RNFR mdc.db',
-        "RNTO backups/$nombrePreSync",
+    $renombrado = ftpQuote($baseUrl, $user, $pass, [
+        "RNFR $privateDir/mdc.db",
+        "RNTO $privateDir/backups/$nombrePreSync",
     ]);
     if (!$renombrado) {
         fwrite(STDERR, "\n⛔ ABORTADO: no se pudo mover el .db actual a backups/ antes de sobrescribir. No se ha subido nada.\n");
