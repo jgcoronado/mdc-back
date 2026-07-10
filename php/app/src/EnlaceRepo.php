@@ -52,15 +52,19 @@ final class EnlaceRepo
             $values[] = $filters['confianza'];
         }
         if (!empty($filters['banda'])) {
-            $conditions[] = 'd.BANDADISCO = ?';
+            // La banda de un candidato es la dueña del disco, o la propia entidad si TIPO_ENT='banda'.
+            $conditions[] = "(d.BANDADISCO = ? OR (c.TIPO_ENT = 'banda' AND c.ID_ENT = ?))";
+            $values[] = (int) $filters['banda'];
             $values[] = (int) $filters['banda'];
         }
         $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
 
-        // Contexto de disco/banda (fase 1). Para tipos futuros el LEFT JOIN deja NULL.
+        // Contexto polimórfico: disco (fase 1) o banda (fase 2). Los LEFT JOIN dejan
+        // NULL el que no aplica; ENT_NOMBRE/ENT_BANDA/ENT_ANIO unifican la vista.
         $from = "FROM enlace_candidato c
-                 LEFT JOIN disco d ON c.TIPO_ENT = 'disco' AND d.ID_DISCO = c.ID_ENT
-                 LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO";
+                 LEFT JOIN disco d  ON c.TIPO_ENT = 'disco' AND d.ID_DISCO  = c.ID_ENT
+                 LEFT JOIN banda b  ON b.ID_BANDA = d.BANDADISCO
+                 LEFT JOIN banda bb ON c.TIPO_ENT = 'banda' AND bb.ID_BANDA = c.ID_ENT";
 
         $countRow = Db::one("SELECT COUNT(*) AS n $from WHERE $where", $values);
         $total = (int) ($countRow['n'] ?? 0);
@@ -69,11 +73,13 @@ final class EnlaceRepo
         $rows = Db::all(
             "SELECT c.ID_CAND, c.TIPO_ENT, c.ID_ENT, c.SERVICIO, c.URL, c.TITULO_ENC, c.ARTISTA_ENC,
                     c.ANIO_ENC, c.SCORE, c.CONFIANZA, c.ESTADO,
-                    d.NOMBRE_CD, d.FECHA_CD, d.BANDADISCO, b.NOMBRE_BREVE
+                    COALESCE(d.NOMBRE_CD, bb.NOMBRE_BREVE) AS ENT_NOMBRE,
+                    COALESCE(b.NOMBRE_BREVE, bb.NOMBRE_BREVE) AS ENT_BANDA,
+                    d.FECHA_CD AS ENT_ANIO
              $from
              WHERE $where
              ORDER BY CASE WHEN c.ESTADO = 'pendiente' THEN 0 ELSE 1 END,
-                      c.ID_ENT, c.SCORE DESC
+                      c.TIPO_ENT, c.ID_ENT, c.SCORE DESC
              LIMIT ? OFFSET ?",
             [...$values, $limit, $offset]
         );
@@ -81,15 +87,22 @@ final class EnlaceRepo
         return ['rowsReturned' => count($rows), 'totalRows' => $total, 'data' => $rows];
     }
 
-    /** Bandas con al menos un disco candidato (para el <select> de filtro). */
+    /** Bandas con al menos un candidato (disco propio o enlace de banda), para el <select> de filtro. */
     public static function bandasConCandidatos(): array
     {
         return Db::all(
-            "SELECT DISTINCT d.BANDADISCO AS ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
-             FROM enlace_candidato c
-             JOIN disco d ON c.TIPO_ENT = 'disco' AND d.ID_DISCO = c.ID_ENT
-             LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
-             ORDER BY b.NOMBRE_BREVE"
+            "SELECT DISTINCT ID_BANDA, NOMBRE_BREVE, LOCALIDAD FROM (
+                SELECT d.BANDADISCO AS ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
+                FROM enlace_candidato c
+                JOIN disco d ON c.TIPO_ENT = 'disco' AND d.ID_DISCO = c.ID_ENT
+                LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
+                UNION
+                SELECT bb.ID_BANDA, bb.NOMBRE_BREVE, bb.LOCALIDAD
+                FROM enlace_candidato c
+                JOIN banda bb ON c.TIPO_ENT = 'banda' AND bb.ID_BANDA = c.ID_ENT
+             )
+             WHERE ID_BANDA IS NOT NULL
+             ORDER BY NOMBRE_BREVE"
         );
     }
 }

@@ -40,9 +40,11 @@ migrable a `(marcha, youtube)` en esta tabla, pero es **opcional** — decisión
 - Resultado primer intento (solo lectura): **34 ALTA · 12 MEDIA · 25 BAJA · 22 sin match**. Precisión del tramo ALTA verificada alta.
 - Pendiente para cerrar fase 1: añadir Spotify (cubre los sin-match tipo *Redención*/*Encarnación*), volcar a `enlace_candidato`, revisar en panel.
 
-### Fase 2 — Página de artista de la banda
-- Buscar el perfil de artista de cada banda en cada servicio (Spotify/Deezer/Apple artist page).
-- Ancla de calidad: el artista de los discos ya aprobados en fase 1 da el `artist id` correcto → el enlace de banda sale casi gratis y muy fiable.
+### Fase 2 — Página de artista de la banda  ← *hecho*
+- `tools/music_links/match_bandas.py`: busca el perfil de artista de cada banda en Spotify/Deezer/Apple, con refuerzo por el artista de sus discos de fase 1 y guard anti-falsos-positivos de un solo token.
+- Resultado: 26 candidatos de banda (22 ALTA / 4 MEDIA), 9 de 14 bandas con ALTA. Volcados a `enlace_candidato` (TIPO_ENT='banda').
+- Falsos positivos conocidos que exige curar el panel: "Los Angeles" (≠ BCT Ángeles), "Tres Caidas de Triana", "La Santa Cecilia" (banda mexicana) — nombres genéricos que comparten tokens; sin señal de localidad no son distinguibles automáticamente.
+- El panel `/dashboard/enlaces` ya muestra y cura candidatos de disco **y** de banda (vista polimórfica).
 
 ### Fase 3 — Singles / marchas estrenadas fuera de disco
 - Para marchas estrenadas que no están en ningún disco enlazado: buscar single/pista.

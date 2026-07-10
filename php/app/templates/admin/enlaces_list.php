@@ -82,21 +82,23 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
 <?php endif; ?>
     <div class="tableList"><table class="table table-zebra table-sm"><tbody>
 <?php foreach ($result['data'] as $c):
-        $disco = $c['NOMBRE_CD'] ?? ('#' . $c['ID_ENT']);
-        $anioDisco = $c['FECHA_CD'] ? preg_replace('/\D.*/', '', (string) $c['FECHA_CD']) : '';
+        $nombre = $c['ENT_NOMBRE'] ?? ($c['TIPO_ENT'] . ' #' . $c['ID_ENT']);
+        $anio = $c['ENT_ANIO'] ? preg_replace('/\D.*/', '', (string) $c['ENT_ANIO']) : '';
+        $tipoLabel = $c['TIPO_ENT'] === 'disco' ? 'Disco' : ($c['TIPO_ENT'] === 'banda' ? 'Banda' : ucfirst((string) $c['TIPO_ENT']));
         $score = (int) round(((float) $c['SCORE']) * 100);
 ?>
         <tr>
 <?php if ($puedeRechazarMultiple): ?>
             <td style="width:1.5rem">
                 <input type="checkbox" class="enlace-check" name="ids[]" value="<?= (int) $c['ID_CAND'] ?>"
-                       data-disco="<?= V::e($disco) ?>" data-servicio="<?= V::e($c['SERVICIO']) ?>">
+                       data-disco="<?= V::e($nombre) ?>" data-servicio="<?= V::e($c['SERVICIO']) ?>">
             </td>
 <?php endif; ?>
             <td><span class="badge"><?= V::e(ucfirst((string) $c['SERVICIO'])) ?></span></td>
             <td>
-                <strong><?= V::e($disco) ?></strong><?= $anioDisco ? ' <span class="small muted">(' . V::e($anioDisco) . ')</span>' : '' ?>
-                <div class="small muted"><?= V::e($c['NOMBRE_BREVE'] ?? ('Banda #' . $c['BANDADISCO'])) ?></div>
+                <span class="small muted"><?= $tipoLabel ?></span>
+                <strong><?= V::e($nombre) ?></strong><?= $anio ? ' <span class="small muted">(' . V::e($anio) . ')</span>' : '' ?>
+                <div class="small muted"><?= V::e($c['ENT_BANDA'] ?? '') ?></div>
             </td>
             <td class="small">
 <?php if ($c['TITULO_ENC']): ?>
