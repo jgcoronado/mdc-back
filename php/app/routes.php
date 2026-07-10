@@ -90,11 +90,18 @@ $router->get('/dashboard/autor/add', [Admin::class, 'autorAddForm']);
 $router->post('/dashboard/autor/add', [Admin::class, 'autorAddPost']);
 $router->get('/dashboard/autor/{id}', [Admin::class, 'autorEditForm']);
 $router->post('/dashboard/autor/{id}', [Admin::class, 'autorEditPost']);
+// Edición de banda + relaciones de linaje (banda_relacion).
+$router->get('/dashboard/banda/{id}', [Admin::class, 'bandaEditForm']);
+$router->post('/dashboard/banda/{id}', [Admin::class, 'bandaEditPost']);
+$router->post('/dashboard/banda/{id}/relacion', [Admin::class, 'bandaRelacionAddPost']);
+$router->post('/dashboard/banda/{id}/relacion/{rel}/borrar', [Admin::class, 'bandaRelacionDeletePost']);
 $router->get('/api/autor/fastSearch', [Admin::class, 'autorFastSearch']);
+$router->get('/api/banda/fastSearch', [Admin::class, 'bandaFastSearch']);
 $router->get('/api/dedicatoria/fastSearch', [Admin::class, 'dedicatoriaFastSearch']);
 
 // ── Ingesta (revisión de candidatos de YouTube, ver tools/ingest/) ───────────
 $router->get('/dashboard/ingesta', [Admin::class, 'ingestaList']);
+$router->post('/dashboard/ingesta/descartar-multiple', [Admin::class, 'ingestaDescartarMultiple']);
 $router->get('/dashboard/ingesta/{id}', [Admin::class, 'ingestaDetail']);
 $router->post('/dashboard/ingesta/{id}/aceptar', [Admin::class, 'ingestaAceptar']);
 $router->post('/dashboard/ingesta/{id}/descartar', [Admin::class, 'ingestaDescartar']);

@@ -38,6 +38,7 @@ const CSV = join(HERE, 'config', 'canales.csv');
 const KEYWORDS_FILE = join(HERE, 'config', 'keywords.json');
 const OUT = join(HERE, 'out');
 const RAW = join(OUT, 'raw');
+const COVERAGE_FILE = join(OUT, 'coverage.json');
 
 // Disponibilidades de YouTube que no podemos leer sin sesión de socio/compra.
 const EXCLUDED_AVAILABILITY = new Set(['subscriber_only', 'premium_only', 'private', 'needs_auth']);
@@ -216,7 +217,38 @@ async function loadCachedIds(cacheFile) {
   return map;
 }
 
-async function processChannel(idBanda, canalUrl, kw) {
+/** Manifiesto de cobertura: qué bandas ya se repasaron y con qué rango, para no repetir pasadas. */
+async function loadCoverage() {
+  if (!existsSync(COVERAGE_FILE)) return {};
+  try { return JSON.parse(await readFile(COVERAGE_FILE, 'utf8')); }
+  catch { return {}; }
+}
+
+async function saveCoverage(coverage) {
+  await mkdir(OUT, { recursive: true });
+  await writeFile(COVERAGE_FILE, JSON.stringify(coverage, null, 2) + '\n', 'utf8');
+}
+
+/** ¿La cobertura ya registrada satisface lo que pide esta ejecución? */
+function isCovered(entry, reqArgs) {
+  if (!entry) return false;
+  if (entry.since > reqArgs.since) return false; // la cobertura previa no llega tan atrás como se pide ahora
+  if (entry.months == null) return true; // cobertura previa = año completo, cubre cualquier subconjunto de meses
+  if (reqArgs.months == null) return false; // se pide año completo pero solo había cobertura parcial de meses
+  return entry.months.start === reqArgs.months.start && entry.months.end === reqArgs.months.end;
+}
+
+async function processChannel(idBanda, canalUrl, kw, coverage) {
+  const prev = coverage[idBanda];
+  if (!args.force && !args.dryRun && isCovered(prev, args)) {
+    console.log(
+      `\n· banda ${idBanda} → ${canalUrl}\n` +
+      `  ya cubierta (desde ${prev.since}${prev.months ? `, meses ${prev.months.start}-${prev.months.end}` : ''}, ` +
+      `completada ${prev.completedAt}, ${prev.guardados} guardados) — saltada. Usa --force para repetirla.`
+    );
+    return { idBanda, skipped: true, extraidos: prev.guardados, errores: 0 };
+  }
+
   console.log(`\n· banda ${idBanda} → ${canalUrl}`);
 
   // ── Pasada 1: listar barato y filtrar ────────────────────────────────────
@@ -300,7 +332,20 @@ async function processChannel(idBanda, canalUrl, kw) {
   await writeQueue;
 
   console.log(`  [2/2] hecho: ${done - errores - fueraDeRango} guardados, ${errores} errores, ${fueraDeRango} fuera de rango tras confirmar fecha real.`);
-  return { listados: seenFlat.size, candidatos: candidates.length, dropped, extraidos: done - errores - fueraDeRango, errores };
+  const extraidos = done - errores - fueraDeRango;
+
+  // Solo se marca como cubierta una pasada REAL y completa del canal (sin --max ni errores de listado).
+  if (args.max === 0 && errores === 0) {
+    coverage[idBanda] = {
+      since: args.since,
+      months: args.months,
+      completedAt: new Date().toISOString(),
+      guardados: extraidos,
+    };
+    await saveCoverage(coverage);
+  }
+
+  return { listados: seenFlat.size, candidatos: candidates.length, dropped, extraidos, errores };
 }
 
 async function main() {
@@ -312,6 +357,7 @@ async function main() {
     process.exit(1);
   }
   const kw = JSON.parse(await readFile(KEYWORDS_FILE, 'utf8'));
+  const coverage = await loadCoverage();
 
   console.log(
     `Extractor yt-dlp (2 pasadas) · ${canales.length} canal(es) · desde ${args.since} · concurrencia ${args.concurrency}` +
@@ -320,9 +366,12 @@ async function main() {
 
   const resumen = [];
   for (const { idBanda, canalUrl } of canales) {
-    const r = await processChannel(idBanda, canalUrl, kw);
+    const r = await processChannel(idBanda, canalUrl, kw, coverage);
     resumen.push({ idBanda, ...r });
   }
+
+  const saltadas = resumen.filter((r) => r.skipped).length;
+  if (saltadas) console.log(`\n(${saltadas} banda(s) saltada(s) por cobertura ya registrada en ${COVERAGE_FILE.replace(HERE, '.')})`);
 
   if (args.dryRun) {
     console.log(`\n── Resumen (--dry-run, nada descargado) ──`);
@@ -330,24 +379,43 @@ async function main() {
     return;
   }
 
-  // ── combinar todas las cachés en out/videos.ndjson (dedup global por video_id) ──
+  // ── combinar todas las cachés en out/videos.ndjson ──────────────────────────
+  // Dedup por (id_banda, video_id), NUNCA solo por video_id: si dos bandas
+  // distintas apuntan (por error de investigación) al mismo canal, cada una
+  // debe conservar su propia copia — deduplicar solo por video_id "roba"
+  // silenciosamente esos vídeos para la banda cuyo fichero se lee primero.
   const files = (await readdir(RAW)).filter((f) => f.endsWith('.ndjson'));
   const combined = [];
-  const seenGlobal = new Set();
+  const seenPerBanda = new Set();
+  const bandasPorVideo = new Map(); // video_id -> Set(id_banda), para detectar canales compartidos
   const perBanda = {};
   for (const f of files) {
     const text = await readFile(join(RAW, f), 'utf8');
     for (const line of text.split(/\r?\n/)) {
       if (!line.trim()) continue;
       const r = JSON.parse(line);
-      if (seenGlobal.has(r.video_id)) continue;
-      seenGlobal.add(r.video_id);
+      const key = `${r.id_banda}::${r.video_id}`;
+      if (seenPerBanda.has(key)) continue;
+      seenPerBanda.add(key);
       combined.push(r);
       perBanda[r.id_banda] = (perBanda[r.id_banda] || 0) + 1;
+      if (!bandasPorVideo.has(r.video_id)) bandasPorVideo.set(r.video_id, new Set());
+      bandasPorVideo.get(r.video_id).add(r.id_banda);
     }
   }
   const outFile = join(OUT, 'videos.ndjson');
   await writeFile(outFile, combined.map((r) => JSON.stringify(r)).join('\n') + (combined.length ? '\n' : ''), 'utf8');
+
+  const compartidos = [...bandasPorVideo.entries()].filter(([, bandas]) => bandas.size > 1);
+  if (compartidos.length) {
+    const bandasImplicadas = new Set();
+    for (const [, bandas] of compartidos) for (const b of bandas) bandasImplicadas.add(b);
+    console.log(
+      `\n⚠ ${compartidos.length} vídeo(s) aparecen bajo más de una banda ` +
+      `(${[...bandasImplicadas].sort((a, b) => a - b).join(', ')}) — revisa canales.csv, ` +
+      `probablemente dos bandas apuntan al mismo canal por error.`
+    );
+  }
 
   console.log(`\n── Resumen ──`);
   for (const [banda, n] of Object.entries(perBanda).sort((a, b) => a[0] - b[0])) console.log(`  banda ${banda}: ${n} vídeos`);

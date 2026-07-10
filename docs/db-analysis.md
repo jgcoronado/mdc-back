@@ -1,7 +1,8 @@
 # Análisis de base de datos — SQLite (estado actual)
 
-> Actualizado: 2026-06-05 (sesión 2)
+> Actualizado: 2026-07-08 (modelo de linaje de bandas) · 2026-06-05 (sesión 2)
 > El documento original analizaba el esquema MySQL (2026-06-01). Ese análisis es histórico — todos los bugs de motores mixtos, collation y FULLTEXT con `%` quedaron resueltos o irrelevantes al migrar a SQLite en la Fase 3b.
+> 2026-07-08: el linaje de bandas dejó de guardarse en columnas `FORMACION_ANT/SIG` y pasó a la tabla `banda_relacion` (ver §Modelo de linaje).
 
 ---
 
@@ -12,6 +13,7 @@
 | `marcha` | 4 212 | ✅ lectura + escritura admin |
 | `autor` | 827 | ✅ lectura + escritura admin |
 | `banda` | 268 | ✅ lectura |
+| `banda_relacion` | 14 | ⚠️ modelo de linaje (creada 2026-07-08; sin lectura en `Repo` todavía) |
 | `disco` | 431 | ✅ lectura |
 | `marcha_autor` | 4 724 | ✅ lectura + escritura admin |
 | `disco_marcha` | 4 478 | ✅ lectura |
@@ -30,7 +32,8 @@
 ```
 marcha      : ID_MARCHA, TITULO, DEDICATORIA, LOCALIDAD, PROVINCIA, AUDIO, FECHA, BANDA_ESTRENO, DETALLES_MARCHA
 autor       : ID_AUTOR, NOMBRE, APELLIDOS, NOMBRE_ART, F_NAC, LUGAR_NAC, F_DEF, BIO
-banda       : ID_BANDA, NOMBRE_BREVE, NOMBRE_COMPLETO, LOCALIDAD, PROVINCIA, FECHA_FUND, FECHA_EXT, FORMACION_ANT, FORMACION_SIG
+banda        : ID_BANDA, NOMBRE_COMPLETO, NOMBRE_BREVE, LOCALIDAD, PROVINCIA, FECHA_FUND, FECHA_EXT, DIRECTOR_ACTUAL, DIR_MUS_ACTUAL, WEB, LINK_FORO
+banda_relacion: ID_RELACION, ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO, FECHA_FIN, NOTA
 disco       : ID_DISCO, NOMBRE_CD, FECHA_CD, BANDADISCO, DISCOS, d_DETALLES
 marcha_autor: ID_MARCHA, ID_AUTOR
 disco_marcha: ID_DM, ID_DISCO, IDMARCHA, N_DISCO, NUMEROMARCHA, DM_ENLAZADA
@@ -38,6 +41,32 @@ usuarios    : USUARIO, CLAVE
 ```
 
 Inconsistencia de nomenclatura heredada del MySQL: `marcha_autor` usa `ID_MARCHA` pero `disco_marcha` usa `IDMARCHA` (sin guión bajo).
+
+---
+
+## Modelo de linaje de bandas (`banda_relacion`)
+
+Hasta 2026-07-08 el linaje se guardaba como lista enlazada lineal en `banda`
+(`FORMACION_ANT` / `FORMACION_SIG`, + los slots `-2` que nunca se usaron). Ese
+modelo no admitía fusiones (N→1), divisiones (1→N) ni bandas juveniles. Se
+sustituyó por una tabla de aristas tipadas (DDL en
+[`app/tools/sql/002_banda_relacion.sql`](../php/app/tools/sql/002_banda_relacion.sql);
+migración one-shot en `app/tools/migrate_banda_relacion.php`).
+
+Cada fila es un vínculo dirigido `ID_ORIGEN → ID_DESTINO`; el significado lo da `TIPO`:
+
+| `TIPO` | Dirección | Cardinalidad |
+|--------|-----------|--------------|
+| `renombrado` | formación anterior → formación nueva | 1→1 |
+| `fusion` | cada banda que se une → formación resultante | N→1 |
+| `division` | banda que se rompe → cada formación nueva | 1→N |
+| `juvenil` | banda madre → banda juvenil (usa `FECHA_INICIO`/`FECHA_FIN`) | 1→N |
+
+- `FECHA_INICIO` = año del evento (sucesión) o inicio del vínculo (juvenil); `FECHA_FIN` solo aplica a `juvenil` (`NULL` = vigente).
+- Absorción = `fusion` cuyo destino es una banda preexistente (no requiere nada especial).
+- Tiene FK reales a `banda(ID_BANDA)` y `UNIQUE(ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO)`.
+- **Migración**: los 15 vínculos lineales previos entraron como `renombrado`, menos la arista inversa anómala `41→68` (par recíproco: se conservó solo `68→41`, 2003). Resultado: 14 filas.
+- **Pendiente**: `Repo::fetchBanda` aún no lee esta tabla (el `timeline` es de un solo elemento); el render del linaje está por construir.
 
 ---
 
@@ -69,8 +98,9 @@ Todos los índices identificados como faltantes en el análisis MySQL ya están 
 | `idx_marcha_banda_estreno` | `marcha.BANDA_ESTRENO` | Marchas estrenadas por una banda |
 | `idx_ma_marcha` | `marcha_autor.ID_MARCHA` | Autores de una marcha |
 | `idx_ma_autor` | `marcha_autor.ID_AUTOR` | Marchas de un autor |
-| `idx_banda_formacion_ant` | `banda.FORMACION_ANT` | Timeline de bandas hacia atrás |
-| `idx_banda_formacion_sig` | `banda.FORMACION_SIG` | Timeline de bandas hacia adelante |
+| `idx_rel_origen` | `banda_relacion.ID_ORIGEN` | Linaje hacia delante / juveniles de una banda |
+| `idx_rel_destino` | `banda_relacion.ID_DESTINO` | Linaje hacia atrás / madre de una juvenil |
+| `idx_rel_tipo` | `banda_relacion.TIPO` | Filtrar por tipo de relación |
 
 ### Prepared statements
 `dbAll` y `dbRun` en `lib/db.ts` usan `getDb().prepare(sql).all/run`. No hay concatenación de SQL en ningún punto del código.
@@ -83,7 +113,7 @@ Permite lecturas sin bloquear escrituras. En un servidor de un solo usuario admi
 ## Problemas activos
 
 ### 1. `foreign_keys = ON` sin FK constraints declaradas 🟠
-El PRAGMA activa la verificación, pero si las tablas no tienen `FOREIGN KEY` en sus `CREATE TABLE`, el PRAGMA no tiene nada que verificar. La integridad referencial no está siendo forzada.
+El PRAGMA activa la verificación, pero si las tablas no tienen `FOREIGN KEY` en sus `CREATE TABLE`, el PRAGMA no tiene nada que verificar. La integridad referencial no está siendo forzada — **salvo en `banda_relacion`** (creada 2026-07-08), que sí declara FK a `banda(ID_BANDA)`.
 
 **Huérfanos heredados de la migración MySQL** (presentes en la BD de producción):
 

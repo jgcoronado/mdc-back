@@ -136,7 +136,7 @@ final class IngestaRepo
     public static function fetchCandidato(int $id): ?array
     {
         return Db::one(
-            "SELECT c.*, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO AS BANDA_NOMBRE_COMPLETO, mm.TITULO AS MATCH_TITULO
+            "SELECT c.*, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO AS BANDA_NOMBRE_COMPLETO, b.LOCALIDAD AS BANDA_LOCALIDAD, mm.TITULO AS MATCH_TITULO
              FROM ingest_candidato c
              LEFT JOIN banda b ON b.ID_BANDA = c.ID_BANDA
              LEFT JOIN marcha mm ON mm.ID_MARCHA = c.MATCH_MARCHA_ID
@@ -149,7 +149,7 @@ final class IngestaRepo
     public static function bandasConCandidatos(): array
     {
         return Db::all(
-            "SELECT DISTINCT c.ID_BANDA, b.NOMBRE_BREVE
+            "SELECT DISTINCT c.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
              FROM ingest_candidato c LEFT JOIN banda b ON b.ID_BANDA = c.ID_BANDA
              ORDER BY b.NOMBRE_BREVE"
         );

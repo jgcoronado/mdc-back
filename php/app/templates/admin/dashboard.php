@@ -1,5 +1,5 @@
 <?php use App\View as V; use App\Auth;
-/** @var string $q @var list<array<string,mixed>> $marchas @var list<array<string,mixed>> $autores @var array $session */
+/** @var string $q @var string $qb @var list<array<string,mixed>> $marchas @var list<array<string,mixed>> $autores @var list<array<string,mixed>> $bandas @var array $session */
 $csrf = Auth::csrfToken($session);
 ?>
 <div class="stack">
@@ -17,6 +17,7 @@ $csrf = Auth::csrfToken($session);
     </div>
 
     <form class="panel" action="/dashboard" method="GET">
+        <input type="hidden" name="qb" value="<?= V::e($qb) ?>">
         <div class="field">
             <label class="field-label" for="q">Buscar marcha o compositor</label>
             <div class="row">
@@ -25,6 +26,35 @@ $csrf = Auth::csrfToken($session);
             </div>
         </div>
     </form>
+
+    <form class="panel" action="/dashboard" method="GET">
+        <input type="hidden" name="q" value="<?= V::e($q) ?>">
+        <div class="field">
+            <label class="field-label" for="qb">Buscar banda <span class="muted small">· para editar sus datos y su linaje</span></label>
+            <div class="row">
+                <input class="input" id="qb" name="qb" type="text" value="<?= V::e($qb) ?>" placeholder="Nombre de la banda…">
+                <button class="btn btn-sm btn-neutral" type="submit">Buscar</button>
+            </div>
+        </div>
+    </form>
+
+<?php if ($qb !== ''): ?>
+    <section>
+        <h2 class="section-title">Bandas <span class="muted small">· edición y linaje (predecesoras, sucesoras, juveniles)</span></h2>
+<?php if ($bandas): ?>
+        <div class="tableList"><table class="table table-zebra table-sm"><tbody>
+<?php foreach ($bandas as $b): ?>
+            <tr>
+                <td><a href="/dashboard/banda/<?= (int) $b['ID_BANDA'] ?>">#<?= (int) $b['ID_BANDA'] ?> · <?= V::e($b['NOMBRE_BREVE']) ?></a></td>
+                <td class="small muted"><?= V::e($b['LOCALIDAD'] ?? '') ?></td>
+            </tr>
+<?php endforeach; ?>
+        </tbody></table></div>
+<?php else: ?>
+        <p class="muted">Sin resultados.</p>
+<?php endif; ?>
+    </section>
+<?php endif; ?>
 
 <?php if ($q !== ''): ?>
     <section>

@@ -1,7 +1,7 @@
 <?php use App\View as V; use App\Auth;
 /** @var array $session @var array<string,mixed> $cand
  *  @var list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string,score:float}> $autoresAuto
- *  @var list<string> $autoresSugeridos
+ *  @var list<string> $autoresSugeridos @var string $back
  *  @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
 $val = static fn(string $k, string $default = ''): string => V::e($cand[$k] ?? $default);
@@ -20,7 +20,7 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
         <h1>Revisar candidato #<?= (int) $cand['ID_CAND'] ?></h1>
         <div class="row">
             <a class="btn btn-sm btn-ghost" href="<?= V::e($cand['VIDEO_URL']) ?>" target="_blank">Vídeo original ↗</a>
-            <a class="btn btn-sm btn-ghost" href="/dashboard/ingesta">← Volver</a>
+            <a class="btn btn-sm btn-ghost" href="/dashboard/ingesta<?= $back !== '' ? '?' . V::e($back) : '' ?>">← Volver</a>
         </div>
     </div>
 
@@ -67,6 +67,7 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 <?php if ($cand['ESTADO'] === 'pendiente'): ?>
     <form class="panel" action="/dashboard/ingesta/<?= (int) $cand['ID_CAND'] ?>/aceptar" method="POST" id="aceptarForm">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
+        <input type="hidden" name="ref" value="<?= V::e($back) ?>">
 <?php foreach ($fields as [$key, $label, $type, $default]): ?>
 <?php if ($key === 'LOCALIDAD'): ?>
         <div class="field">
@@ -87,7 +88,7 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
         <div class="field">
             <label class="field-label" for="BANDA_ESTRENO">ID de la banda de estreno</label>
             <input class="input" id="BANDA_ESTRENO" name="BANDA_ESTRENO" type="number" value="<?= V::e($bandaEstrenoVal) ?>">
-            <p class="muted">Banda del candidato: <strong><?= V::e($cand['NOMBRE_BREVE'] ?? ('#' . $cand['ID_BANDA'])) ?></strong> (#<?= (int) $cand['ID_BANDA'] ?>)<?php if ((string) $bandaEstrenoVal !== (string) $cand['ID_BANDA']): ?> — el valor del campo es distinto, revísalo<?php endif; ?>.</p>
+            <p class="muted">Banda del candidato: <strong><?= V::e($cand['NOMBRE_BREVE'] ?? ('#' . $cand['ID_BANDA'])) ?></strong> (#<?= (int) $cand['ID_BANDA'] ?>)<?php if ($cand['BANDA_LOCALIDAD']): ?> — <?= V::e($cand['BANDA_LOCALIDAD']) ?><?php endif; ?><?php if ((string) $bandaEstrenoVal !== (string) $cand['ID_BANDA']): ?> — el valor del campo es distinto, revísalo<?php endif; ?>.</p>
         </div>
         <div class="field">
             <label class="field-label" for="DETALLES_MARCHA">Detalles</label>
@@ -112,9 +113,12 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
             </p>
 <?php endif; ?>
             <div id="autoresBox" class="chips"></div>
-            <div class="autocomplete">
-                <input class="input" id="autorSearch" type="text" placeholder="Buscar compositor (mín. 3 caracteres)…" autocomplete="off">
-                <div id="autorSuggest" class="suggest" hidden></div>
+            <div class="row" style="align-items:center;gap:0.6rem">
+                <div class="autocomplete" style="flex:1">
+                    <input class="input" id="autorSearch" type="text" placeholder="Buscar compositor (mín. 3 caracteres)…" autocomplete="off">
+                    <div id="autorSuggest" class="suggest" hidden></div>
+                </div>
+                <a class="btn btn-sm btn-ghost" href="/dashboard/autor/add" target="_blank">＋ crear</a>
             </div>
             <p class="muted">Debe haber al menos un autor. Si no existe, créalo con el enlace "＋ crear" y vuelve a buscarlo aquí.</p>
         </div>
@@ -133,6 +137,7 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 
     <form class="panel" action="/dashboard/ingesta/<?= (int) $cand['ID_CAND'] ?>/descartar" method="POST">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
+        <input type="hidden" name="ref" value="<?= V::e($back) ?>">
         <div class="field">
             <label class="field-label" for="motivo">Motivo del descarte (opcional)</label>
             <input class="input" id="motivo" name="motivo" type="text" placeholder="p.ej. no es una marcha nueva, es un cover…">

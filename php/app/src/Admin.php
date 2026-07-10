@@ -40,6 +40,7 @@ final class Admin
     {
         if (isset($_GET['saved'])) return ['type' => 'ok', 'msg' => 'Cambios guardados.'];
         if (isset($_GET['created'])) return ['type' => 'ok', 'msg' => 'Creado correctamente.'];
+        if (isset($_GET['deleted'])) return ['type' => 'ok', 'msg' => 'Relación eliminada.'];
         if (isset($_GET['nochanges'])) return ['type' => 'info', 'msg' => 'No había cambios que guardar.'];
         if (isset($_GET['err'])) return ['type' => 'error', 'msg' => 'Error: ' . preg_replace('/[^A-Z_]/', '', (string) $_GET['err'])];
         return null;
@@ -109,13 +110,18 @@ final class Admin
     {
         $session = Auth::requireAuth();
         $q = trim((string) ($_GET['q'] ?? ''));
+        $qb = trim((string) ($_GET['qb'] ?? ''));
         $marchas = [];
         $autores = [];
+        $bandas = [];
         if ($q !== '') {
             $marchas = array_slice(Repo::searchMarchas('titulo=' . rawurlencode($q))['data'], 0, 15);
             $autores = array_slice(Repo::searchAutores('nombre=' . rawurlencode($q))['data'], 0, 15);
         }
-        View::render('admin/dashboard', compact('q', 'marchas', 'autores', 'session'),
+        if ($qb !== '') {
+            $bandas = array_slice(Repo::searchBandas('titulo=' . rawurlencode($qb))['data'], 0, 15);
+        }
+        View::render('admin/dashboard', compact('q', 'qb', 'marchas', 'autores', 'bandas', 'session'),
             ['title' => 'Panel de administración — Marchas de Cristo', 'noindex' => true]);
     }
 
@@ -282,6 +288,90 @@ final class Admin
         $reRender($r['code'] ?? 'ERROR');
     }
 
+    // ── Banda: edición + relaciones de linaje (banda_relacion) ───────────────
+    public static function bandaEditForm(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (string) $p['id'];
+        $banda = Repo::fetchBandaRaw($id);
+        if ($banda === null) Http::notFound();
+        View::render('admin/banda_form', [
+            'session' => $session, 'banda' => $banda, 'action' => "/dashboard/banda/$id",
+            'relaciones' => Repo::bandaRelaciones($id),
+            'tipos' => AdminRepo::RELACION_TIPOS,
+            'notice' => self::noticeFromQuery(), 'error' => null,
+        ], ['title' => "Editar banda #$id — Marchas de Cristo", 'noindex' => true]);
+    }
+
+    public static function bandaEditPost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (string) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
+
+        $current = Repo::fetchBandaRaw($id);
+        if ($current === null) Http::notFound();
+
+        $keys = [];
+        $values = [];
+        foreach (AdminRepo::EDITABLE_BANDA as $f) {
+            $sub = $_POST[$f] ?? null;
+            if (self::changed($current[$f] ?? null, $sub)) {
+                $keys[] = $f;
+                $values[] = AdminRepo::normalize($sub);
+            }
+        }
+        if ($keys === []) Http::redirect("/dashboard/banda/$id?nochanges=1", 302);
+
+        $r = AdminRepo::editBanda((int) $id, $keys, $values);
+        if ($r['code'] !== 'UPDATED') Http::redirect("/dashboard/banda/$id?err=" . $r['code'], 302);
+        Http::redirect("/dashboard/banda/$id?saved=1", 302);
+    }
+
+    public static function bandaRelacionAddPost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
+
+        $otra = (int) ($_POST['otraBanda'] ?? 0);
+        // direccion=saliente → esta banda es ORIGEN (→ otra); entrante → esta es DESTINO.
+        $entrante = ($_POST['direccion'] ?? 'saliente') === 'entrante';
+        [$origen, $destino] = $entrante ? [$otra, $id] : [$id, $otra];
+
+        $str = static fn(string $k): ?string => is_string($_POST[$k] ?? null) ? (string) $_POST[$k] : null;
+        $r = AdminRepo::addRelacion($origen, $destino, (string) ($_POST['tipo'] ?? ''), $str('fecha_inicio'), $str('fecha_fin'), $str('nota'));
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect("/dashboard/banda/$id?created=1", 302);
+        Http::redirect("/dashboard/banda/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    public static function bandaRelacionDeletePost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        $rel = (int) $p['rel'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
+        $r = AdminRepo::deleteRelacion($rel);
+        if (($r['code'] ?? '') === 'DELETED') Http::redirect("/dashboard/banda/$id?deleted=1", 302);
+        Http::redirect("/dashboard/banda/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    // ── Autocomplete de bandas (JSON, para el selector de relaciones) ────────
+    public static function bandaFastSearch(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (Auth::currentSession() === null) {
+            http_response_code(401);
+            echo json_encode(['code' => 'AUTH_REQUIRED', 'data' => []]);
+            return;
+        }
+        $q = trim((string) ($_GET['q'] ?? ''));
+        if (mb_strlen($q) < 3) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
+        $data = Repo::bandaCandidatosPorTexto($q, 15);
+        echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     // ── Ingesta (revisión de candidatos de YouTube) ─────────────────────────
     public static function ingestaList(): void
     {
@@ -293,11 +383,22 @@ final class Admin
         ];
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $result = IngestaRepo::listCandidatos($filters, $page);
+        $backParams = array_filter($filters, static fn(string $v): bool => $v !== '');
+        if ($page > 1) $backParams['page'] = $page;
         View::render('admin/ingesta_list', [
             'session' => $session, 'filters' => $filters, 'page' => $page,
             'result' => $result, 'bandas' => IngestaRepo::bandasConCandidatos(),
-            'counts' => IngestaRepo::counts(),
+            'counts' => IngestaRepo::counts(), 'backQs' => http_build_query($backParams),
         ], ['title' => 'Ingesta desde YouTube — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    /** Reconstruye de forma segura la query de filtros de /dashboard/ingesta a partir de un string arbitrario
+     *  (viene de ?ref= al entrar al detalle, o de un campo oculto "ref" al volver de aceptar/descartar). */
+    private static function ingestaBackQuery(string $raw): string
+    {
+        parse_str($raw, $parsed);
+        $allowed = array_intersect_key($parsed, array_flip(['estado', 'banda', 'clasificacion', 'page']));
+        return http_build_query($allowed);
     }
 
     public static function ingestaDetail(array $p): void
@@ -306,6 +407,7 @@ final class Admin
         $id = (int) $p['id'];
         $cand = IngestaRepo::fetchCandidato($id);
         if ($cand === null) Http::notFound();
+        $back = self::ingestaBackQuery((string) ($_GET['ref'] ?? ''));
 
         $autoresNombres = array_filter(array_map('trim', explode(',', (string) ($cand['P_AUTORES'] ?? ''))));
         $autoresAuto = [];
@@ -320,7 +422,7 @@ final class Admin
         }
 
         View::render('admin/ingesta_detail', [
-            'session' => $session, 'cand' => $cand,
+            'session' => $session, 'cand' => $cand, 'back' => $back,
             'autoresAuto' => $autoresAuto, 'autoresSugeridos' => $autoresSugeridos,
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => 'Revisar candidato #' . $id . ' — Marchas de Cristo', 'noindex' => true]);
@@ -330,30 +432,52 @@ final class Admin
     {
         $session = Auth::requireAuth();
         $id = (int) $p['id'];
-        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF", 302);
+        $back = self::ingestaBackQuery((string) ($_POST['ref'] ?? ''));
+        $backSuffix = $back !== '' ? "&ref=$back" : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF$backSuffix", 302);
 
         $fields = [];
         foreach (AdminRepo::INSERTABLE_MARCHA as $f) $fields[$f] = $_POST[$f] ?? '';
         $ids = self::postAutoresIds();
         $guardarAudio = isset($_POST['guardar_audio']);
 
-        if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED", 302);
+        if ($ids === []) Http::redirect("/dashboard/ingesta/$id?err=AUTHORS_REQUIRED$backSuffix", 302);
 
         $r = AdminRepo::aceptarCandidato($id, $fields, $ids, $guardarAudio);
-        if (($r['code'] ?? '') === 'CREATED') Http::redirect('/dashboard/ingesta?aceptado=' . $r['marchaId'], 302);
-        Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        if (($r['code'] ?? '') === 'CREATED') {
+            $sep = $back !== '' ? '&' : '';
+            Http::redirect("/dashboard/ingesta?$back{$sep}aceptado=" . $r['marchaId'], 302);
+        }
+        Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR') . $backSuffix, 302);
     }
 
     public static function ingestaDescartar(array $p): void
     {
         $session = Auth::requireAuth();
         $id = (int) $p['id'];
-        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF", 302);
+        $back = self::ingestaBackQuery((string) ($_POST['ref'] ?? ''));
+        $backSuffix = $back !== '' ? "&ref=$back" : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta/$id?err=CSRF$backSuffix", 302);
 
         $motivo = trim((string) ($_POST['motivo'] ?? ''));
         $r = AdminRepo::descartarCandidato($id, $motivo !== '' ? $motivo : null);
-        if (($r['code'] ?? '') !== 'DISCARDED') Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
-        Http::redirect('/dashboard/ingesta?descartado=1', 302);
+        if (($r['code'] ?? '') !== 'DISCARDED') Http::redirect("/dashboard/ingesta/$id?err=" . ($r['code'] ?? 'ERROR') . $backSuffix, 302);
+        $sep = $back !== '' ? '&' : '';
+        Http::redirect("/dashboard/ingesta?$back{$sep}descartado=1", 302);
+    }
+
+    /** Descarte masivo desde el listado (checkboxes + modal de confirmación), sin motivo. */
+    public static function ingestaDescartarMultiple(): void
+    {
+        $session = Auth::requireAuth();
+        $back = self::ingestaBackQuery((string) ($_POST['ref'] ?? ''));
+        $sep = $back !== '' ? '&' : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/ingesta?$back{$sep}err=CSRF", 302);
+
+        $ids = array_map('intval', (array) ($_POST['ids'] ?? []));
+        $r = AdminRepo::descartarVarios($ids);
+        if (($r['code'] ?? '') !== 'DISCARDED') Http::redirect("/dashboard/ingesta?$back{$sep}err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/ingesta?$back{$sep}descartados=" . $r['count'], 302);
     }
 
     // ── Autocomplete de dedicatorias (JSON, para el panel de ingesta) ────────

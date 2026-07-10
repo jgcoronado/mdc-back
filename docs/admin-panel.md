@@ -1,7 +1,13 @@
 # Panel de administración — marchasdecristo.com
 
-> Última actualización: 2026-06-05 (análisis sesión 2)
+> Última actualización: 2026-07-08 (relaciones de linaje de bandas)
 > Documento complementario de [context.md](context.md) y [roadmap.md](roadmap.md).
+>
+> ⚠️ **Nota de implementación**: tras el cutover a PHP (2026-07-04) el panel se sirve
+> con el stack PHP (`php/app/src/Admin.php` + `AdminRepo.php` + plantillas en
+> `php/app/templates/admin/`). Las secciones 1–6 describen el diseño heredado de
+> Next.js (rutas `*.ts` / `page.tsx`); la lógica es equivalente en PHP. La sección 7
+> documenta ya directamente la implementación PHP.
 
 ---
 
@@ -92,7 +98,7 @@ No hay registro de qué cambió, cuándo y quién. Ver [roadmap.md §M1](roadmap
 | 🟡 M4 | Buscador de marchas/autores en el dashboard | `/dashboard/page.tsx` |
 | 🟡 M5 | Enlace a edición/público tras crear | `marcha/add`, `autor/add` |
 | 🟡 M6 | Eliminar SQL preview de la UI | `marcha/add`, `autor/add`, `marcha/[id]` |
-| 🟢 B3 | Alta y edición de bandas | nuevo `/dashboard/banda/*` |
+| 🟢 B3 | Alta y edición de bandas (metadatos) | `/dashboard/banda/*` — las **relaciones de linaje** ya existen (§7); falta editar los campos propios de la banda |
 | 🟢 B4 | Alta y edición de discos + pistas | nuevo `/dashboard/disco/*` |
 
 ---
@@ -105,3 +111,54 @@ No hay registro de qué cambió, cuándo y quién. Ver [roadmap.md §M1](roadmap
 - **Autocomplete con mínimo de caracteres**: 6 chars mínimos antes de buscar evitan queries triviales.
 - **Previsualización de cambios**: el diff viejo/nuevo antes de guardar en edición de marcha es útil para revisión manual.
 - **Prepared statements**: sin concatenación de SQL en ningún Route Handler.
+
+---
+
+## 7. Relaciones de linaje entre bandas (PHP)
+
+> Añadido 2026-07-08. Gestiona el modelo `banda_relacion` — ver
+> [db-analysis.md §Modelo de linaje de bandas](db-analysis.md). Implementación PHP nativa
+> (no hay equivalente Next.js: es posterior al cutover).
+
+Sustituye al viejo linaje por columnas `FORMACION_ANT/SIG` (lista enlazada lineal) por
+una tabla de aristas tipadas que soporta renombrados (1→1), fusiones (N→1), divisiones
+(1→N) y bandas juveniles (vínculo jerárquico con fechas).
+
+### Acceso
+La búsqueda del panel (`/dashboard?q=…`) devuelve ahora también **bandas**; cada
+resultado enlaza a `/dashboard/banda/{id}`, la página de relaciones de esa banda.
+
+### Página `/dashboard/banda/{id}`
+- Lista las relaciones en las que participa la banda (como origen **o** destino), con el
+  tipo, la dirección `origen → destino` (marcando en negrita cuál es «esta banda»),
+  fecha(s) y nota. Cada fila tiene botón de borrado (POST con confirmación JS).
+- Formulario de alta: **tipo** (renombrado/fusion/division/juvenil), **dirección** (esta
+  banda es el origen o el destino), **otra banda** (autocomplete contra
+  `/api/banda/fastSearch`), **fecha inicio**, **fecha fin** (solo visible para `juvenil`,
+  vía `banda-relaciones.js`) y **nota**.
+
+### Rutas
+| Ruta | Método | Handler | Descripción |
+|------|--------|---------|-------------|
+| `/dashboard/banda/{id}` | GET | `Admin::bandaRelacionesForm` | Página de relaciones |
+| `/dashboard/banda/{id}/relacion` | POST | `Admin::bandaRelacionAddPost` | Alta |
+| `/dashboard/banda/{id}/relacion/{rel}/borrar` | POST | `Admin::bandaRelacionDeletePost` | Borrado |
+| `/api/banda/fastSearch?q=` | GET | `Admin::bandaFastSearch` | Autocomplete JSON de bandas (mín. 3 caracteres) |
+
+### Escritura (`AdminRepo`)
+- `addRelacion(origen, destino, tipo, fechaInicio, fechaFin, nota)` — valida: `tipo` en
+  `RELACION_TIPOS`; ambas bandas existen (FK real a `banda`) y son distintas; año de 4
+  dígitos; `FECHA_FIN` solo se guarda en `juvenil` y debe ser ≥ inicio; `DUPLICATE` por el
+  `UNIQUE(ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO)`. Códigos: `CREATED`, `INVALID_TIPO`,
+  `INVALID_BANDA`, `SAME_BANDA`, `INVALID_FECHA`, `FECHA_FIN_ANTERIOR`, `DUPLICATE`.
+- `deleteRelacion(idRelacion)` → `DELETED` / `NOT_FOUND`.
+- Ambas registran en `admin_log` (INSERT / DELETE).
+
+### Seguridad
+Mismo patrón que el resto del panel: `Auth::requireAuth()` + CSRF (`Auth::checkCsrf`) +
+PRG (`?created` / `?deleted` / `?err=CODE`). Prepared statements en todas las queries.
+
+### Pendiente
+La ficha **pública** de banda todavía no muestra el linaje: `Repo::fetchBanda` construye
+un `timeline` de un solo elemento y `Html::timeline` solo pinta fundación/extinción. El
+render público del linaje (recorrer `banda_relacion`) está por hacer.

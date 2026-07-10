@@ -13,6 +13,7 @@ final class AdminRepo
     public const EDITABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'AUDIO', 'BANDA_ESTRENO', 'DETALLES_MARCHA'];
     public const INSERTABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'DETALLES_MARCHA'];
     public const EDITABLE_AUTOR = ['NOMBRE', 'APELLIDOS', 'NOMBRE_ART', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO'];
+    public const EDITABLE_BANDA = ['NOMBRE_COMPLETO', 'NOMBRE_BREVE', 'LOCALIDAD', 'PROVINCIA', 'FECHA_FUND', 'FECHA_EXT', 'DIRECTOR_ACTUAL', 'DIR_MUS_ACTUAL', 'WEB', 'LINK_FORO'];
 
     public static function normalize(mixed $v): mixed
     {
@@ -171,6 +172,87 @@ final class AdminRepo
         return ['code' => 'CREATED', 'autorId' => $autorId];
     }
 
+    // ── editBanda ──────────────────────────────────────────────────────────
+    /**
+     * @param list<string> $keys
+     * @param list<mixed>  $values  (ya normalizados por el controlador)
+     * @return array{code:string}
+     */
+    public static function editBanda(int $bandaId, array $keys, array $values): array
+    {
+        if ($keys === []) return ['code' => 'BAD_REQUEST'];
+        $safe = [];
+        foreach ($keys as $i => $k) {
+            if (!in_array($k, self::EDITABLE_BANDA, true)) return ['code' => 'BAD_REQUEST'];
+            $safe[$k] = self::normalize($values[$i] ?? null);
+        }
+        foreach (['FECHA_FUND', 'FECHA_EXT'] as $f) {
+            if (array_key_exists($f, $safe) && $safe[$f] !== null && !preg_match('/^\d{4}$/', (string) $safe[$f])) {
+                return ['code' => 'INVALID_FECHA'];
+            }
+        }
+        $set = implode(', ', array_map(static fn(string $k): string => "$k = ?", array_keys($safe)));
+        Db::run("UPDATE banda SET $set WHERE ID_BANDA = ?", [...array_values($safe), $bandaId]);
+        Db::logAdmin('UPDATE', 'banda', $bandaId, ['campos' => array_keys($safe)]);
+        return ['code' => 'UPDATED'];
+    }
+
+    // ── Relaciones de linaje entre bandas (banda_relacion) ──────────────────
+    public const RELACION_TIPOS = ['renombrado', 'fusion', 'division', 'juvenil'];
+
+    private static function bandaExiste(int $id): bool
+    {
+        return Db::one('SELECT 1 AS x FROM banda WHERE ID_BANDA = ?', [$id]) !== null;
+    }
+
+    /**
+     * Alta de una relación dirigida ORIGEN → DESTINO. `FECHA_FIN` sólo se guarda
+     * para `juvenil` (en el resto de tipos no tiene sentido).
+     *
+     * @return array{code:string, relacionId?:int}
+     */
+    public static function addRelacion(int $origen, int $destino, string $tipo, ?string $fechaInicio, ?string $fechaFin, ?string $nota): array
+    {
+        if (!in_array($tipo, self::RELACION_TIPOS, true)) return ['code' => 'INVALID_TIPO'];
+        if ($origen <= 0 || $destino <= 0) return ['code' => 'INVALID_BANDA'];
+        if ($origen === $destino) return ['code' => 'SAME_BANDA'];
+        if (!self::bandaExiste($origen) || !self::bandaExiste($destino)) return ['code' => 'INVALID_BANDA'];
+
+        $fi = self::normalize($fechaInicio);
+        $ff = $tipo === 'juvenil' ? self::normalize($fechaFin) : null;
+        foreach ([$fi, $ff] as $f) {
+            if ($f !== null && !preg_match('/^\d{4}$/', (string) $f)) return ['code' => 'INVALID_FECHA'];
+        }
+        $iFi = $fi !== null ? (int) $fi : null;
+        $iFf = $ff !== null ? (int) $ff : null;
+        if ($iFi !== null && $iFf !== null && $iFf < $iFi) return ['code' => 'FECHA_FIN_ANTERIOR'];
+
+        try {
+            Db::run(
+                'INSERT INTO banda_relacion (ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO, FECHA_FIN, NOTA)
+                 VALUES (?, ?, ?, ?, ?, ?)',
+                [$origen, $destino, $tipo, $iFi, $iFf, self::normalize($nota)]
+            );
+        } catch (\PDOException $e) {
+            // UNIQUE (ID_ORIGEN, ID_DESTINO, TIPO, FECHA_INICIO)
+            if (str_contains($e->getMessage(), 'UNIQUE')) return ['code' => 'DUPLICATE'];
+            throw $e;
+        }
+
+        $relacionId = Db::lastInsertId();
+        Db::logAdmin('INSERT', 'banda_relacion', $relacionId, ['origen' => $origen, 'destino' => $destino, 'tipo' => $tipo]);
+        return ['code' => 'CREATED', 'relacionId' => $relacionId];
+    }
+
+    /** @return array{code:string} */
+    public static function deleteRelacion(int $idRelacion): array
+    {
+        $changes = Db::run('DELETE FROM banda_relacion WHERE ID_RELACION = ?', [$idRelacion]);
+        if ($changes === 0) return ['code' => 'NOT_FOUND'];
+        Db::logAdmin('DELETE', 'banda_relacion', $idRelacion);
+        return ['code' => 'DELETED'];
+    }
+
     // ── Ingesta (candidatos de YouTube, ver tools/ingest/) ──────────────────
 
     /**
@@ -220,5 +302,27 @@ final class AdminRepo
         if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING'];
         Db::logAdmin('DISCARD', 'ingest_candidato', $idCand, ['motivo' => $motivo]);
         return ['code' => 'DISCARDED'];
+    }
+
+    /**
+     * Descarta varios candidatos pendientes a la vez (desde el listado, sin motivo).
+     *
+     * @param list<int> $ids
+     * @return array{code:string, count:int}
+     */
+    public static function descartarVarios(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter($ids, static fn(int $n): bool => $n > 0)));
+        if ($ids === []) return ['code' => 'BAD_REQUEST', 'count' => 0];
+
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $changes = Db::run(
+            "UPDATE ingest_candidato SET ESTADO = 'descartado', REVIEWED_AT = datetime('now')
+             WHERE ID_CAND IN ($ph) AND ESTADO = 'pendiente'",
+            $ids
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING', 'count' => 0];
+        Db::logAdmin('DISCARD', 'ingest_candidato', null, ['ids' => $ids, 'count' => $changes]);
+        return ['code' => 'DISCARDED', 'count' => $changes];
     }
 }

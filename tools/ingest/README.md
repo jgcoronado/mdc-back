@@ -125,6 +125,15 @@ node extract.mjs --concurrency 6 --sleep 0.3    # más rápido (a tu propio ries
 node extract.mjs --months 10-3                  # solo octubre→marzo (temporada de estrenos), cruza fin de año
 ```
 
+**Cobertura (no repetir pasadas ya hechas):** cada vez que un canal se procesa
+completo (sin `--max`, sin errores de vídeo) se anota en `out/coverage.json`
+con el `--since`/`--months` usados. En la siguiente ejecución, si el rango
+pedido ya está cubierto por una pasada anterior (mismo `--since` o más
+reciente, y `--months` igual o cobertura de año completo), esa banda se
+**salta sin tocar YouTube**. `--force` ignora la cobertura y la repite.
+`out/coverage.json` no está versionado (vive en `out/`, gitignored) — es
+local a cada máquina donde se ejecuta el extractor.
+
 **`--months INICIO-FIN`**: los estrenos de estas bandas se concentran entre
 octubre y marzo (temporada previa a Semana Santa). Filtrar por ese rango antes
 de la extracción completa reduce drásticamente el volumen en canales muy
