@@ -8,6 +8,7 @@
 
 # Salidas generadas del matcher de streaming
 /tools/music_links/*.csv
+__pycache__/
 
 # Session logs (auto-generated docs)
 /docs/session-*.md
