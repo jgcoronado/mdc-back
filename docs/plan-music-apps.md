@@ -84,8 +84,8 @@ Componentes a construir:
 1. **Matcher** parametrizable por fase/servicio/alcance (evolución del script actual).
 2. **Módulo Spotify** (token client-credentials + search) — en cuanto haya credenciales.
 3. **Migración** `004_enlace_streaming.sql` — *creada, sin aplicar aún*.
-4. **Panel admin** de curación de enlaces (reutilizar UI de ingesta YouTube).
-5. **Render en ficha** (banda/disco/marcha) de los botones de streaming.
+4. **Panel admin** de curación de enlaces (reutilizar UI de ingesta YouTube). ← *hecho* (`/dashboard/enlaces`)
+5. **Render en ficha** (banda/disco/marcha) de los botones de streaming. ← *hecho para disco y banda* (`Html::streaming` + `EnlaceRepo::publicadosDe`, leyendo `enlace_streaming`). Solo pinta enlaces aprobados; marcha pendiente (fase 3).
 
 ---
 

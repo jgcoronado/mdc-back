@@ -1,5 +1,5 @@
-<?php use App\View as V; use App\Slug as S;
-/** @var array<string,mixed> $b @var string|null $url */
+<?php use App\View as V; use App\Slug as S; use App\Html as H;
+/** @var array<string,mixed> $b @var string|null $url @var array<string,string> $enlaces */
 $t = static fn($v): bool => !($v === null || $v === '' || $v === 0 || $v === 0.0 || $v === false);
 $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
 
@@ -74,6 +74,7 @@ $nMarchas = (int) $b['marchasLength'];
     </div>
     <h1><?= V::e($b['NOMBRE_BREVE']) ?></h1>
     <p class="asiento"><?= implode('. — ', $asiento) ?>.</p>
+    <?= H::streaming($enlaces ?? []) ?>
 
     <dl class="desc">
 <?php if ($t($b['NOMBRE_COMPLETO'])): ?>

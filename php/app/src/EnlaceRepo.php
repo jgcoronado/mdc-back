@@ -87,6 +87,27 @@ final class EnlaceRepo
         return ['rowsReturned' => count($rows), 'totalRows' => $total, 'data' => $rows];
     }
 
+    /**
+     * Enlaces PUBLICADOS (aprobados) de una entidad, para la ficha pública.
+     * Devuelve [servicio => url] en el orden canónico de SERVICIOS.
+     *
+     * @return array<string,string>
+     */
+    public static function publicadosDe(string $tipo, int $id): array
+    {
+        $rows = Db::all(
+            'SELECT SERVICIO, URL FROM enlace_streaming WHERE TIPO_ENT = ? AND ID_ENT = ?',
+            [$tipo, $id]
+        );
+        $map = [];
+        foreach ($rows as $r) $map[(string) $r['SERVICIO']] = (string) $r['URL'];
+        $out = [];
+        foreach (self::SERVICIOS as $s) {
+            if (isset($map[$s])) $out[$s] = $map[$s];
+        }
+        return $out;
+    }
+
     /** Bandas con al menos un candidato (disco propio o enlace de banda), para el <select> de filtro. */
     public static function bandasConCandidatos(): array
     {

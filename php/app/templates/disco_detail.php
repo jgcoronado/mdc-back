@@ -1,5 +1,5 @@
 <?php use App\View as V; use App\Slug as S; use App\Html as H;
-/** @var array<string,mixed> $d @var string|null $url */
+/** @var array<string,mixed> $d @var string|null $url @var array<string,string> $enlaces */
 $t = static fn($v): bool => !($v === null || $v === '' || $v === 0 || $v === 0.0 || $v === false);
 $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
 
@@ -46,6 +46,7 @@ $asiento[] = $num($nP) . ' pistas' . ($multi ? ' en ' . (int) $d['DISCOS'] . ' v
                 <div class="f"><dt>Volúmenes</dt><dd><?= (int) $d['DISCOS'] ?></dd></div>
 <?php endif; ?>
             </dl>
+            <?= H::streaming($enlaces ?? []) ?>
         </div>
     </div>
 
