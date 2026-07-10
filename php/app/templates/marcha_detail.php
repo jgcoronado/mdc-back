@@ -1,4 +1,4 @@
-<?php use App\View as V; use App\Slug as S;
+<?php use App\View as V; use App\Slug as S; use App\Media as MD;
 /** @var array<string,mixed> $m */
 /** @var string|null $url  URL canónica absoluta (permalink) */
 
@@ -32,6 +32,8 @@ $vida = static function (array $a): string {
 };
 
 $mid = (int) $m['ID_MARCHA'];
+$ytid = MD::youtubeId($m['AUDIO'] ?? null);
+$audioEsUrl = $t($m['AUDIO']) && preg_match('~^https?://~i', (string) $m['AUDIO']) === 1;
 $tipo = $t($m['TIPO'] ?? null) ? ucfirst(mb_strtolower((string) $m['TIPO'])) : 'Marcha';
 $estilo = match ($m['ESTILO'] ?? null) {
     'CCTT' => 'Cornetas y Tambores',
@@ -128,8 +130,20 @@ $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
 <?php if ($t($m['AUDIO'])): ?>
     <div class="listen">
         <div class="listen-head"><span class="pt">Escuchar</span><span class="todo">TODO · más servicios</span></div>
+<?php if ($ytid !== null): ?>
+        <div class="ytembed" data-ytid="<?= V::e($ytid) ?>">
+            <button type="button" class="ytfacade" aria-label="Reproducir el vídeo (carga YouTube al pulsar)">
+                <img class="ytfacade-img" src="<?= V::e(MD::youtubeThumb($ytid)) ?>" alt="" loading="lazy" width="480" height="270">
+                <span class="ytfacade-play" aria-hidden="true"></span>
+            </button>
+        </div>
+<?php endif; ?>
         <div class="svcs">
+<?php if ($ytid !== null): ?>
             <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ YouTube ↗</a>
+<?php elseif ($audioEsUrl): ?>
+            <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ Escuchar ↗</a>
+<?php endif; ?>
             <span class="svc off">♪ Apple Music</span>
             <span class="svc off">● Spotify</span>
             <span class="svc off">≋ Tidal</span>

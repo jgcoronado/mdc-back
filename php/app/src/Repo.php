@@ -170,6 +170,23 @@ final class Repo
         if (!empty($marcha['PROVINCIA'])) {
             $marcha['N_MISMA_PROV'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE m.PROVINCIA = ? AND $valid", [$marcha['PROVINCIA']])['n'] ?? 0);
         }
+
+        // Fecha de publicación del vídeo (solo para las marchas creadas vía la
+        // ingesta de YouTube): habilita uploadDate en el VideoObject, que Google
+        // exige para los rich results de vídeo. Sin este dato no se emite el
+        // VideoObject (los audios heredados no lo tienen), pero el reproductor
+        // embebido se muestra igual.
+        $marcha['VIDEO_UPLOAD'] = null;
+        $ytid = Media::youtubeId($marcha['AUDIO'] ?? null);
+        if ($ytid !== null) {
+            $row = Db::one(
+                "SELECT PUBLICADO_AT FROM ingest_candidato
+                 WHERE MARCHA_CREADA = ? AND VIDEO_ID = ? AND PUBLICADO_AT IS NOT NULL AND PUBLICADO_AT != ''
+                 ORDER BY REVIEWED_AT DESC LIMIT 1",
+                [$id, $ytid]
+            );
+            $marcha['VIDEO_UPLOAD'] = $row['PUBLICADO_AT'] ?? null;
+        }
         return $marcha;
     }
 

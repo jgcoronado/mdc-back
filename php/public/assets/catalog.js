@@ -46,8 +46,28 @@
         });
     }
 
+    // Fachada de vídeo: al pulsar, sustituye la miniatura por el iframe de
+    // youtube-nocookie con autoplay. Hasta entonces no se carga nada de YouTube.
+    function initYtFacade(embed) {
+        var btn = embed.querySelector('.ytfacade');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            var id = embed.getAttribute('data-ytid');
+            if (!id) return;
+            var iframe = document.createElement('iframe');
+            iframe.src = 'https://www.youtube-nocookie.com/embed/' + id +
+                '?autoplay=1&rel=0';
+            iframe.title = 'Reproductor de vídeo de YouTube';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            iframe.setAttribute('allowfullscreen', '');
+            embed.innerHTML = '';
+            embed.appendChild(iframe);
+        });
+    }
+
     Array.prototype.forEach.call(document.querySelectorAll('table[data-sortable]'), initSort);
     Array.prototype.forEach.call(document.querySelectorAll('input[data-filter]'), initFilter);
+    Array.prototype.forEach.call(document.querySelectorAll('.ytembed[data-ytid]'), initYtFacade);
 
     // "/" salta al buscador del catálogo (salvo que ya se esté escribiendo).
     var q = document.getElementById('site-q');

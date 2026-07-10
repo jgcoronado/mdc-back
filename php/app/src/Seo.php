@@ -75,6 +75,24 @@ final class Seo
                 'byArtist' => ['@type' => 'MusicGroup', 'name' => $d['BANDA']],
             ], $data['discos']);
         }
+
+        // Vídeo asociado (VideoObject). Solo se emite cuando conocemos la fecha
+        // de publicación (uploadDate): Google la exige como campo obligatorio,
+        // así que sin ella preferimos no generar un item inválido en el informe
+        // de vídeos de Search Console.
+        $ytid = Media::youtubeId($data['AUDIO'] ?? null);
+        if ($ytid !== null && !empty($data['VIDEO_UPLOAD'])) {
+            $schema['associatedMedia'] = [
+                '@type' => 'VideoObject',
+                'name' => 'Interpretación de «' . $data['TITULO'] . '»',
+                'description' => 'Interpretación en vídeo de la marcha procesional «' . $data['TITULO'] . '»'
+                    . (!empty($data['BANDA_ESTRENO']) ? ' por ' . $data['BANDA'] : '') . '.',
+                'thumbnailUrl' => Media::youtubeThumb($ytid),
+                'uploadDate' => (string) $data['VIDEO_UPLOAD'],
+                'contentUrl' => $data['AUDIO'],
+                'embedUrl' => Media::youtubeEmbed($ytid),
+            ];
+        }
         return $schema;
     }
 
