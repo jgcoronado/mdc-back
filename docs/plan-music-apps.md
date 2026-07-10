@@ -81,8 +81,24 @@ seleccionar entidades (fase/alcance)
   → ficha pública lee enlace_streaming y pinta botones por servicio
 ```
 
+### Ampliación de ámbito
+Los 3 matchers comparten `tools/music_links/mdc_music.py` (HTTP con reintentos/backoff
+para el rate-limit de iTunes, búsquedas por servicio, token Spotify, selección de ámbito)
+y aceptan `--scope`:
+
+| scope | criterio |
+|---|---|
+| `sevilla-capital` | activas, PROVINCIA=Sevilla y LOCALIDAD=Sevilla (14 bandas) |
+| `sevilla-provincia` | activas, PROVINCIA=Sevilla (34) |
+| `all-active` (por defecto) | todas las no extintas (90) |
+| `all` | todas (268, incl. extintas) |
+
+Fase 3 admite `--no-itunes` (útil en ámbitos grandes: 1.138 marchas × iTunes choca con su
+límite de tasa; Spotify+Deezer cubren el grueso). Volúmenes: 90 activas, 290 discos, 1.138
+marchas de estreno sin disco.
+
 Componentes a construir:
-1. **Matcher** parametrizable por fase/servicio/alcance (evolución del script actual).
+1. **Matcher** parametrizable por fase/servicio/alcance (evolución del script actual). ← *hecho* (`--scope`, módulo compartido)
 2. **Módulo Spotify** (token client-credentials + search) — en cuanto haya credenciales.
 3. **Migración** `004_enlace_streaming.sql` — *creada, sin aplicar aún*.
 4. **Panel admin** de curación de enlaces (reutilizar UI de ingesta YouTube). ← *hecho* (`/dashboard/enlaces`)
