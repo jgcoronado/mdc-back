@@ -1,5 +1,5 @@
-<?php use App\View as V; use App\Slug as S; use App\Media as MD;
-/** @var array<string,mixed> $m */
+<?php use App\View as V; use App\Slug as S; use App\Media as MD; use App\Html as H;
+/** @var array<string,mixed> $m @var array<string,string> $enlaces */
 /** @var string|null $url  URL canónica absoluta (permalink) */
 
 // "truthy" al estilo JS: null, '', 0, 0.0 y false son falsos; '0' (string) es verdadero.
@@ -127,9 +127,9 @@ $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
         <div class="f"><dt>Grabaciones</dt><dd><?= $num($nGrab) ?><?php if ($m['PRIMERA_GRABACION']): ?> <span class="cnt">· primera en <?= (int) $m['PRIMERA_GRABACION'] ?></span><?php endif; ?></dd></div>
     </dl>
 
-<?php if ($t($m['AUDIO'])): ?>
+<?php $enl = $enlaces ?? []; if ($t($m['AUDIO']) || $enl !== []): ?>
     <div class="listen">
-        <div class="listen-head"><span class="pt">Escuchar</span><span class="todo">TODO · más servicios</span></div>
+        <div class="listen-head"><span class="pt">Escuchar</span></div>
 <?php if ($ytid !== null): ?>
         <div class="ytembed" data-ytid="<?= V::e($ytid) ?>">
             <button type="button" class="ytfacade" aria-label="Reproducir el vídeo (carga YouTube al pulsar)">
@@ -138,16 +138,16 @@ $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
             </button>
         </div>
 <?php endif; ?>
+<?php if ($ytid !== null || $audioEsUrl): ?>
         <div class="svcs">
 <?php if ($ytid !== null): ?>
             <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ YouTube ↗</a>
-<?php elseif ($audioEsUrl): ?>
+<?php else: ?>
             <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ Escuchar ↗</a>
 <?php endif; ?>
-            <span class="svc off">♪ Apple Music</span>
-            <span class="svc off">● Spotify</span>
-            <span class="svc off">≋ Tidal</span>
         </div>
+<?php endif; ?>
+        <?= H::streaming($enl) ?>
     </div>
 <?php endif; ?>
 

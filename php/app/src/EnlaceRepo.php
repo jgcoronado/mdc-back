@@ -52,19 +52,23 @@ final class EnlaceRepo
             $values[] = $filters['confianza'];
         }
         if (!empty($filters['banda'])) {
-            // La banda de un candidato es la dueña del disco, o la propia entidad si TIPO_ENT='banda'.
-            $conditions[] = "(d.BANDADISCO = ? OR (c.TIPO_ENT = 'banda' AND c.ID_ENT = ?))";
+            // La banda de un candidato es: la dueña del disco, la propia entidad
+            // (TIPO_ENT='banda'), o la banda de estreno de la marcha (TIPO_ENT='marcha').
+            $conditions[] = "(d.BANDADISCO = ? OR (c.TIPO_ENT = 'banda' AND c.ID_ENT = ?) OR mm.BANDA_ESTRENO = ?)";
+            $values[] = (int) $filters['banda'];
             $values[] = (int) $filters['banda'];
             $values[] = (int) $filters['banda'];
         }
         $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
 
-        // Contexto polimórfico: disco (fase 1) o banda (fase 2). Los LEFT JOIN dejan
-        // NULL el que no aplica; ENT_NOMBRE/ENT_BANDA/ENT_ANIO unifican la vista.
+        // Contexto polimórfico: disco (fase 1), banda (fase 2) o marcha (fase 3).
+        // Los LEFT JOIN dejan NULL el que no aplica; ENT_* unifican la vista.
         $from = "FROM enlace_candidato c
-                 LEFT JOIN disco d  ON c.TIPO_ENT = 'disco' AND d.ID_DISCO  = c.ID_ENT
-                 LEFT JOIN banda b  ON b.ID_BANDA = d.BANDADISCO
-                 LEFT JOIN banda bb ON c.TIPO_ENT = 'banda' AND bb.ID_BANDA = c.ID_ENT";
+                 LEFT JOIN disco  d  ON c.TIPO_ENT = 'disco'  AND d.ID_DISCO  = c.ID_ENT
+                 LEFT JOIN banda  b  ON b.ID_BANDA = d.BANDADISCO
+                 LEFT JOIN banda  bb ON c.TIPO_ENT = 'banda'  AND bb.ID_BANDA = c.ID_ENT
+                 LEFT JOIN marcha mm ON c.TIPO_ENT = 'marcha' AND mm.ID_MARCHA = c.ID_ENT
+                 LEFT JOIN banda  bm ON bm.ID_BANDA = mm.BANDA_ESTRENO";
 
         $countRow = Db::one("SELECT COUNT(*) AS n $from WHERE $where", $values);
         $total = (int) ($countRow['n'] ?? 0);
@@ -73,9 +77,9 @@ final class EnlaceRepo
         $rows = Db::all(
             "SELECT c.ID_CAND, c.TIPO_ENT, c.ID_ENT, c.SERVICIO, c.URL, c.TITULO_ENC, c.ARTISTA_ENC,
                     c.ANIO_ENC, c.SCORE, c.CONFIANZA, c.ESTADO,
-                    COALESCE(d.NOMBRE_CD, bb.NOMBRE_BREVE) AS ENT_NOMBRE,
-                    COALESCE(b.NOMBRE_BREVE, bb.NOMBRE_BREVE) AS ENT_BANDA,
-                    d.FECHA_CD AS ENT_ANIO
+                    COALESCE(d.NOMBRE_CD, bb.NOMBRE_BREVE, mm.TITULO)   AS ENT_NOMBRE,
+                    COALESCE(b.NOMBRE_BREVE, bb.NOMBRE_BREVE, bm.NOMBRE_BREVE) AS ENT_BANDA,
+                    COALESCE(d.FECHA_CD, mm.FECHA)                      AS ENT_ANIO
              $from
              WHERE $where
              ORDER BY CASE WHEN c.ESTADO = 'pendiente' THEN 0 ELSE 1 END,
@@ -121,6 +125,11 @@ final class EnlaceRepo
                 SELECT bb.ID_BANDA, bb.NOMBRE_BREVE, bb.LOCALIDAD
                 FROM enlace_candidato c
                 JOIN banda bb ON c.TIPO_ENT = 'banda' AND bb.ID_BANDA = c.ID_ENT
+                UNION
+                SELECT bm.ID_BANDA, bm.NOMBRE_BREVE, bm.LOCALIDAD
+                FROM enlace_candidato c
+                JOIN marcha mm ON c.TIPO_ENT = 'marcha' AND mm.ID_MARCHA = c.ID_ENT
+                JOIN banda bm ON bm.ID_BANDA = mm.BANDA_ESTRENO
              )
              WHERE ID_BANDA IS NOT NULL
              ORDER BY NOMBRE_BREVE"

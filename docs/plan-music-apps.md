@@ -46,10 +46,11 @@ migrable a `(marcha, youtube)` en esta tabla, pero es **opcional** — decisión
 - Falsos positivos conocidos que exige curar el panel: "Los Angeles" (≠ BCT Ángeles), "Tres Caidas de Triana", "La Santa Cecilia" (banda mexicana) — nombres genéricos que comparten tokens; sin señal de localidad no son distinguibles automáticamente.
 - El panel `/dashboard/enlaces` ya muestra y cura candidatos de disco **y** de banda (vista polimórfica).
 
-### Fase 3 — Singles / marchas estrenadas fuera de disco
-- Para marchas estrenadas que no están en ningún disco enlazado: buscar single/pista.
-- Heurística del usuario: una marcha estrenada suele subirse como audio **el mismo año** del estreno → filtrar candidatos por año de estreno.
-- A nivel `marcha`; convive con `marcha.AUDIO` (YouTube).
+### Fase 3 — Singles / marchas estrenadas fuera de disco  ← *hecho*
+- `tools/music_links/match_marchas.py`: busca pista/single en Spotify/Apple/Deezer para las 240 marchas estrenadas por las 14 bandas que **no** están en ningún disco.
+- Heurística del usuario aplicada: boost fuerte (+0.2) cuando el año de la pista == año de estreno → gran precisión.
+- Resultado: 70 candidatos (52 ALTA), 56/240 marchas. Precisión ALTA muy alta (título exacto + banda + año). Volcados a `enlace_candidato` (TIPO_ENT='marcha').
+- Panel y ficha de marcha ya integrados: el panel cura candidatos de marcha; la ficha `/marcha/…` pinta la botonera (sustituye el antiguo placeholder "TODO · más servicios" y los chips falsos), conviviendo con el embed de YouTube (`marcha.AUDIO`).
 
 ---
 

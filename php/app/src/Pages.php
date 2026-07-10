@@ -113,9 +113,10 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
         $autores = implode(', ', array_map(static fn(array $a): string => (string) $a['nombre'], $m['AUTOR']));
+        $enlaces = EnlaceRepo::publicadosDe('marcha', (int) $m['ID_MARCHA']);
 
         Http::cachePublic(3600);
-        View::render('marcha_detail', ['m' => $m, 'url' => $url], [
+        View::render('marcha_detail', ['m' => $m, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $m['TITULO'] . ' — Marchas de Cristo',
             'description' => 'Marcha procesional "' . $m['TITULO'] . '" compuesta por ' . $autores . '.'
                 . (!empty($m['DEDICATORIA']) ? ' Dedicada a ' . $m['DEDICATORIA'] . '.' : ''),
