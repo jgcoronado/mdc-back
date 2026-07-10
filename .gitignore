@@ -6,6 +6,9 @@
 /data
 /snapshots
 
+# Salidas generadas del matcher de streaming
+/tools/music_links/*.csv
+
 # Session logs (auto-generated docs)
 /docs/session-*.md
 
