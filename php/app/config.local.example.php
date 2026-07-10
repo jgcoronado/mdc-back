@@ -15,4 +15,6 @@ return [
     // 'secret_key' => 'genera-48-bytes-aleatorios',   // Fase 3
     // 'force_canonical_host' => true,                 // ACTIVAR TRAS EL CUTOVER: 301 de
     //                                                 // jaguerra27.helioho.st y www a site_url
+    // 'goatcounter_code' => 'marchasdecristo',        // crear cuenta gratis en goatcounter.com;
+    //                                                 // fijar SOLO en prod para no contar visitas locales
 ];

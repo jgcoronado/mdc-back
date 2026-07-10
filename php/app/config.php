@@ -18,6 +18,7 @@ $defaults = [
     'login_lock_ms'      => 15 * 60 * 1000,   // 15 min
     'password_pbkdf2_iterations' => 210000,
     'backup_keep_days'   => 60,               // retención (tools/backup.php); cron semanal → ~8-9 copias
+    'goatcounter_code'   => null,              // subdominio de GoatCounter (p.ej. "marchasdecristo"), null = analítica desactivada
 ];
 
 $localFile = APP_DIR . '/config.local.php';

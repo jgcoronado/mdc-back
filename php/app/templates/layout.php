@@ -118,5 +118,9 @@ $search = $searchBySection[$current] ?? null;
         </div>
     </footer>
     <script src="/assets/catalog.js" defer></script>
+<?php if (!empty($GLOBALS['config']['goatcounter_code'])): ?>
+    <script data-goatcounter="https://<?= $e($GLOBALS['config']['goatcounter_code']) ?>.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
+<?php endif; ?>
 </body>
 </html>
