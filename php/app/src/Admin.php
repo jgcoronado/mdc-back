@@ -609,6 +609,73 @@ final class Admin
         Http::redirect("/dashboard/ingesta?$back{$sep}descartados=" . $r['count'], 302);
     }
 
+    // ── Enlaces de streaming: curación (Spotify / Apple / Deezer) ────────────
+    public static function enlaceList(): void
+    {
+        $session = Auth::requireAuth();
+        $filters = [
+            'estado' => (string) ($_GET['estado'] ?? 'pendiente'),
+            'servicio' => (string) ($_GET['servicio'] ?? ''),
+            'confianza' => (string) ($_GET['confianza'] ?? ''),
+            'banda' => (string) ($_GET['banda'] ?? ''),
+        ];
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $result = EnlaceRepo::listCandidatos($filters, $page);
+        $backParams = array_filter($filters, static fn(string $v): bool => $v !== '');
+        if ($page > 1) $backParams['page'] = $page;
+        View::render('admin/enlaces_list', [
+            'session' => $session, 'filters' => $filters, 'page' => $page,
+            'result' => $result, 'bandas' => EnlaceRepo::bandasConCandidatos(),
+            'counts' => EnlaceRepo::counts(), 'backQs' => http_build_query($backParams),
+        ], ['title' => 'Enlaces de streaming — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    private static function enlaceBackQuery(string $raw): string
+    {
+        parse_str($raw, $parsed);
+        $allowed = array_intersect_key($parsed, array_flip(['estado', 'servicio', 'confianza', 'banda', 'page']));
+        return http_build_query($allowed);
+    }
+
+    public static function enlaceAprobar(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        $back = self::enlaceBackQuery((string) ($_POST['ref'] ?? ''));
+        $sep = $back !== '' ? '&' : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/enlaces?$back{$sep}err=CSRF", 302);
+
+        $r = AdminRepo::aprobarEnlace($id);
+        if (($r['code'] ?? '') !== 'APPROVED') Http::redirect("/dashboard/enlaces?$back{$sep}err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/enlaces?$back{$sep}aprobado=1", 302);
+    }
+
+    public static function enlaceRechazar(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        $back = self::enlaceBackQuery((string) ($_POST['ref'] ?? ''));
+        $sep = $back !== '' ? '&' : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/enlaces?$back{$sep}err=CSRF", 302);
+
+        $r = AdminRepo::rechazarEnlace($id);
+        if (($r['code'] ?? '') !== 'REJECTED') Http::redirect("/dashboard/enlaces?$back{$sep}err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/enlaces?$back{$sep}rechazado=1", 302);
+    }
+
+    public static function enlaceRechazarMultiple(): void
+    {
+        $session = Auth::requireAuth();
+        $back = self::enlaceBackQuery((string) ($_POST['ref'] ?? ''));
+        $sep = $back !== '' ? '&' : '';
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/enlaces?$back{$sep}err=CSRF", 302);
+
+        $ids = array_map('intval', (array) ($_POST['ids'] ?? []));
+        $r = AdminRepo::rechazarEnlaces($ids);
+        if (($r['code'] ?? '') !== 'REJECTED') Http::redirect("/dashboard/enlaces?$back{$sep}err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/enlaces?$back{$sep}rechazados=" . $r['count'], 302);
+    }
+
     // ── Autocomplete de dedicatorias (JSON, para el panel de ingesta) ────────
     public static function dedicatoriaFastSearch(): void
     {

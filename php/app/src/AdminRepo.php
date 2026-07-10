@@ -332,6 +332,73 @@ final class AdminRepo
         return ['code' => 'DISCARDED', 'count' => $changes];
     }
 
+    // ── Enlaces de streaming: curación (aprobar / rechazar) ───────────────────
+
+    /**
+     * Aprueba un candidato de enlace: lo publica en enlace_streaming (upsert por
+     * entidad+servicio) y marca el candidato como aprobado. Distintos servicios
+     * conviven para una misma entidad; re-aprobar sustituye la URL anterior.
+     *
+     * @return array{code:string}
+     */
+    public static function aprobarEnlace(int $idCand): array
+    {
+        $c = Db::one(
+            'SELECT TIPO_ENT, ID_ENT, SERVICIO, URL, ID_EXT, ESTADO FROM enlace_candidato WHERE ID_CAND = ?',
+            [$idCand]
+        );
+        if ($c === null) return ['code' => 'NOT_FOUND'];
+        if ($c['ESTADO'] !== 'pendiente') return ['code' => 'NOT_PENDING'];
+
+        return Db::transaction(static function () use ($c, $idCand): array {
+            Db::run(
+                "INSERT INTO enlace_streaming (TIPO_ENT, ID_ENT, SERVICIO, URL, ID_EXT, VERIFICADO)
+                 VALUES (?, ?, ?, ?, ?, 1)
+                 ON CONFLICT(TIPO_ENT, ID_ENT, SERVICIO)
+                 DO UPDATE SET URL = excluded.URL, ID_EXT = excluded.ID_EXT,
+                               VERIFICADO = 1, FECHA_ALTA = datetime('now')",
+                [$c['TIPO_ENT'], (int) $c['ID_ENT'], $c['SERVICIO'], $c['URL'], $c['ID_EXT']]
+            );
+            Db::run("UPDATE enlace_candidato SET ESTADO = 'aprobado' WHERE ID_CAND = ?", [$idCand]);
+            Db::logAdmin('APPROVE', 'enlace_candidato', $idCand,
+                ['servicio' => $c['SERVICIO'], 'ent' => $c['TIPO_ENT'] . ':' . $c['ID_ENT']]);
+            return ['code' => 'APPROVED'];
+        });
+    }
+
+    /** @return array{code:string} */
+    public static function rechazarEnlace(int $idCand): array
+    {
+        $changes = Db::run(
+            "UPDATE enlace_candidato SET ESTADO = 'rechazado' WHERE ID_CAND = ? AND ESTADO = 'pendiente'",
+            [$idCand]
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING'];
+        Db::logAdmin('REJECT', 'enlace_candidato', $idCand);
+        return ['code' => 'REJECTED'];
+    }
+
+    /**
+     * Rechaza varios candidatos pendientes a la vez (desde el listado).
+     *
+     * @param list<int> $ids
+     * @return array{code:string, count:int}
+     */
+    public static function rechazarEnlaces(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter($ids, static fn(int $n): bool => $n > 0)));
+        if ($ids === []) return ['code' => 'BAD_REQUEST', 'count' => 0];
+
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $changes = Db::run(
+            "UPDATE enlace_candidato SET ESTADO = 'rechazado' WHERE ID_CAND IN ($ph) AND ESTADO = 'pendiente'",
+            $ids
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING', 'count' => 0];
+        Db::logAdmin('REJECT', 'enlace_candidato', null, ['ids' => $ids, 'count' => $changes]);
+        return ['code' => 'REJECTED', 'count' => $changes];
+    }
+
     // ── Marchas: curación de estilo (CCTT / AM) ───────────────────────────────
 
     /**

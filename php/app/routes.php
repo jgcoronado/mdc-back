@@ -120,5 +120,11 @@ $router->get('/dashboard/ingesta/{id}', [Admin::class, 'ingestaDetail']);
 $router->post('/dashboard/ingesta/{id}/aceptar', [Admin::class, 'ingestaAceptar']);
 $router->post('/dashboard/ingesta/{id}/descartar', [Admin::class, 'ingestaDescartar']);
 
+// ── Enlaces de streaming (curación de candidatos Spotify/Apple/Deezer) ───────
+$router->get('/dashboard/enlaces', [Admin::class, 'enlaceList']);
+$router->post('/dashboard/enlaces/rechazar-multiple', [Admin::class, 'enlaceRechazarMultiple']);
+$router->post('/dashboard/enlaces/{id}/aprobar', [Admin::class, 'enlaceAprobar']);
+$router->post('/dashboard/enlaces/{id}/rechazar', [Admin::class, 'enlaceRechazar']);
+
 // ── 404 ──────────────────────────────────────────────────────────────────────
 $router->notFound([Http::class, 'notFound']);
