@@ -740,6 +740,170 @@ final class Repo
         return $rows;
     }
 
+    // ── Dedicatorias: hubs de advocación (N-01 / N-02) ───────────────────────
+
+    /**
+     * Umbral de marchas para considerar un hub «con sustancia» y por tanto
+     * indexable. Por debajo, el hub duplicaría una única ficha (página thin);
+     * resuelve igualmente pero va noindex y no aparece en el índice ni el sitemap.
+     */
+    public const DEDIC_MIN_MARCHAS = 2;
+
+    /**
+     * ¿Es una dedicatoria PARTICULAR (a una persona o grupo concreto: "A Manuel
+     * Rodríguez Ruiz", "Al Padre Del Autor", "A La Banda De Las Cigarreras") en
+     * vez de institucional (hermandad, cofradía, agrupación, advocación mariana
+     * o cristológica: "Hdad Esperanza", "Virgen Del Carmen", "Cristo De La
+     * Expiración")? Heurística: el primer token del nombre (sin acentos ni
+     * mayúsculas) es exactamente "a" o "al" — la preposición de dedicatoria a
+     * alguien concreto. No confunde "Agrupación" o "Asociación" porque exige
+     * coincidencia del token completo, no solo el prefijo.
+     */
+    public static function esDedicatoriaPersonal(string $nombre): bool
+    {
+        $first = explode(' ', trim(Db::noAcc($nombre)))[0] ?? '';
+        return $first === 'a' || $first === 'al';
+    }
+
+    /**
+     * Índice A–Z de advocaciones con recuento de marchas (pantalla N-02). Solo
+     * canónicas institucionales (PERSONAL = 0) con ≥ DEDIC_MIN_MARCHAS marchas
+     * vivas (con autor); opcionalmente filtradas por localidad/provincia
+     * (LIKE, insensible a mayúsculas/acentos, igual que Repo::searchMarchas).
+     * Se ordena por SLUG_KEY, cuya parte de nombre ya viene sin artículo ni
+     * prefijo de tipo, de modo que «La Estrella» alfabetiza por «Estrella».
+     *
+     * @return list<array{ID_DEDIC:int,NOMBRE:string,LOCALIDAD:string,PROVINCIA:?string,SLUG_KEY:string,N:int}>
+     */
+    public static function dedicatoriaIndex(?string $localidad = null, ?string $provincia = null): array
+    {
+        $sql =
+            "SELECT d.ID_DEDIC, d.NOMBRE, d.LOCALIDAD, d.PROVINCIA, d.SLUG_KEY,
+                    COUNT(m.ID_MARCHA) AS N
+             FROM dedicatoria d
+             JOIN dedicatoria_alias da ON da.ID_DEDIC = d.ID_DEDIC
+             JOIN marcha m ON m.DEDICATORIA = da.VARIANTE
+                          AND COALESCE(m.LOCALIDAD, '') = da.LOCALIDAD
+             WHERE d.PERSONAL = 0
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)";
+        $params = [];
+        if ($localidad !== null && trim($localidad) !== '') {
+            $sql .= ' AND NOACC(d.LOCALIDAD) LIKE ?';
+            $params[] = '%' . Db::noAcc($localidad) . '%';
+        }
+        if ($provincia !== null && trim($provincia) !== '') {
+            $sql .= ' AND NOACC(d.PROVINCIA) LIKE ?';
+            $params[] = '%' . Db::noAcc($provincia) . '%';
+        }
+        $sql .= ' GROUP BY d.ID_DEDIC HAVING N >= ' . self::DEDIC_MIN_MARCHAS . ' ORDER BY d.SLUG_KEY';
+        return Db::all($sql, $params);
+    }
+
+    /**
+     * Hub de una advocación (pantalla N-01): la canónica + sus marchas dedicadas
+     * (con autores, año, banda de estreno y nº de grabaciones), en orden
+     * cronológico. Devuelve null si no existe o no tiene marchas vivas.
+     *
+     * @return array{ID_DEDIC:int,NOMBRE:string,LOCALIDAD:string,PROVINCIA:?string,marchas:list<array<string,mixed>>,N:int}|null
+     */
+    public static function fetchDedicatoria(string $id): ?array
+    {
+        $d = Db::one(
+            'SELECT ID_DEDIC, NOMBRE, LOCALIDAD, PROVINCIA, SLUG_KEY, PERSONAL FROM dedicatoria WHERE ID_DEDIC = ?',
+            [$id]
+        );
+        if ($d === null) {
+            return null;
+        }
+        $marchas = Db::all(
+            "SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.LOCALIDAD, m.PROVINCIA, m.AUDIO,
+                    m.BANDA_ESTRENO, b.NOMBRE_BREVE AS BANDA_BREVE,
+                    (SELECT COUNT(*) FROM disco_marcha dm WHERE dm.IDMARCHA = m.ID_MARCHA) AS N_GRAB
+             FROM marcha m
+             JOIN dedicatoria_alias da ON da.VARIANTE = m.DEDICATORIA
+                                      AND da.LOCALIDAD = COALESCE(m.LOCALIDAD, '')
+             LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
+             WHERE da.ID_DEDIC = ?
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             ORDER BY (m.FECHA IS NULL OR m.FECHA = ''), m.FECHA, m.TITULO COLLATE NOCASE",
+            [$id]
+        );
+        if ($marchas === []) {
+            return null;
+        }
+        self::attachAutores($marchas);
+        $d['marchas'] = $marchas;
+        $d['N'] = count($marchas);
+        return $d;
+    }
+
+    /**
+     * Listado de canónicas para el panel de curación.
+     *   - $soloPersonales: solo las marcadas PERSONAL = 1 (para auditar la
+     *     heurística de exclusión del índice público).
+     *   - si no, sin `$q` devuelve las que agrupan más de una variante
+     *     (candidatas a revisar la fusión automática); con `$q` busca por
+     *     nombre, localidad o cualquier variante.
+     *
+     * @return list<array{ID_DEDIC:int,NOMBRE:string,LOCALIDAD:string,N_VAR:int,N_MAR:int,PERSONAL:int}>
+     */
+    public static function dedicatoriasAdmin(?string $q, int $limit = 300, bool $soloPersonales = false): array
+    {
+        $q = trim((string) $q);
+        $sel =
+            "SELECT d.ID_DEDIC, d.NOMBRE, d.LOCALIDAD, d.PERSONAL,
+                    (SELECT COUNT(*) FROM dedicatoria_alias da WHERE da.ID_DEDIC = d.ID_DEDIC) AS N_VAR,
+                    (SELECT COUNT(*) FROM dedicatoria_alias da
+                       JOIN marcha m ON m.DEDICATORIA = da.VARIANTE
+                                    AND COALESCE(m.LOCALIDAD, '') = da.LOCALIDAD
+                       WHERE da.ID_DEDIC = d.ID_DEDIC) AS N_MAR
+             FROM dedicatoria d ";
+        if ($soloPersonales) {
+            return Db::all(
+                $sel . 'WHERE d.PERSONAL = 1 ORDER BY N_MAR DESC, d.SLUG_KEY LIMIT ' . (int) $limit
+            );
+        }
+        if ($q === '') {
+            return Db::all(
+                $sel . 'WHERE N_VAR > 1 ORDER BY N_VAR DESC, d.SLUG_KEY LIMIT ' . (int) $limit
+            );
+        }
+        $like = '%' . Db::noAcc($q) . '%';
+        return Db::all(
+            $sel .
+            "WHERE NOACC(d.NOMBRE) LIKE ? OR NOACC(d.LOCALIDAD) LIKE ?
+                OR EXISTS (SELECT 1 FROM dedicatoria_alias da
+                           WHERE da.ID_DEDIC = d.ID_DEDIC AND NOACC(da.VARIANTE) LIKE ?)
+             ORDER BY d.SLUG_KEY LIMIT " . (int) $limit,
+            [$like, $like, $like]
+        );
+    }
+
+    /**
+     * Canónica + sus variantes (con recuento de marchas) para el formulario de
+     * curación. Devuelve null si la canónica no existe.
+     *
+     * @return array{ID_DEDIC:int,NOMBRE:string,LOCALIDAD:string,PROVINCIA:?string,PERSONAL:int,variantes:list<array<string,mixed>>}|null
+     */
+    public static function fetchDedicatoriaAdmin(string $id): ?array
+    {
+        $d = Db::one('SELECT ID_DEDIC, NOMBRE, LOCALIDAD, PROVINCIA, PERSONAL FROM dedicatoria WHERE ID_DEDIC = ?', [$id]);
+        if ($d === null) {
+            return null;
+        }
+        $d['variantes'] = Db::all(
+            "SELECT da.VARIANTE, da.LOCALIDAD,
+                    (SELECT COUNT(*) FROM marcha m
+                       WHERE m.DEDICATORIA = da.VARIANTE
+                         AND COALESCE(m.LOCALIDAD, '') = da.LOCALIDAD) AS N_MAR
+             FROM dedicatoria_alias da
+             WHERE da.ID_DEDIC = ?
+             ORDER BY N_MAR DESC, da.VARIANTE COLLATE NOCASE",
+            [$id]
+        );
+        return $d;
+    }
+
     // ── Stats ────────────────────────────────────────────────────────────────
 
     public static function fetchEstado(): array

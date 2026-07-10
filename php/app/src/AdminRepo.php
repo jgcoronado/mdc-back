@@ -325,4 +325,158 @@ final class AdminRepo
         Db::logAdmin('DISCARD', 'ingest_candidato', null, ['ids' => $ids, 'count' => $changes]);
         return ['code' => 'DISCARDED', 'count' => $changes];
     }
+
+    // ── Dedicatorias: curación de advocaciones (hubs N-01 / N-02) ────────────
+
+    /** Elimina la canónica $id si ya no le queda ninguna variante asociada. */
+    private static function borrarCanonicaSiVacia(int $id): void
+    {
+        $n = Db::one('SELECT COUNT(*) AS c FROM dedicatoria_alias WHERE ID_DEDIC = ?', [$id]);
+        if ((int) ($n['c'] ?? 0) === 0) {
+            Db::run('DELETE FROM dedicatoria WHERE ID_DEDIC = ?', [$id]);
+        }
+    }
+
+    /**
+     * Renombra una canónica (NOMBRE / LOCALIDAD / PROVINCIA) y fija si es
+     * PERSONAL (dedicatoria particular, excluida del índice público N-02 y del
+     * sitemap) — override manual sobre la heurística de Repo::esDedicatoriaPersonal.
+     * No toca SLUG_KEY: es solo la identidad interna de agrupación del seed, y
+     * recalcularla podría colisionar con el UNIQUE de otra canónica.
+     *
+     * @return array{code:string}
+     */
+    public static function renameDedicatoria(int $id, string $nombre, string $localidad, ?string $provincia, bool $personal): array
+    {
+        $nombre = trim($nombre);
+        if ($nombre === '') return ['code' => 'NOMBRE_REQUERIDO'];
+        $changes = Db::run(
+            'UPDATE dedicatoria SET NOMBRE = ?, LOCALIDAD = ?, PROVINCIA = ?, PERSONAL = ? WHERE ID_DEDIC = ?',
+            [$nombre, trim($localidad), self::normalize($provincia), $personal ? 1 : 0, $id]
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND'];
+        Db::logAdmin('UPDATE', 'dedicatoria', $id, ['nombre' => $nombre, 'localidad' => $localidad, 'personal' => $personal]);
+        return ['code' => 'UPDATED'];
+    }
+
+    /**
+     * Reasigna la variante (VARIANTE, LOCALIDAD) a otra canónica $destino
+     * (fusión). Si la canónica de origen se queda sin variantes, se elimina.
+     *
+     * @return array{code:string}
+     */
+    public static function moverAlias(string $variante, string $localidad, int $destino): array
+    {
+        if ($destino <= 0) return ['code' => 'INVALID_DESTINO'];
+        if (Db::one('SELECT 1 AS x FROM dedicatoria WHERE ID_DEDIC = ?', [$destino]) === null) {
+            return ['code' => 'DESTINO_NO_EXISTE'];
+        }
+        $alias = Db::one(
+            'SELECT ID_DEDIC FROM dedicatoria_alias WHERE VARIANTE = ? AND LOCALIDAD = ?',
+            [$variante, $localidad]
+        );
+        if ($alias === null) return ['code' => 'ALIAS_NO_EXISTE'];
+        $origen = (int) $alias['ID_DEDIC'];
+        if ($origen === $destino) return ['code' => 'SIN_CAMBIOS'];
+
+        Db::transaction(static function () use ($variante, $localidad, $destino, $origen): void {
+            Db::run(
+                'UPDATE dedicatoria_alias SET ID_DEDIC = ? WHERE VARIANTE = ? AND LOCALIDAD = ?',
+                [$destino, $variante, $localidad]
+            );
+            self::borrarCanonicaSiVacia($origen);
+        });
+        Db::logAdmin('UPDATE', 'dedicatoria_alias', $destino, ['variante' => $variante, 'localidad' => $localidad, 'origen' => $origen]);
+        return ['code' => 'MOVED'];
+    }
+
+    /**
+     * Separa la variante en una canónica NUEVA (deshace una fusión errónea). El
+     * NOMBRE inicial es la propia variante (editable después). Si el origen se
+     * queda vacío, se elimina.
+     *
+     * @return array{code:string, idDedic?:int}
+     */
+    public static function separarAlias(string $variante, string $localidad): array
+    {
+        $alias = Db::one(
+            'SELECT ID_DEDIC FROM dedicatoria_alias WHERE VARIANTE = ? AND LOCALIDAD = ?',
+            [$variante, $localidad]
+        );
+        if ($alias === null) return ['code' => 'ALIAS_NO_EXISTE'];
+        $origen = (int) $alias['ID_DEDIC'];
+
+        // SLUG_KEY única: base derivada + sufijo incremental si colisiona.
+        $base = Slug::slugify($variante) . '|' . Slug::slugify($localidad);
+        $key = $base;
+        $i = 2;
+        while (Db::one('SELECT 1 AS x FROM dedicatoria WHERE SLUG_KEY = ?', [$key]) !== null) {
+            $key = $base . '-' . $i++;
+        }
+
+        $idDedic = Db::transaction(static function () use ($variante, $localidad, $key, $origen): int {
+            Db::run(
+                'INSERT INTO dedicatoria (NOMBRE, LOCALIDAD, PROVINCIA, SLUG_KEY, PERSONAL) VALUES (?, ?, NULL, ?, ?)',
+                [trim($variante), $localidad, $key, Repo::esDedicatoriaPersonal($variante) ? 1 : 0]
+            );
+            $nuevo = Db::lastInsertId();
+            Db::run(
+                'UPDATE dedicatoria_alias SET ID_DEDIC = ? WHERE VARIANTE = ? AND LOCALIDAD = ?',
+                [$nuevo, $variante, $localidad]
+            );
+            self::borrarCanonicaSiVacia($origen);
+            return $nuevo;
+        });
+        Db::logAdmin('INSERT', 'dedicatoria', $idDedic, ['separada_de' => $origen, 'variante' => $variante]);
+        return ['code' => 'SPLIT', 'idDedic' => $idDedic];
+    }
+
+    /**
+     * Unifica todas las variantes de una canónica en la grafía elegida: reescribe
+     * el par (DEDICATORIA, LOCALIDAD) de las marchas de las demás variantes al
+     * objetivo y deja una sola fila en dedicatoria_alias. Es limpieza real del
+     * texto libre (mismo tipo de UPDATE que editMarcha), no solo reagrupar.
+     *
+     * @return array{code:string, marchas?:int, variantes?:int}
+     */
+    public static function unificarVariantes(int $idDedic, string $varianteObjetivo, string $localidadObjetivo): array
+    {
+        $objetivo = Db::one(
+            'SELECT 1 AS x FROM dedicatoria_alias WHERE ID_DEDIC = ? AND VARIANTE = ? AND LOCALIDAD = ?',
+            [$idDedic, $varianteObjetivo, $localidadObjetivo]
+        );
+        if ($objetivo === null) return ['code' => 'OBJETIVO_INVALIDO'];
+
+        $otras = Db::all(
+            'SELECT VARIANTE, LOCALIDAD FROM dedicatoria_alias
+             WHERE ID_DEDIC = ? AND NOT (VARIANTE = ? AND LOCALIDAD = ?)',
+            [$idDedic, $varianteObjetivo, $localidadObjetivo]
+        );
+        if ($otras === []) return ['code' => 'SIN_CAMBIOS'];
+
+        // Guardamos '' en dedicatoria_alias pero NULL en marcha (como el resto del
+        // catálogo); el join usa COALESCE(m.LOCALIDAD,'') así que ambos casan.
+        $locDestino = $localidadObjetivo !== '' ? $localidadObjetivo : null;
+        $marchas = Db::transaction(static function () use ($otras, $idDedic, $varianteObjetivo, $localidadObjetivo, $locDestino): int {
+            $n = 0;
+            foreach ($otras as $o) {
+                $n += Db::run(
+                    "UPDATE marcha SET DEDICATORIA = ?, LOCALIDAD = ?
+                     WHERE DEDICATORIA = ? AND COALESCE(LOCALIDAD, '') = ?",
+                    [$varianteObjetivo, $locDestino, $o['VARIANTE'], $o['LOCALIDAD']]
+                );
+            }
+            Db::run(
+                'DELETE FROM dedicatoria_alias WHERE ID_DEDIC = ? AND NOT (VARIANTE = ? AND LOCALIDAD = ?)',
+                [$idDedic, $varianteObjetivo, $localidadObjetivo]
+            );
+            return $n;
+        });
+
+        Db::logAdmin('UPDATE', 'dedicatoria', $idDedic, [
+            'accion' => 'unificar', 'objetivo' => $varianteObjetivo,
+            'variantes_absorbidas' => count($otras), 'marchas' => $marchas,
+        ]);
+        return ['code' => 'UNIFIED', 'marchas' => $marchas, 'variantes' => count($otras)];
+    }
 }

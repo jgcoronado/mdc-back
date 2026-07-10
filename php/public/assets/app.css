@@ -425,6 +425,19 @@ dialog.panel::backdrop { background: rgba(0, 0, 0, 0.5); }
 .suggest-item { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 0.5rem 0.7rem; cursor: pointer; font: inherit; font-size: 0.9rem; color: var(--ink); }
 .suggest-item:hover { background: var(--s2); }
 
+/* ── Índice de dedicatorias (N-02) ──────────────────────────────────────── */
+.aznav { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 1.1rem 0 0.4rem; font-family: var(--mono); }
+.aznav a { text-decoration: none; color: var(--acc); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.1rem 0.5rem; font-size: 0.78rem; }
+.aznav a:hover { background: var(--acc-tint); }
+ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 0.15rem 1.4rem; }
+.azitem { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; padding: 0.3rem 0; border-bottom: 1px dotted var(--line); }
+.azitem a { text-decoration: none; display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+.azitem .aznom { font-size: 0.92rem; }
+.azitem .azloc { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
+.azitem .azcount { font-family: var(--mono); font-size: 0.72rem; color: var(--muted-c); font-variant-numeric: tabular-nums; flex: none; }
+@media (min-width: 640px) { ul.azgrid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 900px) { ul.azgrid { grid-template-columns: 1fr 1fr 1fr; } }
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (min-width: 640px) {
     .form-grid { grid-template-columns: 1fr 1fr; }

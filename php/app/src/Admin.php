@@ -41,6 +41,9 @@ final class Admin
         if (isset($_GET['saved'])) return ['type' => 'ok', 'msg' => 'Cambios guardados.'];
         if (isset($_GET['created'])) return ['type' => 'ok', 'msg' => 'Creado correctamente.'];
         if (isset($_GET['deleted'])) return ['type' => 'ok', 'msg' => 'Relación eliminada.'];
+        if (isset($_GET['moved'])) return ['type' => 'ok', 'msg' => 'Variante reasignada.'];
+        if (isset($_GET['split'])) return ['type' => 'ok', 'msg' => 'Variante separada en una nueva dedicatoria.'];
+        if (isset($_GET['unified'])) return ['type' => 'ok', 'msg' => 'Variantes unificadas · ' . (int) $_GET['unified'] . ' marchas reescritas.'];
         if (isset($_GET['nochanges'])) return ['type' => 'info', 'msg' => 'No había cambios que guardar.'];
         if (isset($_GET['err'])) return ['type' => 'error', 'msg' => 'Error: ' . preg_replace('/[^A-Z_]/', '', (string) $_GET['err'])];
         return null;
@@ -370,6 +373,91 @@ final class Admin
         if (mb_strlen($q) < 3) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
         $data = Repo::bandaCandidatosPorTexto($q, 15);
         echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    // ── Dedicatorias: curación de advocaciones (hubs N-01 / N-02) ────────────
+    public static function dedicatoriasList(): void
+    {
+        $session = Auth::requireAuth();
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $soloPersonales = isset($_GET['personales']);
+        View::render('admin/dedicatoria_list', [
+            'session' => $session, 'q' => $q, 'soloPersonales' => $soloPersonales,
+            'items' => Repo::dedicatoriasAdmin($q === '' ? null : $q, 300, $soloPersonales),
+            'notice' => self::noticeFromQuery(),
+        ], ['title' => 'Dedicatorias — curación · Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function dedicatoriaEditForm(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (string) $p['id'];
+        $dedic = Repo::fetchDedicatoriaAdmin($id);
+        if ($dedic === null) Http::notFound();
+        View::render('admin/dedicatoria_form', [
+            'session' => $session, 'dedic' => $dedic,
+            'notice' => self::noticeFromQuery(), 'error' => null,
+        ], ['title' => 'Editar dedicatoria #' . $id . ' — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function dedicatoriaEditPost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
+        $r = AdminRepo::renameDedicatoria(
+            $id,
+            (string) ($_POST['NOMBRE'] ?? ''),
+            (string) ($_POST['LOCALIDAD'] ?? ''),
+            is_string($_POST['PROVINCIA'] ?? null) ? (string) $_POST['PROVINCIA'] : null,
+            isset($_POST['PERSONAL'])
+        );
+        if (($r['code'] ?? '') !== 'UPDATED') Http::redirect("/dashboard/dedicatoria/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/dedicatoria/$id?saved=1", 302);
+    }
+
+    public static function dedicatoriaAliasMovePost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
+        $r = AdminRepo::moverAlias(
+            (string) ($_POST['variante'] ?? ''),
+            (string) ($_POST['localidad'] ?? ''),
+            (int) ($_POST['destino'] ?? 0)
+        );
+        if (($r['code'] ?? '') !== 'MOVED') Http::redirect("/dashboard/dedicatoria/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        // Si el origen quedó vacío y se eliminó, no hay ficha a la que volver.
+        if (Repo::fetchDedicatoriaAdmin((string) $id) === null) Http::redirect('/dashboard/dedicatorias?moved=1', 302);
+        Http::redirect("/dashboard/dedicatoria/$id?moved=1", 302);
+    }
+
+    public static function dedicatoriaAliasSplitPost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
+        $r = AdminRepo::separarAlias((string) ($_POST['variante'] ?? ''), (string) ($_POST['localidad'] ?? ''));
+        if (($r['code'] ?? '') !== 'SPLIT') Http::redirect("/dashboard/dedicatoria/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        // Ir a la canónica recién creada para renombrarla.
+        Http::redirect('/dashboard/dedicatoria/' . $r['idDedic'] . '?split=1', 302);
+    }
+
+    public static function dedicatoriaUnifyPost(array $p): void
+    {
+        $session = Auth::requireAuth();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/dedicatoria/$id?err=CSRF", 302);
+        $dedic = Repo::fetchDedicatoriaAdmin((string) $id);
+        if ($dedic === null) Http::notFound();
+        // El objetivo se pasa como índice en la lista renderizada (misma ordenación);
+        // así evitamos codificar el par (variante, localidad) en el value del <select>.
+        $idx = (int) ($_POST['objetivo'] ?? -1);
+        if (!isset($dedic['variantes'][$idx])) Http::redirect("/dashboard/dedicatoria/$id?err=OBJETIVO_INVALIDO", 302);
+        $v = $dedic['variantes'][$idx];
+        $r = AdminRepo::unificarVariantes($id, (string) $v['VARIANTE'], (string) $v['LOCALIDAD']);
+        if (($r['code'] ?? '') !== 'UNIFIED') Http::redirect("/dashboard/dedicatoria/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+        Http::redirect("/dashboard/dedicatoria/$id?unified=" . $r['marchas'], 302);
     }
 
     // ── Ingesta (revisión de candidatos de YouTube) ─────────────────────────

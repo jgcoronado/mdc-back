@@ -31,6 +31,10 @@ $router->get('/autor', [Pages::class, 'autorList']);
 $router->get('/banda', [Pages::class, 'bandaList']);
 $router->get('/disco', [Pages::class, 'discoList']);
 
+// ── Dedicatorias: hubs de advocación (N-01 / N-02) ────────────────────────────
+$router->get('/dedicatorias', [Pages::class, 'dedicatoriaList']);
+$router->get('/dedicatoria/{slugAndId}', [Pages::class, 'dedicatoriaDetail']);
+
 // ── Detalles (catch-all por entidad) ──────────────────────────────────────────
 $router->get('/marcha/{slugAndId}', [Pages::class, 'marchaDetail']);
 $router->get('/autor/{slugAndId}', [Pages::class, 'autorDetail']);
@@ -98,6 +102,13 @@ $router->post('/dashboard/banda/{id}/relacion/{rel}/borrar', [Admin::class, 'ban
 $router->get('/api/autor/fastSearch', [Admin::class, 'autorFastSearch']);
 $router->get('/api/banda/fastSearch', [Admin::class, 'bandaFastSearch']);
 $router->get('/api/dedicatoria/fastSearch', [Admin::class, 'dedicatoriaFastSearch']);
+// Curación de dedicatorias (hubs N-01/N-02). Lista antes que el detalle {id}.
+$router->get('/dashboard/dedicatorias', [Admin::class, 'dedicatoriasList']);
+$router->get('/dashboard/dedicatoria/{id}', [Admin::class, 'dedicatoriaEditForm']);
+$router->post('/dashboard/dedicatoria/{id}', [Admin::class, 'dedicatoriaEditPost']);
+$router->post('/dashboard/dedicatoria/{id}/alias/mover', [Admin::class, 'dedicatoriaAliasMovePost']);
+$router->post('/dashboard/dedicatoria/{id}/alias/separar', [Admin::class, 'dedicatoriaAliasSplitPost']);
+$router->post('/dashboard/dedicatoria/{id}/unificar', [Admin::class, 'dedicatoriaUnifyPost']);
 
 // ── Ingesta (revisión de candidatos de YouTube, ver tools/ingest/) ───────────
 $router->get('/dashboard/ingesta', [Admin::class, 'ingestaList']);

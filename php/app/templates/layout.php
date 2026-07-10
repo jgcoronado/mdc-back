@@ -21,6 +21,7 @@ $nav = [
     '/autor' => 'Compositores',
     '/banda' => 'Bandas',
     '/disco' => 'Discos',
+    '/dedicatorias' => 'Dedicatorias',
     '/estadisticas' => 'Estadísticas',
 ];
 

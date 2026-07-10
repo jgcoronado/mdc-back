@@ -147,6 +147,43 @@ final class Seo
         return $schema;
     }
 
+    /**
+     * Hub de dedicatoria (pantalla N-01): CollectionPage cuyo mainEntity es un
+     * ItemList de las marchas dedicadas a la advocación.
+     *
+     * @param array{NOMBRE:string,LOCALIDAD:string,marchas:list<array<string,mixed>>} $data
+     */
+    public static function dedicatoria(array $data, string $url): array
+    {
+        $loc = trim((string) ($data['LOCALIDAD'] ?? ''));
+        $titular = $data['NOMBRE'] . ($loc !== '' ? ' (' . $loc . ')' : '');
+        $items = array_map(
+            static fn(array $m, int $idx): array => [
+                '@type' => 'ListItem',
+                'position' => $idx + 1,
+                'item' => [
+                    '@type' => 'MusicComposition',
+                    'name' => $m['TITULO'],
+                    'url' => self::base() . '/marcha/' . self::slugify((string) $m['TITULO']) . '-' . $m['ID_MARCHA'],
+                ],
+            ],
+            $data['marchas'],
+            array_keys($data['marchas'])
+        );
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'CollectionPage',
+            'name' => 'Marchas dedicadas a ' . $titular,
+            'url' => $url,
+            'description' => 'Marchas procesionales dedicadas a ' . $titular . '.',
+            'mainEntity' => [
+                '@type' => 'ItemList',
+                'numberOfItems' => count($items),
+                'itemListElement' => $items,
+            ],
+        ];
+    }
+
     /** @param list<array{name:string,url:string}> $items */
     public static function breadcrumbs(array $items): array
     {

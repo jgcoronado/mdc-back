@@ -220,6 +220,74 @@ final class Pages
         ]);
     }
 
+    // ── Dedicatorias: hubs de advocación (N-01 / N-02) ──────────────────────────
+
+    /** N-02 · índice A–Z de advocaciones, filtrable por localidad/provincia. */
+    public static function dedicatoriaList(): void
+    {
+        $localidad = trim((string) ($_GET['localidad'] ?? ''));
+        $provincia = trim((string) ($_GET['provincia'] ?? ''));
+        $hasQuery = $localidad !== '' || $provincia !== '';
+        $criteria = ['localidad' => $localidad, 'provincia' => $provincia];
+
+        $base = self::base();
+        $items = Repo::dedicatoriaIndex($localidad !== '' ? $localidad : null, $provincia !== '' ? $provincia : null);
+        // Filtrado = vista de utilidad sobre el índice; el índice sin filtrar es
+        // el que se indexa y entra en el sitemap (mismo criterio que /marcha).
+        $hasQuery ? Http::noStore() : Http::cachePublic(3600);
+        View::render('dedicatoria_list', compact('items', 'criteria'), [
+            'title' => 'Dedicatorias — advocaciones y hermandades · Marchas de Cristo',
+            'description' => 'Directorio de advocaciones y hermandades a las que están dedicadas '
+                . 'las marchas procesionales del catálogo, con el número de marchas de cada una.',
+            'noindex' => $hasQuery,
+            'jsonld' => $hasQuery ? [] : [
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Dedicatorias', 'url' => $base . '/dedicatorias'],
+                ]),
+            ],
+        ]);
+    }
+
+    /** N-01 · hub de una advocación: todas sus marchas dedicadas. */
+    public static function dedicatoriaDetail(array $p): void
+    {
+        $id = Slug::extractId($p['slugAndId']);
+        if ($id === null) Http::notFound();
+        $d = Repo::fetchDedicatoria($id);
+        if ($d === null) Http::notFound();
+
+        $loc = trim((string) $d['LOCALIDAD']);
+        $label = $d['NOMBRE'] . ($loc !== '' ? ' ' . $loc : '');
+        $canonical = Slug::buildDetailPath('dedicatoria', $d['ID_DEDIC'], $label);
+        if ('/dedicatoria/' . $p['slugAndId'] !== $canonical) Http::redirect($canonical);
+
+        $base = self::base();
+        $url = $base . $canonical;
+        $titular = $d['NOMBRE'] . ($loc !== '' ? ' (' . $loc . ')' : '');
+        $thin = $d['N'] < Repo::DEDIC_MIN_MARCHAS;
+        $personal = (int) ($d['PERSONAL'] ?? 0) === 1;
+
+        Http::cachePublic(3600);
+        View::render('dedicatoria_detail', ['d' => $d, 'url' => $url], [
+            'title' => 'Marchas dedicadas a ' . $titular . ' — Marchas de Cristo',
+            'description' => 'Catálogo de ' . $d['N'] . ' marcha' . ($d['N'] === 1 ? '' : 's')
+                . ' procesional' . ($d['N'] === 1 ? '' : 'es') . ' dedicada' . ($d['N'] === 1 ? '' : 's')
+                . ' a ' . $titular . ', con sus compositores y grabaciones.',
+            'noindex' => $thin || $personal,
+            'og' => ['type' => 'website', 'title' => 'Marchas dedicadas a ' . $d['NOMBRE'],
+                'description' => $d['N'] . ' marchas procesionales dedicadas a ' . $titular, 'url' => $url],
+            'jsonld' => [
+                Seo::dedicatoria($d, $url),
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Dedicatorias', 'url' => $base . '/dedicatorias'],
+                    ['name' => $titular, 'url' => $url],
+                ]),
+            ],
+        ]);
+    }
+
     // ── Estadísticas ──────────────────────────────────────────────────────────
     public static function estadisticas(): void
     {
@@ -248,6 +316,7 @@ final class Pages
             [$base . '/autor', 'weekly', '0.8'],
             [$base . '/banda', 'weekly', '0.8'],
             [$base . '/disco', 'weekly', '0.8'],
+            [$base . '/dedicatorias', 'weekly', '0.8'],
             [$base . '/estadisticas', 'weekly', '0.7'],
         ];
 
@@ -265,6 +334,11 @@ final class Pages
             }
             foreach (Db::all('SELECT ID_DISCO AS id, NOMBRE_CD AS label FROM disco') as $r) {
                 $urls[] = [$base . Slug::buildDetailPath('disco', $r['id'], (string) $r['label']), 'monthly', '0.6'];
+            }
+            // Hubs de dedicatoria con sustancia (≥ DEDIC_MIN_MARCHAS marchas).
+            foreach (Repo::dedicatoriaIndex() as $r) {
+                $label = $r['NOMBRE'] . ($r['LOCALIDAD'] !== '' ? ' ' . $r['LOCALIDAD'] : '');
+                $urls[] = [$base . Slug::buildDetailPath('dedicatoria', $r['ID_DEDIC'], $label), 'monthly', '0.6'];
             }
         } catch (Throwable $e) {
             error_log('[sitemap] ' . $e->getMessage());
