@@ -87,9 +87,20 @@ final class PropuestaRepo
     private static function writeAtomic(string $path, array $registro): void
     {
         $json = json_encode($registro, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        // Si la serialización falla (p.ej. entrada no-UTF-8), abortamos: nunca
+        // dejamos un fichero de propuesta vacío o corrupto que luego el admin no
+        // podría leer.
+        if ($json === false) {
+            throw new \RuntimeException('No se pudo serializar la propuesta: ' . json_last_error_msg());
+        }
         $tmp = $path . '.tmp';
-        file_put_contents($tmp, (string) $json, LOCK_EX);
-        rename($tmp, $path); // atómico en el mismo FS
+        if (file_put_contents($tmp, $json, LOCK_EX) === false) {
+            throw new \RuntimeException('No se pudo escribir la propuesta en disco.');
+        }
+        if (!rename($tmp, $path)) { // atómico en el mismo FS
+            @unlink($tmp);
+            throw new \RuntimeException('No se pudo finalizar la escritura de la propuesta.');
+        }
     }
 
     /**

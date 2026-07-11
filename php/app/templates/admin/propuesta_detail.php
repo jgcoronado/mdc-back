@@ -1,7 +1,7 @@
 <?php use App\View as V; use App\Auth;
 /** @var array $session @var array<string,mixed> $prop @var array<string,mixed>|null $actual
  *  @var list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string}> $authors @var list<string> $editable
- *  @var array|null $notice @var string|null $error */
+ *  @var string|null $bandaNombre @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
 $ent = (string) ($prop['entidad'] ?? '');
 $acc = (string) ($prop['accion'] ?? '');
@@ -48,6 +48,11 @@ $textareas = ['BIO', 'DETALLES_MARCHA'];
 <?php endif; ?>
         <p class="muted small">Puedes ajustar los valores antes de aceptar. Al aceptar se aplican sobre la base de datos local.</p>
     </div>
+
+    <section>
+        <h2 class="section-title">Previsualización <span class="muted small">· cómo quedará la ficha con los valores propuestos</span></h2>
+        <div class="panel"><?= V::capture('admin/_ficha_preview', ['entidad' => $ent, 'datos' => $datos, 'authors' => $authors, 'bandaNombre' => $bandaNombre]) ?></div>
+    </section>
 
     <form class="panel" action="/dashboard/propuesta/<?= V::e($id) ?>/aceptar" method="POST" id="propuestaForm">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">

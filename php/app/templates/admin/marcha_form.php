@@ -31,7 +31,7 @@ $estilo = (string) ($marcha['ESTILO'] ?? '');
 
 <?php if ($error): ?><div class="alert alert-error">Error: <?= V::e($error) ?></div><?php endif; ?>
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
-<?php if ($proposalMode): ?><div class="alert alert-info">Se enviará como <strong>propuesta</strong> para que un administrador la revise; no se guardará directamente.</div><?php endif; ?>
+<?php if ($proposalMode): ?><div class="alert alert-info">Verás una <strong>previsualización</strong> antes de enviar. Tu propuesta la revisará un administrador; no se guarda directamente en la base de datos.</div><?php endif; ?>
 
     <form class="panel" action="<?= V::e($action) ?>" method="POST" id="marchaForm">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
@@ -73,7 +73,7 @@ $estilo = (string) ($marcha['ESTILO'] ?? '');
             <p class="muted">Debe haber al menos un autor.</p>
         </div>
 
-        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Enviar propuesta' : ($isEdit ? 'Guardar cambios' : 'Crear marcha') ?></button></div>
+        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Previsualizar propuesta' : ($isEdit ? 'Guardar cambios' : 'Crear marcha') ?></button></div>
     </form>
 </div>
 <script src="/assets/admin.js" defer></script>

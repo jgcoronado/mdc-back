@@ -80,6 +80,29 @@ final class Admin
         Http::redirect('/dashboard?propuesta=1', 302);
     }
 
+    /**
+     * Envío del editor en dos pasos: primero previsualiza (cómo quedará la
+     * ficha), y solo al confirmar (accion=enviar) se crea la propuesta. Preserva
+     * los datos entre pasos reenviándolos como campos ocultos en la confirmación.
+     *
+     * @param array<string,mixed> $datos
+     * @param list<int> $autoresIds
+     */
+    private static function editorSubmit(array $session, string $entidad, string $accion, ?int $targetId, array $datos, array $autoresIds, string $formAction): never
+    {
+        if (($_POST['accion'] ?? '') === 'enviar') {
+            self::enqueueProposal($session, $entidad, $accion, $targetId, $datos, $autoresIds); // redirige (never)
+        }
+        View::render('admin/propuesta_preview', [
+            'session' => $session, 'entidad' => $entidad, 'accion' => $accion, 'targetId' => $targetId,
+            'datos' => $datos, 'autoresIds' => array_values($autoresIds),
+            'authors' => $entidad === 'marcha' ? Repo::autoresByIds($autoresIds) : [],
+            'bandaNombre' => $entidad === 'marcha' ? self::bandaNombre($datos['BANDA_ESTRENO'] ?? null) : null,
+            'formAction' => $formAction,
+        ], ['title' => 'Previsualizar propuesta — Marchas de Cristo', 'noindex' => true]);
+        exit;
+    }
+
     // ── Login / logout ─────────────────────────────────────────────────────
     public static function loginForm(): void
     {
@@ -189,7 +212,7 @@ final class Admin
         if (!self::isAdmin($session)) {
             $ids = self::postAutoresIds();
             if ($ids === []) Http::redirect("/dashboard/marcha/$id?err=AUTHORS_REQUIRED", 302);
-            self::enqueueProposal($session, 'marcha', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_MARCHA), $ids);
+            self::editorSubmit($session, 'marcha', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_MARCHA), $ids, "/dashboard/marcha/$id");
         }
 
         // Delta de campos editables.
@@ -255,7 +278,7 @@ final class Admin
         // Editor: propuesta en lugar de escritura directa.
         if (!self::isAdmin($session)) {
             if ($ids === []) { $reRender('AUTHORS_REQUIRED'); return; }
-            self::enqueueProposal($session, 'marcha', 'add', null, $fields, $ids);
+            self::editorSubmit($session, 'marcha', 'add', null, $fields, $ids, '/dashboard/marcha/add');
         }
 
         $r = AdminRepo::addMarcha($fields, $ids);
@@ -329,7 +352,7 @@ final class Admin
 
         // Editor: propuesta en lugar de escritura directa.
         if (!self::isAdmin($session)) {
-            self::enqueueProposal($session, 'autor', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_AUTOR), []);
+            self::editorSubmit($session, 'autor', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_AUTOR), [], "/dashboard/autor/$id");
         }
 
         $keys = [];
@@ -387,7 +410,7 @@ final class Admin
 
         // Editor: propuesta en lugar de escritura directa.
         if (!self::isAdmin($session)) {
-            self::enqueueProposal($session, 'autor', 'add', null, $fields, []);
+            self::editorSubmit($session, 'autor', 'add', null, $fields, [], '/dashboard/autor/add');
         }
 
         $r = AdminRepo::addAutor($fields);
@@ -423,7 +446,7 @@ final class Admin
 
         // Editor: propuesta en lugar de escritura directa (solo campos básicos).
         if (!self::isAdmin($session)) {
-            self::enqueueProposal($session, 'banda', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_BANDA), []);
+            self::editorSubmit($session, 'banda', 'edit', (int) $id, self::postDatos(AdminRepo::EDITABLE_BANDA), [], "/dashboard/banda/$id");
         }
 
         $keys = [];
@@ -471,7 +494,7 @@ final class Admin
         // Editor: propuesta en lugar de escritura directa.
         if (!self::isAdmin($session)) {
             if (trim((string) ($fields['NOMBRE_BREVE'] ?? '')) === '') { $reRender('NOMBRE_REQUERIDO'); return; }
-            self::enqueueProposal($session, 'banda', 'add', null, $fields, []);
+            self::editorSubmit($session, 'banda', 'add', null, $fields, [], '/dashboard/banda/add');
         }
 
         $r = AdminRepo::addBanda($fields);
@@ -887,6 +910,15 @@ final class Admin
 
     // ── Propuestas de editores (revisión, solo admin) ────────────────────────
 
+    /** Nombre breve de una banda por id (para el preview de BANDA_ESTRENO), o null. */
+    private static function bandaNombre(mixed $id): ?string
+    {
+        $id = trim((string) $id);
+        if ($id === '' || !ctype_digit($id)) return null;
+        $b = Repo::fetchBandaRaw($id);
+        return $b !== null ? (string) ($b['NOMBRE_BREVE'] ?? '') : null;
+    }
+
     /** Conjunto de campos editables según entidad/acción de una propuesta. */
     private static function editableFor(string $entidad, string $accion): array
     {
@@ -932,6 +964,7 @@ final class Admin
         View::render('admin/propuesta_detail', [
             'session' => $session, 'prop' => $prop, 'authors' => $authors,
             'actual' => self::propuestaActual($prop),
+            'bandaNombre' => ($prop['entidad'] ?? '') === 'marcha' ? self::bandaNombre(($prop['datos']['BANDA_ESTRENO'] ?? null)) : null,
             'editable' => self::editableFor((string) ($prop['entidad'] ?? ''), (string) ($prop['accion'] ?? '')),
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => 'Revisar propuesta — Marchas de Cristo', 'noindex' => true]);

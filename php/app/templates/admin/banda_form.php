@@ -56,7 +56,7 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
 
 <?php if ($error): ?><div class="alert alert-error">Error: <?= V::e($error) ?></div><?php endif; ?>
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
-<?php if ($proposalMode): ?><div class="alert alert-info">Se enviará como <strong>propuesta</strong> para que un administrador la revise; no se guardará directamente.</div><?php endif; ?>
+<?php if ($proposalMode): ?><div class="alert alert-info">Verás una <strong>previsualización</strong> antes de enviar. Tu propuesta la revisará un administrador; no se guarda directamente en la base de datos.</div><?php endif; ?>
 
     <form class="panel" action="<?= V::e($action) ?>" method="POST">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
@@ -66,7 +66,7 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
             <input class="input" id="<?= $key ?>" name="<?= $key ?>" type="<?= $type ?>"<?= $type === 'number' ? ' min="1800" max="2100"' : '' ?> value="<?= $val($key) ?>">
         </div>
 <?php endforeach; ?>
-        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Enviar propuesta' : 'Guardar cambios' ?></button></div>
+        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Previsualizar propuesta' : 'Guardar cambios' ?></button></div>
     </form>
 <?php if ($showLinaje): ?>
 
