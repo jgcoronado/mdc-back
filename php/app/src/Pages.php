@@ -113,9 +113,10 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
         $autores = implode(', ', array_map(static fn(array $a): string => (string) $a['nombre'], $m['AUTOR']));
+        $enlaces = EnlaceRepo::publicadosDe('marcha', (int) $m['ID_MARCHA']);
 
         Http::cachePublic(3600);
-        View::render('marcha_detail', ['m' => $m, 'url' => $url], [
+        View::render('marcha_detail', ['m' => $m, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $m['TITULO'] . ' — Marchas de Cristo',
             'description' => 'Marcha procesional "' . $m['TITULO'] . '" compuesta por ' . $autores . '.'
                 . (!empty($m['DEDICATORIA']) ? ' Dedicada a ' . $m['DEDICATORIA'] . '.' : ''),
@@ -175,8 +176,10 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
 
+        $enlaces = EnlaceRepo::publicadosDe('banda', (int) $b['ID_BANDA']);
+
         Http::cachePublic(3600);
-        View::render('banda_detail', ['b' => $b, 'url' => $url], [
+        View::render('banda_detail', ['b' => $b, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $b['NOMBRE_BREVE'] . ' — Marchas de Cristo',
             'description' => $b['NOMBRE_COMPLETO'] . ', banda de ' . $b['LOCALIDAD'] . '. Ha grabado ' . $b['discosLength'] . ' discos y estrenado ' . $b['marchasLength'] . ' marchas.',
             'og' => ['type' => 'music.playlist', 'title' => $b['NOMBRE_BREVE'], 'description' => 'Banda de música procesional de ' . $b['LOCALIDAD'], 'url' => $url],
@@ -204,8 +207,10 @@ final class Pages
         $base = self::base();
         $url = $base . $canonical;
 
+        $enlaces = EnlaceRepo::publicadosDe('disco', (int) $d['ID_DISCO']);
+
         Http::cachePublic(3600);
-        View::render('disco_detail', ['d' => $d, 'url' => $url], [
+        View::render('disco_detail', ['d' => $d, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $d['NOMBRE_CD'] . ' — Marchas de Cristo',
             'description' => 'Disco de música procesional "' . $d['NOMBRE_CD'] . '" de ' . $d['BANDA'] . '. Contiene ' . $d['marchasLength'] . ' marchas.',
             'og' => ['type' => 'music.album', 'title' => $d['NOMBRE_CD'], 'description' => 'Álbum de música procesional de ' . $d['BANDA'], 'url' => $url],

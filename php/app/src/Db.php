@@ -16,6 +16,14 @@ final class Db
 {
     private static ?PDO $pdo = null;
 
+    /** Usuario que se registra en admin_log; lo fija Auth::requireAuth por petición. */
+    private static string $auditUser = 'system';
+
+    public static function setAuditUser(string $user): void
+    {
+        self::$auditUser = $user !== '' ? $user : 'system';
+    }
+
     public static function pdo(): PDO
     {
         if (self::$pdo instanceof PDO) {
@@ -139,7 +147,7 @@ final class Db
     {
         self::run(
             'INSERT INTO admin_log (accion, tabla, id_registro, usuario, ts, payload) VALUES (?, ?, ?, ?, ?, ?)',
-            [$accion, $tabla, $idRegistro, 'admin', time(), $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null]
+            [$accion, $tabla, $idRegistro, self::$auditUser, time(), $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null]
         );
     }
 

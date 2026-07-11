@@ -6,3 +6,5 @@ mdc.db-shm
 .login_attempts.json
 # Backups generados por tools/backup.php
 backups/
+# Propuestas de editores (runtime; se bajan de prod con scripts/sync_propuestas_from_prod.php)
+propuestas/

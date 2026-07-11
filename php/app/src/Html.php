@@ -23,6 +23,30 @@ final class Html
             . '" oncontextmenu="return false" onerror="this.style.display=\'none\'">';
     }
 
+    // ── Enlaces de streaming (ficha pública) ─────────────────────────────────
+    private const STREAMING_LABELS = [
+        'spotify' => 'Spotify', 'apple' => 'Apple Music', 'deezer' => 'Deezer',
+        'youtube' => 'YouTube', 'tidal' => 'Tidal', 'amazon' => 'Amazon Music',
+    ];
+
+    /**
+     * Botonera "Escuchar en …" a partir de [servicio => url] (ver EnlaceRepo::publicadosDe).
+     * Devuelve '' si no hay enlaces, para poder incrustarlo sin comprobaciones extra.
+     *
+     * @param array<string,string> $enlaces
+     */
+    public static function streaming(array $enlaces): string
+    {
+        if ($enlaces === []) return '';
+        $btns = '';
+        foreach ($enlaces as $servicio => $url) {
+            $label = self::STREAMING_LABELS[$servicio] ?? ucfirst($servicio);
+            $btns .= '<a class="stream-btn stream-' . self::e($servicio) . '" href="' . self::e($url)
+                . '" target="_blank" rel="noopener noreferrer nofollow">' . self::e($label) . '</a>';
+        }
+        return '<div class="streaming"><span class="streaming-lbl">Escuchar en</span>' . $btns . '</div>';
+    }
+
     // ── Pagination ───────────────────────────────────────────────────────────
     public static function pagination(int $currentPage, int $totalRows, int $limit, string $basePath, array $criteria): string
     {

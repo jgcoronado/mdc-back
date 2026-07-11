@@ -469,3 +469,29 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
 }
+
+/* ── Enlaces de streaming (ficha de disco/banda) ─────────────────────────── */
+.streaming { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.7rem 0 0.2rem; }
+.streaming-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-c); margin-right: 0.15rem; }
+.stream-btn {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.8rem; line-height: 1; text-decoration: none;
+    padding: 0.4rem 0.7rem; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--fg); background: var(--bg);
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.stream-btn:hover { border-color: currentColor; }
+.stream-spotify:hover { color: #1db954; }
+.stream-apple:hover   { color: #fa2d48; }
+.stream-deezer:hover  { color: #a238ff; }
+.stream-youtube:hover { color: #ff0000; }
+.stream-tidal:hover   { color: #00ffff; }
+.stream-amazon:hover  { color: #00a8e1; }
+.stream-btn::before { content: "▸"; font-size: 0.7em; color: var(--muted-c); }
+.stream-btn:hover::before { color: currentColor; }
+
+/* Texto de ayuda debajo de los campos del formulario admin */
+.field-help { margin-top: 0.25rem; }
+/* Botón con apariencia de enlace (para «Quitar selección» inline) */
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: inherit; text-decoration: underline; }
+.link-btn:hover { color: var(--ink); }

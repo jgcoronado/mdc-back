@@ -1,8 +1,10 @@
 <?php use App\View as V; use App\Auth; use App\Slug as S;
 /** @var array $session @var array<string,mixed> $banda @var string $action
  *  @var list<array<string,mixed>> $relaciones @var list<string> $tipos
- *  @var array|null $notice @var string|null $error */
+ *  @var bool $showLinaje @var bool $proposalMode @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
+$showLinaje = $showLinaje ?? true;
+$proposalMode = $proposalMode ?? false;
 $id = (int) $banda['ID_BANDA'];
 
 // Los años se guardan como "1980.0" en datos heredados; se muestran como año limpio.
@@ -22,7 +24,6 @@ $fields = [
     ['DIRECTOR_ACTUAL', 'Director actual', 'text'],
     ['DIR_MUS_ACTUAL', 'Director musical actual', 'text'],
     ['WEB', 'Web', 'text'],
-    ['LINK_FORO', 'Enlace al foro', 'text'],
 ];
 
 $tipoLabel = [
@@ -54,6 +55,7 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
 
 <?php if ($error): ?><div class="alert alert-error">Error: <?= V::e($error) ?></div><?php endif; ?>
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
+<?php if ($proposalMode): ?><div class="alert alert-info">Verás una <strong>previsualización</strong> antes de enviar. Tu propuesta la revisará un administrador; no se guarda directamente en la base de datos.</div><?php endif; ?>
 
     <form class="panel" action="<?= V::e($action) ?>" method="POST">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
@@ -63,8 +65,9 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
             <input class="input" id="<?= $key ?>" name="<?= $key ?>" type="<?= $type ?>"<?= $type === 'number' ? ' min="1800" max="2100"' : '' ?> value="<?= $val($key) ?>">
         </div>
 <?php endforeach; ?>
-        <div><button class="btn btn-neutral" type="submit">Guardar cambios</button></div>
+        <div><button class="btn btn-neutral" type="submit"><?= $proposalMode ? 'Previsualizar propuesta' : 'Guardar cambios' ?></button></div>
     </form>
+<?php if ($showLinaje): ?>
 
     <section>
         <h2 class="section-title">Linaje: predecesoras, sucesoras y juveniles</h2>
@@ -157,5 +160,8 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
             <div><button class="btn btn-neutral" type="submit">Añadir relación</button></div>
         </form>
     </section>
+<?php endif; ?>
 </div>
+<?php if ($showLinaje): ?>
 <script src="/assets/banda-relaciones.js" defer></script>
+<?php endif; ?>
