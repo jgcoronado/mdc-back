@@ -191,6 +191,11 @@ final class Admin
         $id = (string) $p['id'];
         $marcha = Repo::fetchMarchaRaw($id);
         if ($marcha === null) Http::notFound();
+        // Enriquecer con nombre de banda para mostrarlo en el autocomplete del formulario.
+        if (!empty($marcha['BANDA_ESTRENO'])) {
+            $banda = Db::one('SELECT NOMBRE_BREVE FROM banda WHERE ID_BANDA = ?', [$marcha['BANDA_ESTRENO']]);
+            $marcha['BANDA_NOMBRE'] = $banda !== null ? (string) $banda['NOMBRE_BREVE'] : '';
+        }
         View::render('admin/marcha_form', [
             'mode' => 'edit', 'session' => $session, 'action' => "/dashboard/marcha/$id",
             'marcha' => $marcha, 'authors' => Repo::currentAutoresForMarcha($id),
@@ -646,7 +651,7 @@ final class Admin
         if ($page > 1) $backParams['page'] = $page;
         View::render('admin/ingesta_list', [
             'session' => $session, 'filters' => $filters, 'page' => $page,
-            'result' => $result, 'bandas' => IngestaRepo::bandasConCandidatos(),
+            'result' => $result, 'bandas' => IngestaRepo::bandasConCandidatos($filters['estado']),
             'counts' => IngestaRepo::counts(), 'backQs' => http_build_query($backParams),
         ], ['title' => 'Ingesta desde YouTube — Marchas de Cristo', 'noindex' => true]);
     }
@@ -835,6 +840,78 @@ final class Admin
         if (mb_strlen($nombre) < 3) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
         $data = Repo::autorCandidatosPorTexto($nombre, 15);
         echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /** Localidades y provincias únicas (marcha + banda) para el autocompletado del formulario. */
+    public static function localidadFastSearch(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (Auth::currentSession() === null) {
+            http_response_code(401);
+            echo json_encode(['code' => 'AUTH_REQUIRED', 'data' => []]);
+            return;
+        }
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $campo = ($_GET['campo'] ?? 'localidad') === 'provincia' ? 'provincia' : 'localidad';
+        if (mb_strlen($q) < 2) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
+
+        $col = strtoupper($campo);
+        $needle = '%' . Db::noAcc($q) . '%';
+        $rows = Db::all(
+            "SELECT DISTINCT $col AS valor FROM (
+                SELECT $col FROM marcha WHERE $col IS NOT NULL AND $col != '' AND NOACC($col) LIKE ?
+                UNION
+                SELECT $col FROM banda WHERE $col IS NOT NULL AND $col != '' AND NOACC($col) LIKE ?
+             ) t ORDER BY valor ASC LIMIT 15",
+            [$needle, $needle]
+        );
+        $data = array_column($rows, 'valor');
+        echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Detecta posibles duplicados de marcha por título (similitud > 80 %) dentro
+     * del conjunto de marchas que comparten al menos un autor con los indicados.
+     */
+    public static function marchaCheckDuplicate(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (Auth::currentSession() === null) {
+            http_response_code(401);
+            echo json_encode(['code' => 'AUTH_REQUIRED', 'data' => []]);
+            return;
+        }
+        $titulo = trim((string) ($_GET['titulo'] ?? ''));
+        $rawIds = $_GET['autorIds'] ?? [];
+        $autorIds = is_array($rawIds) ? array_map('intval', $rawIds) : [(int) $rawIds];
+        $autorIds = array_filter($autorIds, static fn(int $id): bool => $id > 0);
+        $excludeId = isset($_GET['excludeId']) ? (int) $_GET['excludeId'] : null;
+
+        if ($titulo === '' || $autorIds === []) {
+            echo json_encode(['rowsReturned' => 0, 'data' => []]);
+            return;
+        }
+
+        $ph = implode(',', array_fill(0, count($autorIds), '?'));
+        $candidatas = Db::all(
+            "SELECT DISTINCT m.ID_MARCHA, m.TITULO
+             FROM marcha m
+             JOIN marcha_autor ma ON ma.ID_MARCHA = m.ID_MARCHA
+             WHERE ma.ID_AUTOR IN ($ph)" . ($excludeId !== null ? " AND m.ID_MARCHA != $excludeId" : ''),
+            array_values($autorIds)
+        );
+
+        $hits = [];
+        foreach ($candidatas as $c) {
+            $sim = Similarity::ratio($titulo, (string) $c['TITULO']);
+            if ($sim >= 0.80) {
+                $hits[] = ['ID_MARCHA' => (int) $c['ID_MARCHA'], 'TITULO' => $c['TITULO'], 'sim' => round($sim, 2)];
+            }
+        }
+        usort($hits, static fn($a, $b) => $b['sim'] <=> $a['sim']);
+        echo json_encode(['rowsReturned' => count($hits), 'data' => $hits], JSON_UNESCAPED_UNICODE);
     }
 
     // ── Gestión de usuarios (solo admin) ─────────────────────────────────────

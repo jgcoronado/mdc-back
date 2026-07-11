@@ -1,7 +1,7 @@
 <?php use App\View as V; use App\Html as H; use App\IngestaRepo; use App\Auth;
 /** @var array $session @var array{estado:string,banda:string,clasificacion:string} $filters
  *  @var int $page @var array{rowsReturned:int,totalRows:int,data:list<array<string,mixed>>} $result
- *  @var list<array{ID_BANDA:int,NOMBRE_BREVE:string,LOCALIDAD:?string}> $bandas @var array<string,int> $counts @var string $backQs */
+ *  @var list<array{ID_BANDA:int,NOMBRE_BREVE:string,LOCALIDAD:?string,N:int}> $bandas @var array<string,int> $counts @var string $backQs */
 $limit = 30;
 $estadoLabels = ['pendiente' => 'Pendientes', 'aceptado' => 'Aceptados', 'descartado' => 'Descartados', 'duplicado' => 'Duplicados'];
 $claseBadge = ['estreno' => 'badge-estreno', 'novedad' => 'badge-novedad', 'recuperacion' => 'badge-recuperacion'];
@@ -40,7 +40,7 @@ $puedeDescartarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
                     <option value="">Todas</option>
 <?php foreach ($bandas as $b): ?>
                     <option value="<?= (int) $b['ID_BANDA'] ?>" <?= (string) $b['ID_BANDA'] === $filters['banda'] ? 'selected' : '' ?>>
-                        <?= V::e($b['NOMBRE_BREVE'] ?? ('Banda #' . $b['ID_BANDA'])) ?><?= $b['LOCALIDAD'] ? ' — ' . V::e($b['LOCALIDAD']) : '' ?>
+                        <?= V::e($b['NOMBRE_BREVE'] ?? ('Banda #' . $b['ID_BANDA'])) ?><?= $b['LOCALIDAD'] ? ' — ' . V::e($b['LOCALIDAD']) : '' ?> (<?= (int) $b['N'] ?>)
                     </option>
 <?php endforeach; ?>
                 </select>

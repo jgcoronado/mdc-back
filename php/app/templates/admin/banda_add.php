@@ -15,7 +15,6 @@ $fields = [
     ['DIRECTOR_ACTUAL', 'Director actual', 'text'],
     ['DIR_MUS_ACTUAL', 'Director musical actual', 'text'],
     ['WEB', 'Web', 'text'],
-    ['LINK_FORO', 'Enlace al foro', 'text'],
 ];
 ?>
 <div class="stack admin-form">

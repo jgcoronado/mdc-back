@@ -145,13 +145,29 @@ final class IngestaRepo
         );
     }
 
-    /** Bandas que tienen al menos un candidato (para el <select> de filtro). */
-    public static function bandasConCandidatos(): array
+    /**
+     * Bandas que tienen al menos un candidato (para el <select> de filtro),
+     * con el nº de candidatos que le corresponden (columna N). Si se pasa un
+     * $estado válido, solo cuenta/lista candidatos en ese estado — así el
+     * desplegable refleja la pestaña activa (p.ej. en Pendientes no aparecen
+     * bandas cuyo último pendiente se acaba de descartar, y el nº mostrado
+     * es justo lo que queda por resolver en esa banda).
+     */
+    public static function bandasConCandidatos(?string $estado = null): array
     {
+        $where = '1=1';
+        $values = [];
+        if ($estado !== null && $estado !== '' && $estado !== 'todos' && in_array($estado, self::ESTADOS, true)) {
+            $where = 'c.ESTADO = ?';
+            $values[] = $estado;
+        }
         return Db::all(
-            "SELECT DISTINCT c.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
+            "SELECT c.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD, COUNT(*) AS N
              FROM ingest_candidato c LEFT JOIN banda b ON b.ID_BANDA = c.ID_BANDA
-             ORDER BY b.NOMBRE_BREVE"
+             WHERE $where
+             GROUP BY c.ID_BANDA
+             ORDER BY b.NOMBRE_BREVE",
+            $values
         );
     }
 }

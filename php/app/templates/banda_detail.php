@@ -74,8 +74,6 @@ $nMarchas = (int) $b['marchasLength'];
     </div>
     <h1><?= V::e($b['NOMBRE_BREVE']) ?></h1>
     <p class="asiento"><?= implode('. — ', $asiento) ?>.</p>
-    <?= H::streaming($enlaces ?? []) ?>
-
     <dl class="desc">
 <?php if ($t($b['NOMBRE_COMPLETO'])): ?>
         <div class="f"><dt>Nombre completo</dt><dd><?= V::e($b['NOMBRE_COMPLETO']) ?></dd></div>

@@ -147,7 +147,6 @@ $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
 <?php endif; ?>
         </div>
 <?php endif; ?>
-        <?= H::streaming($enl) ?>
     </div>
 <?php endif; ?>
 
