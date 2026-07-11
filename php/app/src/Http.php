@@ -30,6 +30,15 @@ final class Http
         exit;
     }
 
+    /** 503 cuando el panel intenta escribir fuera del entorno local (ver Db::assertWritable). */
+    public static function readOnly(): never
+    {
+        http_response_code(503);
+        self::noStore();
+        View::render('readonly', [], ['title' => 'Solo lectura — Marchas de Cristo', 'noindex' => true]);
+        exit;
+    }
+
     /** Cacheable por navegador/proxy (páginas públicas estables). */
     public static function cachePublic(int $seconds): void
     {

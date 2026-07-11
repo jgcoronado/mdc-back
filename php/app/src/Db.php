@@ -9,6 +9,14 @@ use RuntimeException;
 use Throwable;
 
 /**
+ * Se lanza cuando el panel intenta escribir en la BD fuera del entorno local.
+ * Router::dispatch la captura para mostrar un aviso en vez de un error crudo.
+ */
+final class ReadOnlyModeException extends RuntimeException
+{
+}
+
+/**
  * Acceso a SQLite vía PDO. Singleton perezoso + prepared statements.
  * Espejo intencionado de nextjs/lib/db.ts (all/run) para portar el resto sin fricción.
  */
@@ -111,12 +119,30 @@ final class Db
     }
 
     /**
+     * Bloquea las escrituras fuera del entorno local (config 'env' => 'local').
+     * Los editores nunca llegan aquí: sus cambios van a PropuestaRepo (JSON),
+     * no a la BD. Este guard cubre al admin y a las pantallas que sí escriben
+     * directo, para que producción se mantenga de solo lectura hasta que se
+     * sincronice el .db a mano.
+     */
+    private static function assertWritable(): void
+    {
+        $env = (string) ($GLOBALS['config']['env'] ?? 'production');
+        if ($env !== 'local') {
+            throw new ReadOnlyModeException(
+                "Escritura en BD deshabilitada: entorno '{$env}' (solo 'local' permite escribir)."
+            );
+        }
+    }
+
+    /**
      * Devuelve el número de filas afectadas.
      *
      * @param list<mixed> $params
      */
     public static function run(string $sql, array $params = []): int
     {
+        self::assertWritable();
         $stmt = self::pdo()->prepare($sql);
         $stmt->execute($params);
         return $stmt->rowCount();
@@ -130,6 +156,7 @@ final class Db
     /** Ejecuta $fn dentro de una transacción (commit/rollback automático). */
     public static function transaction(callable $fn): mixed
     {
+        self::assertWritable();
         $pdo = self::pdo();
         $pdo->beginTransaction();
         try {

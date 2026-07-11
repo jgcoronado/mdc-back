@@ -6,6 +6,11 @@ declare(strict_types=1);
 // config.local.php (NO se sube al git). Ver config.local.example.php.
 $defaults = [
     'debug'            => false,
+    // Fail-safe: solo 'local' habilita escrituras en la BD desde el panel.
+    // Cualquier host que no defina 'env' => 'local' en su config.local.php
+    // (staging, producción, o un despliegue mal configurado) queda en
+    // modo solo-lectura para el dashboard. Ver Db::assertWritable().
+    'env'              => 'production',
     'site_url'         => 'https://marchasdecristo.com',
     'force_canonical_host' => false,          // true tras el cutover → 301 de staging/www a site_url
     'db_path'          => getenv('DB_PATH') ?: (DATA_DIR . '/mdc.db'),

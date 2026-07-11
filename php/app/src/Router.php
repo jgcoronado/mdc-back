@@ -66,7 +66,11 @@ final class Router
                 foreach ($route['params'] as $i => $name) {
                     $args[$name] = $m[$i + 1] ?? null;
                 }
-                ($route['handler'])($args);
+                try {
+                    ($route['handler'])($args);
+                } catch (ReadOnlyModeException) {
+                    Http::readOnly();
+                }
                 return;
             }
         }

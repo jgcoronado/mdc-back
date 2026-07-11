@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 return [
     'debug' => true,
+    'env'   => 'local', // habilita las escrituras del panel de admin. NO poner 'local' en el host de producción.
 
     // 'site_url' => 'https://jaguerra27.helioho.st', // staging durante la migración
     // 'db_path'  => __DIR__ . '/../data/mdc.db',      // por defecto ya apunta aquí
