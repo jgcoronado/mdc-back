@@ -141,6 +141,13 @@ function assertSitemap(string $base): void
     if (count($locs) < 5) {
         throw new RuntimeException('/sitemap.xml → se esperaban al menos 5 <loc>, hay ' . count($locs));
     }
+    $lastmods = $dom->getElementsByTagName('lastmod');
+    if ($lastmods->length !== count($locs)) {
+        throw new RuntimeException('/sitemap.xml → cada <url> debería llevar su <lastmod> (C2)');
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $lastmods->item(0)?->textContent ?? '')) {
+        throw new RuntimeException('/sitemap.xml → <lastmod> no tiene forma YYYY-MM-DD');
+    }
     // Muestra: home + primeras 4 URLs de detalle/hub, comprobadas con GET real.
     $sample = array_slice($locs, 0, 5);
     foreach ($sample as $loc) {

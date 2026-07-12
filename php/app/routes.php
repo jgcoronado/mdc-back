@@ -55,6 +55,17 @@ $router->get('/estadisticas', [Pages::class, 'estadisticas']);
 $router->get('/sitemap.xml', [Pages::class, 'sitemap']);
 $router->get('/robots.txt', [Pages::class, 'robots']);
 
+// Verificación de IndexNow (C2): solo se registra si hay clave configurada.
+// $config ya está en el scope de bootstrap.php cuando se hace require de este
+// fichero, así que la ruta puede depender de su valor sin pasos extra.
+if (!empty($config['indexnow_key'])) {
+    $router->get('/' . $config['indexnow_key'] . '.txt', static function () use ($config): void {
+        header('Content-Type: text/plain; charset=UTF-8');
+        Http::cachePublic(86400);
+        echo $config['indexnow_key'];
+    });
+}
+
 // ── Diagnóstico ──────────────────────────────────────────────────────────────
 // Público: solo "ok" + versión. El detalle (rutas, conteos, FTS) requiere sesión
 // admin para no filtrar la ruta del .db.

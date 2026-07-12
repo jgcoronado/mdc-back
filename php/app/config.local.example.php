@@ -18,4 +18,11 @@ return [
     //                                                 // jaguerra27.helioho.st y www a site_url
     // 'goatcounter_code' => 'marchasdecristo',        // crear cuenta gratis en goatcounter.com;
     //                                                 // fijar SOLO en prod para no contar visitas locales
+
+    // 'indexnow_key' => 'genera-un-hex-random-p-ej-bin2hex-random_bytes-16', // IndexNow (C2):
+    //   1. Genera un valor con: php -r "echo bin2hex(random_bytes(16));"
+    //   2. Copia EL MISMO valor aquí Y en el config.local.php de producción
+    //      (el admin lo necesita para firmar el ping tras el sync; producción
+    //      lo necesita para servir /<clave>.txt, que IndexNow usa para verificar
+    //      que el sitio es tuyo). Sin esto, sync_db_to_prod.php omite el ping.
 ];

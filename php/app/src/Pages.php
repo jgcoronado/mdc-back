@@ -537,6 +537,12 @@ final class Pages
         Http::cachePublic(3600);
         $base = self::base();
 
+        // Todo el catálogo se actualiza de golpe (scripts/sync_db_to_prod.php
+        // reemplaza el .db entero), así que el mtime del fichero es un lastmod
+        // honesto y uniforme para las 5.700+ URLs — no hay tracking por fila.
+        $dbPath = (string) ($GLOBALS['config']['db_path'] ?? '');
+        $lastmod = is_file($dbPath) ? gmdate('Y-m-d', (int) filemtime($dbPath)) : null;
+
         $urls = [
             [$base . '/', 'daily', '1.0'],
             [$base . '/marcha', 'weekly', '0.9'],
@@ -588,10 +594,12 @@ final class Pages
             error_log('[sitemap] ' . $e->getMessage());
         }
 
+        $lastmodTag = $lastmod !== null ? '<lastmod>' . $lastmod . '</lastmod>' : '';
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
         foreach ($urls as [$loc, $freq, $prio]) {
             echo '<url><loc>' . htmlspecialchars($loc, ENT_XML1, 'UTF-8') . '</loc>'
+                . $lastmodTag
                 . '<changefreq>' . $freq . '</changefreq>'
                 . '<priority>' . $prio . '</priority></url>' . "\n";
         }

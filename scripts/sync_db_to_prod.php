@@ -18,8 +18,13 @@ declare(strict_types=1);
  *      aborta a mitad), vía register_shutdown_function.
  *   4. Tras subir, verifica por checksum (SHA-256, re-descargando el
  *      fichero remoto) que lo que quedó en producción coincide byte a byte
- *      con el local. Si no coincide y se movió el .db anterior a backups/
- *      (paso 2 más abajo), restaura automáticamente esa copia.
+ *      con el local. Si no coincide (o si la propia subida falla), restaura
+ *      automáticamente el .db anterior movido a backups/ en el paso 2.
+ *   5. Con el .db ya verificado y la web fuera de mantenimiento, avisa a
+ *      IndexNow (Bing/Yandex/…) con la lista completa de URLs del sitemap ya
+ *      publicado — requiere 'indexnow_key' en config.local.php (ver
+ *      config.local.example.php). Google deprecó su ping de sitemaps en
+ *      2023; para Google el <lastmod> del propio sitemap.xml es la señal.
  *
  * Requiere .env.ftp en la raíz del repo (gitignored) con:
  *   FTP_HOST, FTP_PORT, FTP_USER, FTP_PASSWORD, FTP_REMOTE_DIR (puede ir vacío)
@@ -44,12 +49,13 @@ declare(strict_types=1);
  *   php scripts/sync_db_to_prod.php --force             # sube aunque haya propuestas pendientes
  *                                                         sin bajar en producción (úsalo solo si
  *                                                         ya sabes que no importan)
+ *   php scripts/sync_db_to_prod.php --skip-indexnow     # no avisa a IndexNow tras sincronizar
  */
 
 // ── args ─────────────────────────────────────────────────────────────────
 $args = [
     'dryRun' => false, 'maxDays' => 10, 'local' => __DIR__ . '/../php/data/mdc.db',
-    'skipMove' => false, 'skipVerify' => false, 'force' => false,
+    'skipMove' => false, 'skipVerify' => false, 'force' => false, 'skipIndexNow' => false,
 ];
 for ($i = 1; $i < $argc; $i++) {
     $a = $argv[$i];
@@ -59,6 +65,7 @@ for ($i = 1; $i < $argc; $i++) {
     elseif ($a === '--skip-move') $args['skipMove'] = true;
     elseif ($a === '--skip-verify') $args['skipVerify'] = true;
     elseif ($a === '--force') $args['force'] = true;
+    elseif ($a === '--skip-indexnow') $args['skipIndexNow'] = true;
     else { fwrite(STDERR, "Argumento no reconocido: $a\n"); exit(2); }
 }
 
@@ -215,6 +222,63 @@ function ftpDownload(string $baseUrl, string $user, string $pass, string $remote
     return $ok;
 }
 
+/** Descarga y parsea un sitemap.xml, devolviendo la lista de <loc>. [] si falla. */
+function fetchSitemapUrls(string $sitemapUrl): array
+{
+    $ch = curl_init($sitemapUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 30,
+    ]);
+    $body = curl_exec($ch);
+    if ($body === false) return [];
+    libxml_use_internal_errors(true);
+    $dom = new DOMDocument();
+    if (!$dom->loadXML((string) $body)) return [];
+    $urls = [];
+    foreach ($dom->getElementsByTagName('loc') as $node) {
+        $urls[] = $node->textContent;
+    }
+    return $urls;
+}
+
+/**
+ * Envía la lista completa de URLs a IndexNow (protocolo bulk, hasta 10 000
+ * URLs por petición — de sobra para el catálogo). $keyLocation es la URL
+ * pública donde IndexNow puede verificar la clave (la ruta que registra
+ * routes.php cuando hay indexnow_key configurada). No fatal si falla: la
+ * sincronización ya se ha completado con éxito antes de llegar aquí.
+ */
+function indexNowPing(string $host, string $key, string $keyLocation, array $urls): bool
+{
+    $payload = json_encode([
+        'host' => $host,
+        'key' => $key,
+        'keyLocation' => $keyLocation,
+        'urlList' => $urls,
+    ], JSON_UNESCAPED_SLASHES);
+
+    $ch = curl_init('https://api.indexnow.org/indexnow');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json; charset=utf-8'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 30,
+    ]);
+    $res = curl_exec($ch);
+    if ($res === false) {
+        fwrite(STDERR, '  Aviso IndexNow: error de red — ' . curl_error($ch) . "\n");
+        return false;
+    }
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($status === 200 || $status === 202) return true; // 202 Accepted es la respuesta normal
+    fwrite(STDERR, "  Aviso IndexNow: respuesta HTTP $status.\n");
+    return false;
+}
+
 // ── 1. Buscar el backup más reciente en private/backups/ ────────────────
 $baseUrl = ftpBaseUrl($host, $port);
 $backupsDir = $prefix . 'private/backups';
@@ -275,18 +339,23 @@ if ($args['dryRun']) {
 
 // ── 1c. Modo mantenimiento durante la ventana de escritura ───────────────
 // Centinela subido por FTP; bootstrap.php lo comprueba antes de leer el .db
-// (ver App\Http::maintenance()). El shutdown function garantiza que se
-// desactiva pase lo que pase a partir de aquí (éxito, fallo de subida,
-// checksum incorrecto, o un error inesperado que tumbe el script).
+// (ver App\Http::maintenance()). $disableMaintenance se llama explícitamente
+// en cuanto la escritura queda en un estado estable (éxito verificado, o
+// rollback resuelto) para no tener la web caída más tiempo del necesario; el
+// shutdown function es la red de seguridad para cualquier salida que no pase
+// por ahí (checksum incorrecto sin rollback posible, error inesperado, etc.).
 $privateDir = $prefix . 'private';
 $maintenanceOn = false;
-register_shutdown_function(static function () use (&$maintenanceOn, $baseUrl, $user, $pass, $privateDir): void {
+$disableMaintenance = static function () use (&$maintenanceOn, $baseUrl, $user, $pass, $privateDir): void {
     if (!$maintenanceOn) return;
     echo "Desactivando modo mantenimiento…\n";
-    if (!ftpQuote($baseUrl, $user, $pass, ["DELE {$privateDir}/.maintenance"])) {
+    if (ftpQuote($baseUrl, $user, $pass, ["DELE {$privateDir}/.maintenance"])) {
+        $maintenanceOn = false;
+    } else {
         fwrite(STDERR, "  ⚠ No se pudo borrar {$privateDir}/.maintenance por FTP — bórralo a mano cuanto antes (la web se queda en mantenimiento hasta entonces).\n");
     }
-});
+};
+register_shutdown_function($disableMaintenance);
 $tmpFlag = tempnam(sys_get_temp_dir(), 'mdc-maint-');
 file_put_contents($tmpFlag, 'sync en curso desde ' . date('c') . "\n");
 if (ftpUpload($baseUrl, $user, $pass, $privateDir . '/.maintenance', $tmpFlag)) {
@@ -319,18 +388,6 @@ if ($args['skipMove']) {
     }
 }
 
-// ── 3. Subir el .db local a private/mdc.db ───────────────────────────────
-echo "Subiendo {$args['local']} → private/mdc.db…\n";
-$subido = ftpUpload($baseUrl, $user, $pass, $privateDir . '/mdc.db', $args['local']);
-if (!$subido) {
-    if ($args['skipMove']) {
-        fwrite(STDERR, "\n⛔ La subida falló. Restaura manualmente desde el backup reciente en private/backups/ si hace falta.\n");
-    } else {
-        fwrite(STDERR, "\n⛔ La subida falló. private/mdc.db quedó renombrado como backups/$nombrePreSync — restáuralo manualmente si hace falta.\n");
-    }
-    exit(1);
-}
-
 /**
  * Intenta deshacer el swap devolviendo la copia previa a su sitio. Solo
  * posible si se hizo el paso 2 (sin --skip-move no hay copia que restaurar
@@ -352,6 +409,15 @@ $intentarRollback = static function () use ($baseUrl, $user, $pass, $privateDir,
         : "  ⚠ El rollback automático falló. Restaura a mano desde private/backups/$nombrePreSync — es urgente, producción puede haber quedado sin .db.\n");
     return $ok;
 };
+
+// ── 3. Subir el .db local a private/mdc.db ───────────────────────────────
+echo "Subiendo {$args['local']} → private/mdc.db…\n";
+$subido = ftpUpload($baseUrl, $user, $pass, $privateDir . '/mdc.db', $args['local']);
+if (!$subido) {
+    fwrite(STDERR, "\n⛔ La subida falló.\n");
+    $intentarRollback();
+    exit(1);
+}
 
 // ── 4. Verificación por checksum (SHA-256, re-descarga) ──────────────────
 if ($args['skipVerify']) {
@@ -377,8 +443,54 @@ if ($args['skipVerify']) {
     echo "✓ Checksum verificado (SHA-256 coincide).\n";
 }
 
+// El .db ya está en un estado estable y verificado: se puede reabrir la web
+// antes de gastar tiempo en el ping (que es un extra, no parte de la
+// escritura). $disableMaintenance es idempotente si el shutdown function
+// vuelve a intentarlo al terminar el script.
+$disableMaintenance();
+
 if ($args['skipMove']) {
     echo "\n✅ Sincronizado: private/mdc.db actualizado. Rollback disponible desde el backup reciente en private/backups/.\n";
 } else {
     echo "\n✅ Sincronizado: private/mdc.db actualizado. Copia previa a salvo en private/backups/$nombrePreSync.\n";
+}
+
+// ── 5. Aviso a buscadores (IndexNow) del contenido recién sincronizado ────
+// Google deprecó su endpoint clásico de "ping de sitemap" en 2023 — ya no
+// hace nada, así que no se reproduce aquí ese cargo-cult; para Google el
+// <lastmod> del sitemap (ver Pages::sitemap) es la señal correcta y la
+// recolecta en su propio calendario de rastreo. IndexNow sí sigue vigente y
+// lo consultan Bing, Yandex y otros: un POST bulk con toda la lista de URLs
+// del sitemap ya en producción (recién liberado del modo mantenimiento).
+if ($args['skipIndexNow']) {
+    echo "--skip-indexnow: no se avisa a IndexNow.\n";
+} else {
+    // try/catch de cinturón y tirantes: el sync ya ha terminado con éxito a
+    // estas alturas, así que un fallo aquí (p.ej. config.local.php roto en la
+    // máquina del admin) no debe hacer parecer que la sincronización falló.
+    try {
+        define('APP_DIR', __DIR__ . '/../php/app');
+        define('DATA_DIR', __DIR__ . '/../php/data'); // config.php la referencia para el db_path por defecto; no se usa aquí.
+        $appConfig = require APP_DIR . '/config.php';
+        $indexNowKey = (string) ($appConfig['indexnow_key'] ?? '');
+
+        if ($indexNowKey === '') {
+            echo "IndexNow no configurado (indexnow_key) — omitiendo ping. Ver config.local.example.php.\n";
+        } else {
+            $siteUrl = rtrim((string) $appConfig['site_url'], '/');
+            $host = (string) parse_url($siteUrl, PHP_URL_HOST);
+            echo "Avisando a IndexNow ($siteUrl/sitemap.xml)…\n";
+            $urls = fetchSitemapUrls($siteUrl . '/sitemap.xml');
+            if ($urls === []) {
+                fwrite(STDERR, "  ⚠ No se pudo leer el sitemap recién publicado — no se avisa a IndexNow esta vez.\n");
+            } else {
+                $ok = indexNowPing($host, $indexNowKey, $siteUrl . '/' . $indexNowKey . '.txt', $urls);
+                echo $ok
+                    ? '✓ IndexNow avisado con ' . count($urls) . " URLs.\n"
+                    : "  (no fatal: la sincronización ya se completó igualmente)\n";
+            }
+        }
+    } catch (\Throwable $e) {
+        fwrite(STDERR, '  ⚠ Aviso IndexNow omitido por un error: ' . $e->getMessage() . "\n");
+    }
 }
