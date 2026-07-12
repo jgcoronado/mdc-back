@@ -80,25 +80,25 @@ final class Pages
 
     /**
      * Hasta 6 accesos de descubrimiento para la columna estrecha de la home.
-     * Prioriza los relacionados con la marcha del día en concreto (su año,
-     * su estilo, su provincia — normalmente al menos 2 de los 3 tienen dato)
-     * y completa con estilo/año/provincia/dedicatorias generales, sin
-     * repetir ningún href.
+     * Primero los tres directamente relacionados con la marcha del día: el
+     * año de la composición (hub), su compositor y su banda de estreno
+     * (fichas directas, no hubs). Completa con 2-3 enlaces generales de
+     * catálogo (estilo/año/provincia/dedicatorias), sin repetir href.
      *
      * @param array<string,mixed>|null $mdd
      * @param list<array{K:string,N:int}> $hubEstilos
      * @param list<array{K:int,N:int}> $hubAniosRecientes
      * @param list<array{K:string,N:int}> $hubProvincias
-     * @return list<array{href:string,label:string,cnt:?int}>
+     * @return list<array{href:string,label:string,cnt:?int,note:?string}>
      */
     private static function homeSugerencias(?array $mdd, array $hubEstilos, array $hubAniosRecientes, array $hubProvincias): array
     {
         $out = [];
         $seen = [];
-        $add = static function (string $href, string $label, ?int $cnt) use (&$out, &$seen): void {
+        $add = static function (string $href, string $label, ?int $cnt, ?string $note = null) use (&$out, &$seen): void {
             if (isset($seen[$href]) || count($out) >= 6) return;
             $seen[$href] = true;
-            $out[] = ['href' => $href, 'label' => $label, 'cnt' => $cnt];
+            $out[] = ['href' => $href, 'label' => $label, 'cnt' => $cnt, 'note' => $note];
         };
 
         if ($mdd !== null) {
@@ -106,15 +106,22 @@ final class Pages
             if (preg_match('/^\d{4}$/', $anio) === 1) {
                 $add(self::anioHubPath($anio), "Marchas de $anio", (int) ($mdd['N_MISMO_ANIO'] ?? 0));
             }
-            $estiloDb = (string) ($mdd['ESTILO'] ?? '');
-            $estiloPath = self::estiloHubPath($estiloDb);
-            $estiloLabel = self::estiloHubLabel($estiloDb);
-            if ($estiloPath !== null && $estiloLabel !== null) {
-                $add($estiloPath, 'Marchas de ' . $estiloLabel, (int) ($mdd['N_MISMO_ESTILO'] ?? 0));
+            $primerAutor = ($mdd['AUTOR'] ?? [])[0] ?? null;
+            if ($primerAutor !== null) {
+                $add(
+                    Slug::buildDetailPath('autor', $primerAutor['autorId'], (string) $primerAutor['nombre']),
+                    (string) $primerAutor['nombre'],
+                    null,
+                    'compositor'
+                );
             }
-            $prov = (string) ($mdd['PROVINCIA'] ?? '');
-            if ($prov !== '') {
-                $add(self::provinciaHubPath($prov), 'Marchas de la provincia de ' . $prov, (int) ($mdd['N_MISMA_PROV'] ?? 0));
+            if (!empty($mdd['BANDA_ESTRENO']) && !empty($mdd['BANDA_NOMBRE'])) {
+                $add(
+                    Slug::buildDetailPath('banda', $mdd['BANDA_ESTRENO'], (string) $mdd['BANDA_NOMBRE']),
+                    (string) $mdd['BANDA_NOMBRE'],
+                    null,
+                    'banda de estreno'
+                );
             }
         }
 

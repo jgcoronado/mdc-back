@@ -298,6 +298,13 @@ a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem;
 .home-top { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: start; }
 @media (min-width: 720px) { .home-top { grid-template-columns: 7fr 3fr; } }
 
+/* Marcha del día: miniatura compacta + texto en fila, para que la card no
+   supere la altura del contenido de "Explorar el catálogo" (antes el vídeo
+   a ancho completo la disparaba muy por encima). */
+.mdd-row { display: flex; align-items: center; gap: 0.9rem; }
+.mdd-thumb { width: 8.5rem; flex: none; margin: 0; }
+.mdd-row .ultima-row { flex: 1; min-width: 0; padding: 0; border-top: 0; }
+
 /* ── Home: últimas incorporaciones ──────────────────────────────────────── */
 .welcome-text { margin: 0; font-size: 0.92rem; }
 .welcome-counts { margin-top: 0.75rem; font-family: var(--mono); font-size: 0.72rem; color: var(--faint); font-variant-numeric: tabular-nums; }
@@ -309,6 +316,7 @@ a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem;
 .ultima-main { min-width: 0; }
 .ultima-title { display: block; font-weight: 600; font-size: 0.88rem; color: var(--acc); }
 .ultima-authors { display: block; font-size: 0.76rem; color: var(--muted-c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ultima-banda { display: block; font-size: 0.72rem; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ultima-date { font-family: var(--mono); font-size: 0.74rem; color: var(--faint); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .firma { font-size: 0.72rem; color: var(--faint); text-align: right; margin: 0; }
 

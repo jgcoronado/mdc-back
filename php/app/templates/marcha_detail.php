@@ -21,16 +21,6 @@ $autoridad = static function (array $a): string {
     return $ap !== '' ? $ap : $no;
 };
 
-/** "(1896–1970)", "(1896–)" o "" según los datos del autor. */
-$vida = static function (array $a): string {
-    $n = (int) ($a['F_NAC'] ?? 0);
-    $d = (int) ($a['F_DEF'] ?? 0);
-    if ($n > 1000 && $d > 1000) return " ({$n}–{$d})";
-    if ($n > 1000) return " ({$n}–)";
-    if ($d > 1000) return " (†{$d})";
-    return '';
-};
-
 $mid = (int) $m['ID_MARCHA'];
 $ytid = MD::youtubeId($m['AUDIO'] ?? null);
 $audioEsUrl = $t($m['AUDIO']) && preg_match('~^https?://~i', (string) $m['AUDIO']) === 1;
@@ -43,11 +33,12 @@ $estilo = match ($m['ESTILO'] ?? null) {
 $duracion = $dur($m['DURACION_SEG'] ?? 0);
 $autores = $m['AUTORES_FICHA'] ?? [];
 
-// Asiento bibliográfico bajo el título: solo autor(es) y año.
+// Asiento bibliográfico bajo el título: solo autor(es) y año de composición
+// (sin las fechas de nacimiento/defunción del autor).
 $asientoAutores = [];
 foreach ($autores as $a) {
     $path = S::buildDetailPath('autor', $a['ID_AUTOR'], trim(($a['NOMBRE'] ?? '') . ' ' . ($a['APELLIDOS'] ?? '')));
-    $asientoAutores[] = '<a href="' . V::e($path) . '">' . V::e($autoridad($a)) . '</a>' . V::e($vida($a));
+    $asientoAutores[] = '<a href="' . V::e($path) . '">' . V::e($autoridad($a)) . '</a>';
 }
 $asiento = [implode('; ', $asientoAutores)];
 if ($t($m['FECHA'])) $asiento[] = V::e((string) $m['FECHA']);
@@ -87,17 +78,19 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php endif; ?>
 
     <dl class="desc">
+<?php /* Fila 1: Compositor(es) / Estrenada por — Fila 2: Año / Duración —
+         Fila 3: Dedicatoria / Localidad — Fila 4: Estilo / Grabaciones.
+         Tipo se omite casi siempre (ver condición abajo); cuando aparece
+         (valor distinto de "marcha procesional"), va al final como fila extra
+         para no descuadrar las cuatro filas anteriores. */ ?>
 <?php foreach ($autores as $a): ?>
         <div class="f"><dt>Compositor</dt><dd><a href="<?= V::e(S::buildDetailPath('autor', $a['ID_AUTOR'], trim(($a['NOMBRE'] ?? '') . ' ' . ($a['APELLIDOS'] ?? '')))) ?>"><?= V::e($autoridad($a)) ?></a><?php if ((int) $a['N_MARCHAS'] > 1): ?><br><span class="cnt"><?= $num($a['N_MARCHAS']) ?> marchas compuestas</span><?php endif; ?></dd></div>
 <?php endforeach; ?>
+<?php if ($t($m['BANDA_ESTRENO'])): ?>
+        <div class="f"><dt>Estrenada por</dt><dd><a href="<?= V::e(S::buildDetailPath('banda', $m['BANDA_ESTRENO'], (string) $m['BANDA_NOMBRE'])) ?>"><?= V::e($m['BANDA_NOMBRE']) ?></a><?php if ($t($m['BANDA_LOC'])): ?>, <?= V::e($m['BANDA_LOC']) ?><?php endif; ?><?php if ((int) $m['BANDA_ESTRENOS'] > 1): ?><br><span class="cnt"><?= $num($m['BANDA_ESTRENOS']) ?> marchas estrenadas</span><?php endif; ?></dd></div>
+<?php endif; ?>
 <?php if ($t($m['FECHA'])): ?>
         <div class="f"><dt>Año</dt><dd><?= V::e($m['FECHA']) ?></dd></div>
-<?php endif; ?>
-<?php if ($t($m['TIPO']) && mb_strtolower($tipo, 'UTF-8') !== 'marcha procesional'): ?>
-        <div class="f"><dt>Tipo</dt><dd><?= V::e($tipo) ?></dd></div>
-<?php endif; ?>
-<?php if ($estilo !== ''): ?>
-        <div class="f"><dt>Estilo</dt><dd><?= V::e($estilo) ?></dd></div>
 <?php endif; ?>
 <?php if ($duracion !== ''): ?>
         <div class="f"><dt>Duración</dt><dd><?= V::e($duracion) ?></dd></div>
@@ -108,10 +101,13 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php if ($localidad !== ''): ?>
         <div class="f"><dt>Localidad</dt><dd><?= V::e($localidad) ?></dd></div>
 <?php endif; ?>
-<?php if ($t($m['BANDA_ESTRENO'])): ?>
-        <div class="f"><dt>Estrenada por</dt><dd><a href="<?= V::e(S::buildDetailPath('banda', $m['BANDA_ESTRENO'], (string) $m['BANDA_NOMBRE'])) ?>"><?= V::e($m['BANDA_NOMBRE']) ?></a><?php if ($t($m['BANDA_LOC'])): ?>, <?= V::e($m['BANDA_LOC']) ?><?php endif; ?><?php if ((int) $m['BANDA_ESTRENOS'] > 1): ?><br><span class="cnt"><?= $num($m['BANDA_ESTRENOS']) ?> marchas estrenadas</span><?php endif; ?></dd></div>
+<?php if ($estilo !== ''): ?>
+        <div class="f"><dt>Estilo</dt><dd><?= V::e($estilo) ?></dd></div>
 <?php endif; ?>
         <div class="f"><dt>Grabaciones</dt><dd><?= $num($nGrab) ?><?php if ($m['PRIMERA_GRABACION']): ?> <span class="cnt">· primera en <?= (int) $m['PRIMERA_GRABACION'] ?></span><?php endif; ?></dd></div>
+<?php if ($t($m['TIPO']) && mb_strtolower($tipo, 'UTF-8') !== 'marcha procesional'): ?>
+        <div class="f"><dt>Tipo</dt><dd><?= V::e($tipo) ?></dd></div>
+<?php endif; ?>
     </dl>
 
 <?php $enl = $enlaces ?? []; if ($t($m['AUDIO']) || $enl !== []): ?>
