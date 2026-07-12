@@ -29,28 +29,26 @@ $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
 ?>
         <section class="card marcha-dia">
             <div class="shead"><h2>Marcha del día</h2></div>
-            <div class="mdd-row">
-<?php if ($mddYtid !== null): ?>
-                <div class="ytembed mdd-thumb" data-ytid="<?= V::e($mddYtid) ?>">
-                    <button type="button" class="ytfacade" aria-label="Reproducir el vídeo (carga YouTube al pulsar)">
-                        <img class="ytfacade-img" src="<?= V::e(MD::youtubeThumb($mddYtid)) ?>" alt="" loading="lazy" width="480" height="270">
-                        <span class="ytfacade-play" aria-hidden="true"></span>
-                    </button>
-                </div>
-<?php endif; ?>
-                <a class="ultima-row mdd-info" href="<?= V::e($mddPath) ?>">
-                    <span class="ultima-main">
-                        <span class="ultima-title"><?= V::e($mdd['TITULO']) ?></span>
-                        <span class="ultima-authors"><?= V::e($mddAutores) ?></span>
+            <a class="ultima-row" href="<?= V::e($mddPath) ?>">
+                <span class="ultima-main">
+                    <span class="ultima-title"><?= V::e($mdd['TITULO']) ?></span>
+                    <span class="ultima-authors"><?= V::e($mddAutores) ?></span>
 <?php if (!empty($mdd['BANDA_NOMBRE'])): ?>
-                        <span class="ultima-banda"><?= V::e((string) $mdd['BANDA_NOMBRE']) ?></span>
+                    <span class="ultima-banda"><?= V::e((string) $mdd['BANDA_NOMBRE']) ?></span>
 <?php endif; ?>
-                    </span>
+                </span>
 <?php if ($mddFecha !== '' && $mddFecha !== 's/f'): ?>
-                    <span class="ultima-date"><?= V::e($mddFecha) ?></span>
+                <span class="ultima-date"><?= V::e($mddFecha) ?></span>
 <?php endif; ?>
-                </a>
+            </a>
+<?php if ($mddYtid !== null): ?>
+            <div class="ytembed" data-ytid="<?= V::e($mddYtid) ?>">
+                <button type="button" class="ytfacade" aria-label="Reproducir el vídeo (carga YouTube al pulsar)">
+                    <img class="ytfacade-img" src="<?= V::e(MD::youtubeThumb($mddYtid)) ?>" alt="" loading="lazy" width="480" height="270">
+                    <span class="ytfacade-play" aria-hidden="true"></span>
+                </button>
             </div>
+<?php endif; ?>
         </section>
 <?php endif; ?>
 

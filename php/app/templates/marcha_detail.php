@@ -78,8 +78,8 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php endif; ?>
 
     <dl class="desc">
-<?php /* Fila 1: Compositor(es) / Estrenada por — Fila 2: Año / Duración —
-         Fila 3: Dedicatoria / Localidad — Fila 4: Estilo / Grabaciones.
+<?php /* Fila 1: Compositor(es) / Estrenada por — Fila 2: Año / Grabaciones —
+         Fila 3: Dedicatoria / Localidad — Fila 4: Estilo / Duración.
          Tipo se omite casi siempre (ver condición abajo); cuando aparece
          (valor distinto de "marcha procesional"), va al final como fila extra
          para no descuadrar las cuatro filas anteriores. */ ?>
@@ -92,9 +92,7 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php if ($t($m['FECHA'])): ?>
         <div class="f"><dt>Año</dt><dd><?= V::e($m['FECHA']) ?></dd></div>
 <?php endif; ?>
-<?php if ($duracion !== ''): ?>
-        <div class="f"><dt>Duración</dt><dd><?= V::e($duracion) ?></dd></div>
-<?php endif; ?>
+        <div class="f"><dt>Grabaciones</dt><dd><?= $num($nGrab) ?><?php if ($m['PRIMERA_GRABACION']): ?> <span class="cnt">· primera en <?= (int) $m['PRIMERA_GRABACION'] ?></span><?php endif; ?></dd></div>
 <?php if ($t($m['DEDICATORIA']) && $m['DEDICATORIA'] !== '0'): ?>
         <div class="f"><dt>Dedicatoria</dt><dd><?= V::e($m['DEDICATORIA']) ?></dd></div>
 <?php endif; ?>
@@ -104,7 +102,9 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php if ($estilo !== ''): ?>
         <div class="f"><dt>Estilo</dt><dd><?= V::e($estilo) ?></dd></div>
 <?php endif; ?>
-        <div class="f"><dt>Grabaciones</dt><dd><?= $num($nGrab) ?><?php if ($m['PRIMERA_GRABACION']): ?> <span class="cnt">· primera en <?= (int) $m['PRIMERA_GRABACION'] ?></span><?php endif; ?></dd></div>
+<?php if ($duracion !== ''): ?>
+        <div class="f"><dt>Duración</dt><dd><?= V::e($duracion) ?></dd></div>
+<?php endif; ?>
 <?php if ($t($m['TIPO']) && mb_strtolower($tipo, 'UTF-8') !== 'marcha procesional'): ?>
         <div class="f"><dt>Tipo</dt><dd><?= V::e($tipo) ?></dd></div>
 <?php endif; ?>
