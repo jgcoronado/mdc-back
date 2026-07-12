@@ -79,10 +79,10 @@ final class Pages
     }
 
     /**
-     * Hasta 6 accesos de descubrimiento para la columna estrecha de la home.
+     * Hasta 8 accesos de descubrimiento para la columna estrecha de la home.
      * Primero los tres directamente relacionados con la marcha del día: el
      * año de la composición (hub), su compositor y su banda de estreno
-     * (fichas directas, no hubs). Completa con 2-3 enlaces generales de
+     * (fichas directas, no hubs). Completa con enlaces generales de
      * catálogo (estilo/año/provincia/dedicatorias), sin repetir href.
      *
      * @param array<string,mixed>|null $mdd
@@ -96,7 +96,7 @@ final class Pages
         $out = [];
         $seen = [];
         $add = static function (string $href, string $label, ?int $cnt, ?string $note = null) use (&$out, &$seen): void {
-            if (isset($seen[$href]) || count($out) >= 6) return;
+            if (isset($seen[$href]) || count($out) >= 8) return;
             $seen[$href] = true;
             $out[] = ['href' => $href, 'label' => $label, 'cnt' => $cnt, 'note' => $note];
         };

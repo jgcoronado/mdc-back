@@ -53,7 +53,7 @@ $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
 <?php endif; ?>
 
 <?php if ($sugerencias !== []): ?>
-        <section>
+        <section class="explora-col">
             <h2 class="section-title">Explorar el catálogo</h2>
             <ul class="vease">
 <?php foreach ($sugerencias as $s): ?>

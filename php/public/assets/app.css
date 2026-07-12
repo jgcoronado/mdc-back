@@ -295,8 +295,15 @@ a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem;
 .pagination .ellipsis { padding: 0 0.25rem; color: var(--faint); }
 
 /* ── Home: marcha del día + descubrimiento en dos columnas ──────────────── */
-.home-top { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: start; }
+/* align-items: stretch (por defecto) para que "Explorar el catálogo" ocupe
+   toda la altura de la fila cuando el vídeo de la marcha del día la hace
+   más alta; .explora-col reparte sus enlaces en esa altura en vez de
+   dejarlos apilados arriba con hueco en blanco debajo. */
+.home-top { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: stretch; }
 @media (min-width: 720px) { .home-top { grid-template-columns: 7fr 3fr; } }
+.explora-col { display: flex; flex-direction: column; }
+.explora-col ul.vease { flex: 1; display: flex; flex-direction: column; justify-content: space-between; margin: 0.15rem 0 0; }
+.explora-col ul.vease li { border-bottom: 0; padding: 0.15rem 0; }
 
 /* ── Home: últimas incorporaciones ──────────────────────────────────────── */
 .welcome-text { margin: 0; font-size: 0.92rem; }
