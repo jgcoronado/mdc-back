@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  lint-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3, curl, mbstring, dom, intl, json
+          coverage: none
+
+      - name: Lint (php -l)
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r -d '' f; do
+            php -l "$f" || fail=1
+          done < <(find php/app php/public php/tools scripts -name '*.php' -print0)
+          exit $fail
+
+      - name: Build fixture database
+        run: php php/tools/ci_fixture.php /tmp/ci-mdc.db
+
+      - name: Start built-in server
+        env:
+          DB_PATH: /tmp/ci-mdc.db
+        run: |
+          php -S 127.0.0.1:8000 -t php/public php/public/index.php > /tmp/server.log 2>&1 &
+          echo $! > /tmp/server.pid
+          for i in $(seq 1 20); do
+            if curl -fs -o /dev/null http://127.0.0.1:8000/health; then
+              echo "Servidor listo."
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "El servidor no respondió a tiempo."
+          cat /tmp/server.log
+          exit 1
+
+      - name: Smoke tests
+        run: php php/tools/ci_smoke.php http://127.0.0.1:8000
+
+      - name: Server log (siempre, para depurar fallos)
+        if: always()
+        run: cat /tmp/server.log || true
+
+      - name: Stop server
+        if: always()
+        run: kill "$(cat /tmp/server.pid)" 2>/dev/null || true
