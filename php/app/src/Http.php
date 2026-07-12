@@ -39,6 +39,21 @@ final class Http
         exit;
     }
 
+    /**
+     * 503 mientras scripts/sync_db_to_prod.php reemplaza el .db (ver el
+     * fichero centinela que crea/borra ese script, comprobado en bootstrap.php).
+     * Retry-After orienta a clientes y monitores de uptime: la ventana es de
+     * segundos, no un caído real.
+     */
+    public static function maintenance(): never
+    {
+        http_response_code(503);
+        header('Retry-After: 120');
+        self::noStore();
+        View::render('maintenance', [], ['title' => 'Actualizando — Marchas de Cristo', 'noindex' => true]);
+        exit;
+    }
+
     /** Cacheable por navegador/proxy (páginas públicas estables). */
     public static function cachePublic(int $seconds): void
     {
