@@ -167,6 +167,17 @@ $tests = [
     'robots.txt 200 + Sitemap:' => static fn() => assertContains('/robots.txt', 'Sitemap:', $base),
     'health 200' => static fn() => assertStatus('/health', 200, $base),
 
+    // ── og:image / twitter:card en TODAS las páginas (C4), no solo fichas ──
+    'home og:image + twitter:card' => static function () use ($base): void {
+        $r = assertStatus('/', 200, $base);
+        foreach (['og:image', 'og:image:width', 'og:image:height', 'twitter:card', 'twitter:image'] as $tag) {
+            if (!str_contains($r['body'], $tag)) {
+                throw new RuntimeException("home → falta la etiqueta '$tag'");
+            }
+        }
+    },
+    'og-image.png servida' => static fn() => assertStatus('/assets/og-image.png', 200, $base),
+
     // ── Explorador (noindex, sin caché con query) ──────────────────────────
     'marcha explorador 200' => static fn() => assertStatus('/marcha', 200, $base),
     'marcha explorador noindex' => static fn() => assertNoIndex('/marcha', $base),

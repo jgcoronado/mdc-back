@@ -13,8 +13,17 @@ $title = (string) ($meta['title'] ?? 'Marchas de Cristo');
 $description = $meta['description'] ?? null;
 $noindex = !empty($meta['noindex']);
 $canonical = $meta['canonical'] ?? null;
-$og = $meta['og'] ?? null;
 $jsonld = $meta['jsonld'] ?? [];
+
+// og:* / twitter:*: base de marca en TODAS las páginas (antes solo existían en
+// las fichas de detalle, que pasan $meta['og']); esos valores, si están,
+// sustituyen a los genéricos. og:image es siempre la imagen de marca — la
+// versión por entidad queda para más adelante (M4).
+$og = array_merge(
+    ['type' => 'website', 'title' => $title, 'description' => $description, 'url' => $canonical],
+    $meta['og'] ?? []
+);
+$ogImage = rtrim((string) ($GLOBALS['config']['site_url'] ?? 'https://marchasdecristo.com'), '/') . '/assets/og-image.png';
 
 $siteName = 'Marchas de Cristo';
 $nav = [
@@ -62,16 +71,26 @@ $search = $searchBySection[$current] ?? null;
 <?php if ($canonical !== null): ?>
     <link rel="canonical" href="<?= $e($canonical) ?>">
 <?php endif; ?>
-<?php if ($og !== null): ?>
-    <meta property="og:type" content="<?= $e($og['type'] ?? 'website') ?>">
-    <meta property="og:title" content="<?= $e($og['title'] ?? $title) ?>">
+    <meta property="og:site_name" content="<?= $e($siteName) ?>">
+    <meta property="og:type" content="<?= $e($og['type']) ?>">
+    <meta property="og:title" content="<?= $e($og['title']) ?>">
 <?php if (!empty($og['description'])): ?>
     <meta property="og:description" content="<?= $e($og['description']) ?>">
 <?php endif; ?>
 <?php if (!empty($og['url'])): ?>
     <meta property="og:url" content="<?= $e($og['url']) ?>">
 <?php endif; ?>
+    <meta property="og:image" content="<?= $e($ogImage) ?>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@JaviWarSVQ">
+    <meta name="twitter:title" content="<?= $e($og['title']) ?>">
+<?php if (!empty($og['description'])): ?>
+    <meta name="twitter:description" content="<?= $e($og['description']) ?>">
 <?php endif; ?>
+    <meta name="twitter:image" content="<?= $e($ogImage) ?>">
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/app.css">
 <?php foreach ($jsonld as $schema): ?>
