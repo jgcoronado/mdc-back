@@ -202,6 +202,44 @@ final class Seo
         ];
     }
 
+    /**
+     * Hub de catálogo (C1: año / estilo / provincia): CollectionPage cuyo
+     * mainEntity es un ItemList con las marchas de la página actual;
+     * numberOfItems refleja el total del hub. Las URLs usan Slug::buildDetailPath
+     * (la canónica real), no el slugify legado de paridad.
+     *
+     * @param list<array<string,mixed>> $marchas  filas de la página actual
+     */
+    public static function marchaHub(string $nombre, string $descripcion, array $marchas, int $total, string $url): array
+    {
+        $base = self::base();
+        $items = array_map(
+            static fn(array $m, int $idx): array => [
+                '@type' => 'ListItem',
+                'position' => $idx + 1,
+                'item' => [
+                    '@type' => 'MusicComposition',
+                    'name' => $m['TITULO'],
+                    'url' => $base . Slug::buildDetailPath('marcha', $m['ID_MARCHA'], (string) $m['TITULO']),
+                ],
+            ],
+            $marchas,
+            array_keys($marchas)
+        );
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'CollectionPage',
+            'name' => $nombre,
+            'url' => $url,
+            'description' => $descripcion,
+            'mainEntity' => [
+                '@type' => 'ItemList',
+                'numberOfItems' => $total,
+                'itemListElement' => $items,
+            ],
+        ];
+    }
+
     /** @param list<array{name:string,url:string}> $items */
     public static function breadcrumbs(array $items): array
     {

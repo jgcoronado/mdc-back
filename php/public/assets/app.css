@@ -177,10 +177,9 @@ dl.desc dd { margin: 0; font-size: 0.89rem; }
 .filter { font-family: var(--mono); font-size: 0.76rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.32rem 0.55rem; background: var(--card); color: var(--ink); min-width: 11rem; }
 .filter::placeholder { color: var(--faint); }
 
-/* Escuchar — enlaces por servicio (pendiente de datos) */
-.listen { margin: 1.1rem 0 0; padding: 0.7rem 0.85rem; border-radius: var(--radius-sm); background: var(--s2); border: 1px dashed var(--line); }
-.listen-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
-.listen-head .pt { font-weight: 600; font-size: 0.9rem; }
+/* Escuchar — details.collapse (ver .collapse más abajo); solo el espaciado
+   de los botones de servicio es propio de este bloque. */
+.listen.collapse { margin: 1.1rem 0 0; }
 .todo { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rec); background: var(--rec-bg); border-radius: 3px; padding: 0.12rem 0.42rem; font-weight: 700; }
 .svcs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .svc { font-size: 0.76rem; color: var(--acc); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.26rem 0.6rem; text-decoration: none; }
@@ -295,6 +294,17 @@ a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem;
 .pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.35rem; margin-top: 1rem; font-family: var(--mono); font-size: 0.8rem; }
 .pagination .ellipsis { padding: 0 0.25rem; color: var(--faint); }
 
+/* ── Home: marcha del día + descubrimiento en dos columnas ──────────────── */
+/* align-items: stretch (por defecto) para que "Explorar el catálogo" ocupe
+   toda la altura de la fila cuando el vídeo de la marcha del día la hace
+   más alta; .explora-col reparte sus enlaces en esa altura en vez de
+   dejarlos apilados arriba con hueco en blanco debajo. */
+.home-top { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: stretch; }
+@media (min-width: 720px) { .home-top { grid-template-columns: 7fr 3fr; } }
+.explora-col { display: flex; flex-direction: column; }
+.explora-col ul.vease { flex: 1; display: flex; flex-direction: column; justify-content: space-between; margin: 0.15rem 0 0; }
+.explora-col ul.vease li { border-bottom: 0; padding: 0.15rem 0; }
+
 /* ── Home: últimas incorporaciones ──────────────────────────────────────── */
 .welcome-text { margin: 0; font-size: 0.92rem; }
 .welcome-counts { margin-top: 0.75rem; font-family: var(--mono); font-size: 0.72rem; color: var(--faint); font-variant-numeric: tabular-nums; }
@@ -306,6 +316,7 @@ a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem;
 .ultima-main { min-width: 0; }
 .ultima-title { display: block; font-weight: 600; font-size: 0.88rem; color: var(--acc); }
 .ultima-authors { display: block; font-size: 0.76rem; color: var(--muted-c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ultima-banda { display: block; font-size: 0.72rem; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ultima-date { font-family: var(--mono); font-size: 0.74rem; color: var(--faint); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .firma { font-size: 0.72rem; color: var(--faint); text-align: right; margin: 0; }
 

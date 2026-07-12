@@ -26,6 +26,15 @@ if (!empty($config['debug'])) {
     error_reporting(E_ALL & ~E_DEPRECATED);
 }
 
+// Modo mantenimiento: scripts/sync_db_to_prod.php crea/borra este centinela
+// (mismo directorio que el .db, sin config nueva) mientras reemplaza el
+// fichero por FTP. Se comprueba antes que nada más para no leer un .db a
+// medio subir ni mostrar un 500 crudo durante la ventana de sync.
+$maintenanceFlag = dirname((string) $config['db_path']) . '/.maintenance';
+if (is_file($maintenanceFlag)) {
+    App\Http::maintenance();
+}
+
 // Redirección al host canónico (staging/www → marchasdecristo.com). Solo si está
 // activado en config (force_canonical_host) — normalmente tras el cutover.
 $canonicalTarget = App\Http::canonicalRedirectTarget(

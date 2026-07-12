@@ -48,13 +48,20 @@ final class Html
     }
 
     // ── Pagination ───────────────────────────────────────────────────────────
-    public static function pagination(int $currentPage, int $totalRows, int $limit, string $basePath, array $criteria): string
+    /**
+     * $includeLimit=false omite el parámetro `limit` de las URLs (hubs con tamaño
+     * de página fijo: así solo existe una URL por página, sin variantes duplicadas).
+     */
+    public static function pagination(int $currentPage, int $totalRows, int $limit, string $basePath, array $criteria, bool $includeLimit = true): string
     {
         $totalPages = (int) ceil($totalRows / $limit);
         if ($totalPages <= 1) return '';
 
-        $url = static function (int $page) use ($basePath, $criteria, $limit): string {
-            $params = array_merge($criteria, ['page' => (string) $page, 'limit' => (string) $limit]);
+        $url = static function (int $page) use ($basePath, $criteria, $limit, $includeLimit): string {
+            $params = array_merge($criteria, ['page' => (string) $page]);
+            if ($includeLimit) {
+                $params['limit'] = (string) $limit;
+            }
             return $basePath . '?' . http_build_query($params);
         };
 

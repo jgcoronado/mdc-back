@@ -155,7 +155,7 @@ $errores = 0;
 foreach ($files as $f) {
     $remotePath = $pendientesDir . '/' . $f;
     $localPath = $localDir . '/' . $f;
-    echo "Bajando $f…\n";
+    echo "Bajando {$f}…\n";
     if (!ftpDownload($baseUrl, $user, $pass, $remotePath, $localPath)) {
         $errores++;
         continue;

@@ -35,6 +35,13 @@ $router->get('/disco', [Pages::class, 'discoList']);
 $router->get('/dedicatorias', [Pages::class, 'dedicatoriaList']);
 $router->get('/dedicatoria/{slugAndId}', [Pages::class, 'dedicatoriaDetail']);
 
+// ── Hubs de catálogo indexables (C1): año / estilo / provincia ───────────────
+// Dos segmentos tras /marcha, así que no chocan con el detalle {slugAndId};
+// se registran antes por claridad.
+$router->get('/marcha/ano/{anio}', [Pages::class, 'marchaAnioHub']);
+$router->get('/marcha/estilo/{slug}', [Pages::class, 'marchaEstiloHub']);
+$router->get('/marcha/provincia/{slug}', [Pages::class, 'marchaProvinciaHub']);
+
 // ── Detalles (catch-all por entidad) ──────────────────────────────────────────
 $router->get('/marcha/{slugAndId}', [Pages::class, 'marchaDetail']);
 $router->get('/autor/{slugAndId}', [Pages::class, 'autorDetail']);
@@ -47,6 +54,17 @@ $router->get('/estadisticas', [Pages::class, 'estadisticas']);
 // ── SEO ────────────────────────────────────────────────────────────────────────
 $router->get('/sitemap.xml', [Pages::class, 'sitemap']);
 $router->get('/robots.txt', [Pages::class, 'robots']);
+
+// Verificación de IndexNow (C2): solo se registra si hay clave configurada.
+// $config ya está en el scope de bootstrap.php cuando se hace require de este
+// fichero, así que la ruta puede depender de su valor sin pasos extra.
+if (!empty($config['indexnow_key'])) {
+    $router->get('/' . $config['indexnow_key'] . '.txt', static function () use ($config): void {
+        header('Content-Type: text/plain; charset=UTF-8');
+        Http::cachePublic(86400);
+        echo $config['indexnow_key'];
+    });
+}
 
 // ── Diagnóstico ──────────────────────────────────────────────────────────────
 // Público: solo "ok" + versión. El detalle (rutas, conteos, FTS) requiere sesión

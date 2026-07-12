@@ -136,6 +136,7 @@ final class Repo
             "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, dm.NUMEROMARCHA,
                     COALESCE(bi.ID_BANDA, b.ID_BANDA) AS ID_BANDA,
                     COALESCE(bi.NOMBRE_BREVE, b.NOMBRE_BREVE) AS BANDA_BREVE,
+                    COALESCE(bi.LOCALIDAD, b.LOCALIDAD) AS BANDA_LOC,
                     (COALESCE(bi.NOMBRE_BREVE, b.NOMBRE_BREVE) || ' (' || COALESCE(bi.LOCALIDAD, b.LOCALIDAD) || ')') AS BANDA
              FROM disco d
              INNER JOIN disco_marcha dm ON dm.ID_DISCO = d.ID_DISCO
@@ -169,6 +170,10 @@ final class Repo
         $marcha['N_MISMA_PROV'] = 0;
         if (!empty($marcha['PROVINCIA'])) {
             $marcha['N_MISMA_PROV'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE m.PROVINCIA = ? AND $valid", [$marcha['PROVINCIA']])['n'] ?? 0);
+        }
+        $marcha['N_MISMO_ESTILO'] = 0;
+        if (!empty($marcha['ESTILO'])) {
+            $marcha['N_MISMO_ESTILO'] = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE m.ESTILO = ? AND $valid", [$marcha['ESTILO']])['n'] ?? 0);
         }
 
         // Fecha de publicación del vídeo (solo para las marchas creadas vía la
@@ -277,6 +282,112 @@ final class Repo
                         GROUP BY K ORDER BY K DESC LIMIT 8", $v);
 
         return ['tipo' => $tipo, 'provincia' => $prov, 'decada' => $dec];
+    }
+
+    // ── Hubs de catálogo: año / estilo / provincia (C1, indexables) ──────────
+
+    /**
+     * Umbral de marchas para que un hub sea indexable y entre en el sitemap
+     * (mismo criterio que DEDIC_MIN_MARCHAS: por debajo sería página thin).
+     */
+    public const HUB_MIN_MARCHAS = 2;
+
+    /** Filas por página en los hubs (fijo: sin selector de límite). */
+    public const HUB_PAGE_SIZE = 100;
+
+    /**
+     * Listado paginado de un hub: marchas vivas (con autor) que cumplen la
+     * condición dada, con banda de estreno y nº de grabaciones, como el
+     * explorador. Orden alfabético por título (consistente con /marcha).
+     *
+     * @param  list<mixed> $values
+     * @return array{rowsReturned:int,totalRows:int,data:list<array<string,mixed>>}
+     */
+    private static function hubMarchas(string $condition, array $values, int $page): array
+    {
+        $where = "EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA) AND $condition";
+        $totalRows = (int) (Db::one("SELECT COUNT(*) AS n FROM marcha m WHERE $where", $values)['n'] ?? 0);
+        $limit = self::HUB_PAGE_SIZE;
+        $offset = ($page - 1) * $limit;
+
+        $rows = Db::all(
+            "SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.PROVINCIA, m.FECHA,
+                    m.BANDA_ESTRENO, b.NOMBRE_BREVE AS BANDA_BREVE,
+                    (SELECT COUNT(*) FROM disco_marcha dm WHERE dm.IDMARCHA = m.ID_MARCHA) AS N_GRAB
+             FROM marcha m
+             LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
+             WHERE $where
+             ORDER BY m.TITULO ASC LIMIT ? OFFSET ?",
+            [...$values, $limit, $offset]
+        );
+        foreach ($rows as &$r) {
+            self::normalizeFecha($r);
+        }
+        unset($r);
+        self::attachAutores($rows);
+
+        return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
+    }
+
+    public static function marchasDeAnio(string $anio, int $page = 1): array
+    {
+        return self::hubMarchas('m.FECHA = ?', [$anio], $page);
+    }
+
+    /** $estilo es el valor de BD: 'CCTT' o 'AM'. */
+    public static function marchasDeEstilo(string $estilo, int $page = 1): array
+    {
+        return self::hubMarchas('m.ESTILO = ?', [$estilo], $page);
+    }
+
+    /** $provincia es el nombre exacto de BD (resuelto antes desde el slug). */
+    public static function marchasDeProvincia(string $provincia, int $page = 1): array
+    {
+        return self::hubMarchas('m.PROVINCIA = ?', [$provincia], $page);
+    }
+
+    /**
+     * Años con marchas vivas, con recuento. Alimenta el sitemap y los enlaces
+     * año anterior/siguiente del hub.
+     * @return list<array{K:int,N:int}>
+     */
+    public static function hubAnios(): array
+    {
+        return Db::all(
+            "SELECT m.FECHA AS K, COUNT(*) AS N FROM marcha m
+             WHERE m.FECHA > 1000
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             GROUP BY m.FECHA ORDER BY m.FECHA ASC"
+        );
+    }
+
+    /**
+     * Estilos con marchas vivas, con recuento (solo los dos valores curados).
+     * @return list<array{K:string,N:int}>
+     */
+    public static function hubEstilos(): array
+    {
+        return Db::all(
+            "SELECT m.ESTILO AS K, COUNT(*) AS N FROM marcha m
+             WHERE m.ESTILO IN ('CCTT', 'AM')
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             GROUP BY m.ESTILO ORDER BY N DESC"
+        );
+    }
+
+    /**
+     * Provincias con marchas vivas, con recuento, de más a menos marchas.
+     * Sirve para el sitemap, para resolver slug → nombre y para la home.
+     * @return list<array{K:string,N:int}>
+     */
+    public static function hubProvincias(): array
+    {
+        return Db::all(
+            "SELECT m.PROVINCIA AS K, COUNT(*) AS N FROM marcha m
+             WHERE m.PROVINCIA IS NOT NULL AND m.PROVINCIA != ''
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             GROUP BY m.PROVINCIA ORDER BY N DESC, m.PROVINCIA ASC"
+        );
     }
 
     // ── Admin: cargadores en crudo (para formularios de edición) ─────────────
@@ -819,8 +930,9 @@ final class Repo
     public static function fetchUltimas(): array
     {
         $rows = Db::all(
-            "SELECT m.ID_MARCHA, m.TITULO, m.FECHA
+            "SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.BANDA_ESTRENO, b.NOMBRE_BREVE AS BANDA_BREVE
              FROM marcha m
+             LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
              WHERE EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
              ORDER BY m.ID_MARCHA DESC LIMIT 5"
         );
@@ -830,6 +942,36 @@ final class Repo
         unset($r);
         self::attachAutores($rows);
         return $rows;
+    }
+
+    // ── Marcha del día (home, C3) ─────────────────────────────────────────────
+
+    /**
+     * IDs candidatos para "marcha del día": marchas vivas (con autor),
+     * priorizando las que tienen audio embebido (mejor experiencia, con
+     * reproductor visible). Si ninguna marcha tiene audio aún, cae a
+     * cualquier marcha viva para no dejar la sección vacía.
+     *
+     * @return list<int>
+     */
+    public static function marchaDelDiaCandidatos(): array
+    {
+        $ids = static fn(array $rows): array => array_map(static fn(array $r): int => (int) $r['ID_MARCHA'], $rows);
+
+        $conAudio = Db::all(
+            "SELECT m.ID_MARCHA FROM marcha m
+             WHERE m.AUDIO IS NOT NULL AND m.AUDIO != ''
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             ORDER BY m.ID_MARCHA"
+        );
+        if ($conAudio !== []) {
+            return $ids($conAudio);
+        }
+        return $ids(Db::all(
+            "SELECT m.ID_MARCHA FROM marcha m
+             WHERE EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             ORDER BY m.ID_MARCHA"
+        ));
     }
 
     // ── Dedicatorias: hubs de advocación (N-01 / N-02) ───────────────────────

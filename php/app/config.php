@@ -24,6 +24,11 @@ $defaults = [
     'password_pbkdf2_iterations' => 210000,
     'backup_keep_days'   => 60,               // retención (tools/backup.php); cron semanal → ~8-9 copias
     'goatcounter_code'   => null,              // subdominio de GoatCounter (p.ej. "marchasdecristo"), null = analítica desactivada
+    // Clave de IndexNow (ver routes.php y scripts/sync_db_to_prod.php). Debe
+    // ser EXACTAMENTE la misma en el config.local.php de este host (admin, para
+    // enviar el ping tras el sync) y en el de producción (para servir el
+    // fichero de verificación en /<clave>.txt). null = IndexNow desactivado.
+    'indexnow_key'       => null,
 ];
 
 $localFile = APP_DIR . '/config.local.php';
