@@ -45,7 +45,7 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
                     <option value="">Todas</option>
 <?php foreach ($bandas as $b): ?>
                     <option value="<?= (int) $b['ID_BANDA'] ?>" <?= (string) $b['ID_BANDA'] === $filters['banda'] ? 'selected' : '' ?>>
-                        <?= V::e($b['NOMBRE_BREVE'] ?? ('Banda #' . $b['ID_BANDA'])) ?>
+                        <?= V::e($b['NOMBRE_BREVE'] ?? ('Banda #' . $b['ID_BANDA'])) ?><?= $b['LOCALIDAD'] ? ' — ' . V::e($b['LOCALIDAD']) : '' ?>
                     </option>
 <?php endforeach; ?>
                 </select>
@@ -99,7 +99,7 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
             <td>
                 <span class="small muted"><?= $tipoLabel ?></span>
                 <strong><?= V::e($nombre) ?></strong><?= $anio ? ' <span class="small muted">(' . V::e($anio) . ')</span>' : '' ?>
-                <div class="small muted"><?= V::e($c['ENT_BANDA'] ?? '') ?></div>
+                <div class="small muted"><?= V::e($c['ENT_BANDA'] ?? '') ?><?= $c['ENT_BANDA_LOCALIDAD'] ? ' — ' . V::e($c['ENT_BANDA_LOCALIDAD']) : '' ?></div>
             </td>
             <td class="small">
 <?php if ($c['TITULO_ENC']): ?>
