@@ -38,9 +38,12 @@ final class Pages
     public static function home(): void
     {
         Http::cachePublic(1800);
+        $minHub = static fn(array $r): bool => (int) $r['N'] >= Repo::HUB_MIN_MARCHAS;
         View::render('home', [
             'ultimas' => Repo::fetchUltimas(),
             'estado' => Repo::fetchEstado(),
+            'hubEstilos' => array_values(array_filter(Repo::hubEstilos(), $minHub)),
+            'hubProvincias' => array_slice(array_values(array_filter(Repo::hubProvincias(), $minHub)), 0, 6),
         ], [
             'title' => 'Marchas de Cristo — Música procesional',
             'description' => 'Descubre marchas procesionales, compositores, bandas y discos de música de Semana Santa.',
@@ -99,6 +102,220 @@ final class Pages
         ]);
     }
 
+    // ── Hubs de catálogo indexables: año / estilo / provincia (C1) ───────────
+    // A diferencia del explorador /marcha (noindex: combinaciones de query
+    // infinitas), cada hub tiene URL propia estable, título/description propios
+    // y entra en el sitemap. Son la escalera de indexación hacia las fichas.
+
+    /** Slug público ↔ valor de BD de los hubs de estilo. */
+    private const ESTILO_HUBS = [
+        'cornetas-y-tambores' => ['db' => 'CCTT', 'label' => 'cornetas y tambores'],
+        'agrupacion-musical'  => ['db' => 'AM', 'label' => 'agrupación musical'],
+    ];
+
+    /** Alias cortos aceptados con redirección 308 al slug canónico. */
+    private const ESTILO_ALIAS = ['cctt' => 'cornetas-y-tambores', 'am' => 'agrupacion-musical'];
+
+    public static function anioHubPath(string|int $anio): string
+    {
+        return '/marcha/ano/' . $anio;
+    }
+
+    public static function provinciaHubPath(string $provincia): string
+    {
+        return '/marcha/provincia/' . Slug::slugify($provincia);
+    }
+
+    /** Ruta del hub para un valor de BD ('CCTT'/'AM'), o null si no es un estilo conocido. */
+    public static function estiloHubPath(?string $db): ?string
+    {
+        foreach (self::ESTILO_HUBS as $slug => $def) {
+            if ($def['db'] === $db) {
+                return '/marcha/estilo/' . $slug;
+            }
+        }
+        return null;
+    }
+
+    /** Etiqueta pública de un estilo de BD ('CCTT' → 'cornetas y tambores'). */
+    public static function estiloHubLabel(?string $db): ?string
+    {
+        foreach (self::ESTILO_HUBS as $def) {
+            if ($def['db'] === $db) {
+                return $def['label'];
+            }
+        }
+        return null;
+    }
+
+    public static function marchaAnioHub(array $p): void
+    {
+        $anio = (string) $p['anio'];
+        if (preg_match('/^\d{4}$/', $anio) !== 1) {
+            Http::notFound();
+        }
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $result = Repo::marchasDeAnio($anio, $page);
+        $n = (int) $result['totalRows'];
+
+        // Año anterior/siguiente con marchas, para tejer la malla de hubs.
+        $prev = null;
+        $next = null;
+        foreach (Repo::hubAnios() as $a) {
+            if ((int) $a['K'] < (int) $anio) {
+                $prev = $a;
+            } elseif ((int) $a['K'] > (int) $anio) {
+                $next = $a;
+                break;
+            }
+        }
+        $vease = [];
+        if ($prev !== null) {
+            $vease[] = ['href' => self::anioHubPath($prev['K']), 'label' => 'Marchas de ' . $prev['K'], 'cnt' => (int) $prev['N']];
+        }
+        if ($next !== null) {
+            $vease[] = ['href' => self::anioHubPath($next['K']), 'label' => 'Marchas de ' . $next['K'], 'cnt' => (int) $next['N']];
+        }
+        $vease[] = ['href' => '/marcha?fechaDesde=' . $anio . '&fechaHasta=' . $anio, 'label' => 'Afinar la búsqueda en el explorador', 'cnt' => null];
+
+        $desc = $n === 1
+            ? "La marcha procesional compuesta en $anio, con su compositor, banda de estreno y grabaciones."
+            : "Catálogo de las $n marchas procesionales compuestas en $anio, con sus compositores, bandas de estreno y grabaciones.";
+        self::renderMarchaHub([
+            'path' => self::anioHubPath($anio),
+            'h1' => "Marchas procesionales de $anio",
+            'crumb' => $anio,
+            'title' => "Marchas procesionales de $anio — Marchas de Cristo",
+            'description' => $desc,
+            'result' => $result,
+            'page' => $page,
+            'vease' => $vease,
+        ]);
+    }
+
+    public static function marchaEstiloHub(array $p): void
+    {
+        $slug = mb_strtolower((string) $p['slug'], 'UTF-8');
+        if (isset(self::ESTILO_ALIAS[$slug])) {
+            Http::redirect('/marcha/estilo/' . self::ESTILO_ALIAS[$slug]);
+        }
+        $def = self::ESTILO_HUBS[$slug] ?? null;
+        if ($def === null) {
+            Http::notFound();
+        }
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $result = Repo::marchasDeEstilo($def['db'], $page);
+        $n = (int) $result['totalRows'];
+
+        $vease = [];
+        foreach (Repo::hubEstilos() as $e) {
+            if ($e['K'] !== $def['db'] && ($path = self::estiloHubPath((string) $e['K'])) !== null) {
+                $otro = self::ESTILO_HUBS[substr($path, strlen('/marcha/estilo/'))]['label'] ?? (string) $e['K'];
+                $vease[] = ['href' => $path, 'label' => 'Marchas de ' . $otro, 'cnt' => (int) $e['N']];
+            }
+        }
+        $vease[] = ['href' => '/marcha', 'label' => 'Explorador completo de marchas', 'cnt' => null];
+
+        $desc = "Las $n marchas para {$def['label']} del catálogo, con sus compositores, bandas de estreno y grabaciones.";
+        self::renderMarchaHub([
+            'path' => '/marcha/estilo/' . $slug,
+            'h1' => 'Marchas de ' . $def['label'],
+            'crumb' => ucfirst($def['label']),
+            'title' => 'Marchas de ' . $def['label'] . ' — Marchas de Cristo',
+            'description' => $desc,
+            'result' => $result,
+            'page' => $page,
+            'vease' => $vease,
+        ]);
+    }
+
+    public static function marchaProvinciaHub(array $p): void
+    {
+        $raw = (string) $p['slug'];
+        $slug = Slug::slugify($raw);
+        $prov = null;
+        foreach (Repo::hubProvincias() as $r) {
+            if (Slug::slugify((string) $r['K']) === $slug) {
+                $prov = $r;
+                break;
+            }
+        }
+        if ($prov === null) {
+            Http::notFound();
+        }
+        if ($raw !== $slug) {
+            Http::redirect(self::provinciaHubPath((string) $prov['K']));
+        }
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $nombre = (string) $prov['K'];
+        $result = Repo::marchasDeProvincia($nombre, $page);
+        $n = (int) $result['totalRows'];
+
+        $vease = [['href' => '/marcha?provincia=' . rawurlencode($nombre), 'label' => 'Afinar la búsqueda en el explorador', 'cnt' => null]];
+
+        $desc = $n === 1
+            ? "La marcha procesional de la provincia de $nombre, con su compositor, banda de estreno y grabaciones."
+            : "Catálogo de las $n marchas procesionales de la provincia de $nombre, con sus compositores, bandas de estreno y grabaciones.";
+        self::renderMarchaHub([
+            'path' => self::provinciaHubPath($nombre),
+            'h1' => "Marchas procesionales de $nombre",
+            'crumb' => $nombre,
+            'title' => "Marchas procesionales de la provincia de $nombre — Marchas de Cristo",
+            'description' => $desc,
+            'result' => $result,
+            'page' => $page,
+            'vease' => $vease,
+        ]);
+    }
+
+    /**
+     * Render común de los hubs: 404 si no hay marchas o la página se pasa,
+     * canónica limpia (page 1) o con ?page=N, noindex si el hub es thin,
+     * JSON-LD CollectionPage + breadcrumbs.
+     *
+     * @param array{path:string,h1:string,crumb:string,title:string,description:string,
+     *              result:array,page:int,vease:list<array{href:string,label:string,cnt:?int}>} $o
+     */
+    private static function renderMarchaHub(array $o): void
+    {
+        $result = $o['result'];
+        $total = (int) $result['totalRows'];
+        if ($total === 0) {
+            Http::notFound();
+        }
+        $page = (int) $o['page'];
+        if ($page > (int) ceil($total / Repo::HUB_PAGE_SIZE)) {
+            Http::notFound();
+        }
+
+        $base = self::base();
+        $canonical = $base . $o['path'] . ($page > 1 ? '?page=' . $page : '');
+
+        Http::cachePublic(3600);
+        View::render('marcha_hub', [
+            'h1' => $o['h1'],
+            'intro' => $o['description'],
+            'result' => $result,
+            'page' => $page,
+            'basePath' => $o['path'],
+            'vease' => $o['vease'],
+        ], [
+            'title' => $o['title'],
+            'description' => $o['description'],
+            'canonical' => $canonical,
+            'noindex' => $total < Repo::HUB_MIN_MARCHAS,
+            'og' => ['type' => 'website', 'title' => $o['h1'], 'description' => $o['description'], 'url' => $canonical],
+            'jsonld' => [
+                Seo::marchaHub($o['h1'], $o['description'], $result['data'], $total, $canonical),
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Marchas', 'url' => $base . '/marcha'],
+                    ['name' => $o['crumb'], 'url' => $base . $o['path']],
+                ]),
+            ],
+        ]);
+    }
+
     // ── Detalles ──────────────────────────────────────────────────────────────
     public static function marchaDetail(array $p): void
     {
@@ -118,6 +335,7 @@ final class Pages
         Http::cachePublic(3600);
         View::render('marcha_detail', ['m' => $m, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $m['TITULO'] . ' — Marchas de Cristo',
+            'canonical' => $url,
             'description' => 'Marcha procesional "' . $m['TITULO'] . '" compuesta por ' . $autores . '.'
                 . (!empty($m['DEDICATORIA']) ? ' Dedicada a ' . $m['DEDICATORIA'] . '.' : ''),
             'og' => ['type' => 'music.song', 'title' => $m['TITULO'], 'description' => 'Marcha procesional compuesta por ' . $autores, 'url' => $url],
@@ -149,6 +367,7 @@ final class Pages
         Http::cachePublic(3600);
         View::render('autor_detail', ['a' => $a, 'fullName' => $fullName, 'url' => $url], [
             'title' => $fullName . ' — Marchas de Cristo',
+            'canonical' => $url,
             'description' => 'Compositor de música procesional. Ha compuesto ' . $a['marchasLength'] . ' marchas.'
                 . (!empty($a['LUGAR_NAC']) ? ' Natural de ' . $a['LUGAR_NAC'] . '.' : ''),
             'og' => ['type' => 'profile', 'title' => $fullName, 'description' => 'Compositor de ' . $a['marchasLength'] . ' marchas de música procesional', 'url' => $url],
@@ -181,6 +400,7 @@ final class Pages
         Http::cachePublic(3600);
         View::render('banda_detail', ['b' => $b, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $b['NOMBRE_BREVE'] . ' — Marchas de Cristo',
+            'canonical' => $url,
             'description' => $b['NOMBRE_COMPLETO'] . ', banda de ' . $b['LOCALIDAD'] . '. Ha grabado ' . $b['discosLength'] . ' discos y estrenado ' . $b['marchasLength'] . ' marchas.',
             'og' => ['type' => 'music.playlist', 'title' => $b['NOMBRE_BREVE'], 'description' => 'Banda de música procesional de ' . $b['LOCALIDAD'], 'url' => $url],
             'jsonld' => [
@@ -212,6 +432,7 @@ final class Pages
         Http::cachePublic(3600);
         View::render('disco_detail', ['d' => $d, 'url' => $url, 'enlaces' => $enlaces], [
             'title' => $d['NOMBRE_CD'] . ' — Marchas de Cristo',
+            'canonical' => $url,
             'description' => 'Disco de música procesional "' . $d['NOMBRE_CD'] . '" de ' . $d['BANDA'] . '. Contiene ' . $d['marchasLength'] . ' marchas.',
             'og' => ['type' => 'music.album', 'title' => $d['NOMBRE_CD'], 'description' => 'Álbum de música procesional de ' . $d['BANDA'], 'url' => $url],
             'jsonld' => [
@@ -276,6 +497,7 @@ final class Pages
         Http::cachePublic(3600);
         View::render('dedicatoria_detail', ['d' => $d, 'url' => $url], [
             'title' => 'Marchas dedicadas a ' . $titular . ' — Marchas de Cristo',
+            'canonical' => $url,
             'description' => 'Catálogo de ' . $d['N'] . ' marcha' . ($d['N'] === 1 ? '' : 's')
                 . ' procesional' . ($d['N'] === 1 ? '' : 'es') . ' dedicada' . ($d['N'] === 1 ? '' : 's')
                 . ' a ' . $titular . ', con sus compositores y grabaciones.',
@@ -326,6 +548,23 @@ final class Pages
         ];
 
         try {
+            // Hubs de catálogo (C1): solo los que tienen sustancia (≥ HUB_MIN_MARCHAS).
+            foreach (Repo::hubAnios() as $r) {
+                if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
+                    $urls[] = [$base . self::anioHubPath($r['K']), 'monthly', '0.7'];
+                }
+            }
+            foreach (Repo::hubEstilos() as $r) {
+                $path = self::estiloHubPath((string) $r['K']);
+                if ($path !== null && (int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
+                    $urls[] = [$base . $path, 'weekly', '0.7'];
+                }
+            }
+            foreach (Repo::hubProvincias() as $r) {
+                if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
+                    $urls[] = [$base . self::provinciaHubPath((string) $r['K']), 'weekly', '0.7'];
+                }
+            }
             foreach (Db::all('SELECT ID_MARCHA AS id, TITULO AS label FROM marcha') as $r) {
                 $urls[] = [$base . Slug::buildDetailPath('marcha', $r['id'], (string) $r['label']), 'monthly', '0.7'];
             }

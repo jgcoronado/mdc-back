@@ -1,6 +1,8 @@
-<?php use App\View as V; use App\Slug as S;
+<?php use App\View as V; use App\Slug as S; use App\Pages as P;
 /** @var list<array<string,mixed>> $ultimas */
 /** @var array{MARCHAS:int,AUTORES:int,BANDAS:int,DISCOS:int}|null $estado */
+/** @var list<array{K:string,N:int}> $hubEstilos @var list<array{K:string,N:int}> $hubProvincias */
+$num = static fn($n): string => number_format((int) $n, 0, ',', '.');
 ?>
 <div class="stack home">
     <section class="card">
@@ -15,6 +17,24 @@
         </div>
 <?php endif; ?>
     </section>
+
+<?php if (($hubEstilos ?? []) !== [] || ($hubProvincias ?? []) !== []): ?>
+    <section>
+        <h2 class="section-title">Explorar el catálogo</h2>
+        <ul class="vease">
+<?php foreach ($hubEstilos as $e):
+    $ePath = P::estiloHubPath((string) $e['K']);
+    $eLabel = P::estiloHubLabel((string) $e['K']);
+    if ($ePath === null || $eLabel === null) continue; ?>
+            <li>→ <a href="<?= V::e($ePath) ?>">Marchas de <?= V::e($eLabel) ?></a> <span class="cnt">(<?= $num($e['N']) ?> registros)</span></li>
+<?php endforeach; ?>
+<?php foreach ($hubProvincias as $pr): ?>
+            <li>→ <a href="<?= V::e(P::provinciaHubPath((string) $pr['K'])) ?>">Marchas de la provincia de <?= V::e($pr['K']) ?></a> <span class="cnt">(<?= $num($pr['N']) ?> registros)</span></li>
+<?php endforeach; ?>
+            <li>→ <a href="/dedicatorias">Dedicatorias — advocaciones y hermandades</a></li>
+        </ul>
+    </section>
+<?php endif; ?>
 
 <?php if ($ultimas): ?>
     <section>

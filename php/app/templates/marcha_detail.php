@@ -1,4 +1,4 @@
-<?php use App\View as V; use App\Slug as S; use App\Media as MD; use App\Html as H;
+<?php use App\View as V; use App\Slug as S; use App\Media as MD; use App\Html as H; use App\Pages as P;
 /** @var array<string,mixed> $m @var array<string,string> $enlaces */
 /** @var string|null $url  URL canónica absoluta (permalink) */
 
@@ -75,9 +75,11 @@ $prev = $m['REG_PREV'] ?? null;
 $next = $m['REG_NEXT'] ?? null;
 $nGrab = (int) $m['discosLength'];
 $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
+// FECHA puede venir normalizada a 's/f': solo los años reales enlazan a su hub.
+$anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 ?>
 <div class="crumbs">
-    <span><a href="/">Inicio</a> › <a href="/marcha">Marchas</a><?php if ($t($m['FECHA'])): ?> › <a href="<?= V::e('/marcha?fechaDesde=' . $m['FECHA'] . '&fechaHasta=' . $m['FECHA']) ?>"><?= V::e($m['FECHA']) ?></a><?php endif; ?> › M-<?= $mid ?></span>
+    <span><a href="/">Inicio</a> › <a href="/marcha">Marchas</a><?php if ($anioOk): ?> › <a href="<?= V::e(P::anioHubPath((string) $m['FECHA'])) ?>"><?= V::e($m['FECHA']) ?></a><?php endif; ?> › M-<?= $mid ?></span>
     <span class="regnav">
 <?php if ($prev): ?>
         <a href="<?= V::e(S::buildDetailPath('marcha', $prev['ID_MARCHA'], (string) $prev['TITULO'])) ?>">‹ M-<?= (int) $prev['ID_MARCHA'] ?></a> ·
@@ -206,11 +208,14 @@ if ($t($m['BANDA_ESTRENO']) && (int) $m['BANDA_ESTRENOS'] > 1) {
     $p = S::buildDetailPath('banda', $m['BANDA_ESTRENO'], (string) $m['BANDA_NOMBRE']);
     $vease[] = '→ <a href="' . V::e($p) . '">' . V::e($m['BANDA_NOMBRE']) . '</a> — los ' . $num($m['BANDA_ESTRENOS']) . ' estrenos de la banda <span class="cnt">(B-' . (int) $m['BANDA_ESTRENO'] . ')</span>';
 }
-if ($t($m['FECHA']) && (int) $m['N_MISMO_ANIO'] > 1) {
-    $vease[] = '→ <a href="' . V::e('/marcha?fechaDesde=' . $m['FECHA'] . '&fechaHasta=' . $m['FECHA']) . '">Marchas del año ' . V::e($m['FECHA']) . '</a> <span class="cnt">(' . $num($m['N_MISMO_ANIO']) . ' registros)</span>';
+if ($anioOk && (int) $m['N_MISMO_ANIO'] > 1) {
+    $vease[] = '→ <a href="' . V::e(P::anioHubPath((string) $m['FECHA'])) . '">Marchas del año ' . V::e($m['FECHA']) . '</a> <span class="cnt">(' . $num($m['N_MISMO_ANIO']) . ' registros)</span>';
+}
+if ($estilo !== '' && (int) ($m['N_MISMO_ESTILO'] ?? 0) > 1 && ($estiloHub = P::estiloHubPath((string) $m['ESTILO'])) !== null) {
+    $vease[] = '→ <a href="' . V::e($estiloHub) . '">Marchas de ' . V::e(mb_strtolower($estilo, 'UTF-8')) . '</a> <span class="cnt">(' . $num($m['N_MISMO_ESTILO']) . ' registros)</span>';
 }
 if ($t($m['PROVINCIA']) && (int) $m['N_MISMA_PROV'] > 1) {
-    $vease[] = '→ <a href="' . V::e('/marcha?provincia=' . rawurlencode((string) $m['PROVINCIA'])) . '">Marchas de la provincia de ' . V::e($m['PROVINCIA']) . '</a> <span class="cnt">(' . $num($m['N_MISMA_PROV']) . ' registros)</span>';
+    $vease[] = '→ <a href="' . V::e(P::provinciaHubPath((string) $m['PROVINCIA'])) . '">Marchas de la provincia de ' . V::e($m['PROVINCIA']) . '</a> <span class="cnt">(' . $num($m['N_MISMA_PROV']) . ' registros)</span>';
 }
 ?>
 <?php if ($vease !== []): ?>

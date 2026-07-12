@@ -12,6 +12,7 @@ use App\View;
 $title = (string) ($meta['title'] ?? 'Marchas de Cristo');
 $description = $meta['description'] ?? null;
 $noindex = !empty($meta['noindex']);
+$canonical = $meta['canonical'] ?? null;
 $og = $meta['og'] ?? null;
 $jsonld = $meta['jsonld'] ?? [];
 
@@ -57,6 +58,9 @@ $search = $searchBySection[$current] ?? null;
 <?php endif; ?>
 <?php if ($noindex): ?>
     <meta name="robots" content="noindex">
+<?php endif; ?>
+<?php if ($canonical !== null): ?>
+    <link rel="canonical" href="<?= $e($canonical) ?>">
 <?php endif; ?>
 <?php if ($og !== null): ?>
     <meta property="og:type" content="<?= $e($og['type'] ?? 'website') ?>">

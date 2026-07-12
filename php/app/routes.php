@@ -35,6 +35,13 @@ $router->get('/disco', [Pages::class, 'discoList']);
 $router->get('/dedicatorias', [Pages::class, 'dedicatoriaList']);
 $router->get('/dedicatoria/{slugAndId}', [Pages::class, 'dedicatoriaDetail']);
 
+// ── Hubs de catálogo indexables (C1): año / estilo / provincia ───────────────
+// Dos segmentos tras /marcha, así que no chocan con el detalle {slugAndId};
+// se registran antes por claridad.
+$router->get('/marcha/ano/{anio}', [Pages::class, 'marchaAnioHub']);
+$router->get('/marcha/estilo/{slug}', [Pages::class, 'marchaEstiloHub']);
+$router->get('/marcha/provincia/{slug}', [Pages::class, 'marchaProvinciaHub']);
+
 // ── Detalles (catch-all por entidad) ──────────────────────────────────────────
 $router->get('/marcha/{slugAndId}', [Pages::class, 'marchaDetail']);
 $router->get('/autor/{slugAndId}', [Pages::class, 'autorDetail']);
