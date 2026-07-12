@@ -43,24 +43,21 @@ $estilo = match ($m['ESTILO'] ?? null) {
 $duracion = $dur($m['DURACION_SEG'] ?? 0);
 $autores = $m['AUTORES_FICHA'] ?? [];
 
-// Asiento bibliográfico bajo el título, segmentos ". —" solo con datos presentes.
+// Asiento bibliográfico bajo el título: solo autor(es) y año.
 $asientoAutores = [];
 foreach ($autores as $a) {
     $path = S::buildDetailPath('autor', $a['ID_AUTOR'], trim(($a['NOMBRE'] ?? '') . ' ' . ($a['APELLIDOS'] ?? '')));
     $asientoAutores[] = '<a href="' . V::e($path) . '">' . V::e($autoridad($a)) . '</a>' . V::e($vida($a));
 }
 $asiento = [implode('; ', $asientoAutores)];
-$lugarAnio = trim(implode(', ', array_filter([
-    $t($m['LOCALIDAD']) ? (string) $m['LOCALIDAD'] : ($t($m['PROVINCIA']) ? (string) $m['PROVINCIA'] : ''),
-    $t($m['FECHA']) ? (string) $m['FECHA'] : '',
-], static fn($v) => $v !== '')));
-if ($lugarAnio !== '') $asiento[] = V::e($lugarAnio);
-if ($duracion !== '') $asiento[] = V::e($duracion);
+if ($t($m['FECHA'])) $asiento[] = V::e((string) $m['FECHA']);
 
-// Localidad (Provincia) para la descripción.
+// Localidad (Provincia) para la descripción — la provincia se omite si
+// coincide con la localidad (p.ej. "Sevilla (Sevilla)" en las capitales).
 $localidad = '';
 if ($t($m['LOCALIDAD'])) {
-    $localidad = (string) $m['LOCALIDAD'] . ($t($m['PROVINCIA']) ? ' (' . $m['PROVINCIA'] . ')' : '');
+    $mismaProvincia = $t($m['PROVINCIA']) && mb_strtolower((string) $m['PROVINCIA'], 'UTF-8') === mb_strtolower((string) $m['LOCALIDAD'], 'UTF-8');
+    $localidad = (string) $m['LOCALIDAD'] . ($t($m['PROVINCIA']) && !$mismaProvincia ? ' (' . $m['PROVINCIA'] . ')' : '');
 } elseif ($t($m['PROVINCIA'])) {
     $localidad = (string) $m['PROVINCIA'];
 }
@@ -71,8 +68,6 @@ if ($t($m['DETALLES_MARCHA'])) {
     $notas = str_replace(['&lt;br&gt;', '&lt;br/&gt;', '&lt;br /&gt;'], '<br>', V::e($m['DETALLES_MARCHA']));
 }
 
-$prev = $m['REG_PREV'] ?? null;
-$next = $m['REG_NEXT'] ?? null;
 $nGrab = (int) $m['discosLength'];
 $badge1a = null; // primera fila cuya fecha coincide con la primera grabación
 // FECHA puede venir normalizada a 's/f': solo los años reales enlazan a su hub.
@@ -80,21 +75,11 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 ?>
 <div class="crumbs">
     <span><a href="/">Inicio</a> › <a href="/marcha">Marchas</a><?php if ($anioOk): ?> › <a href="<?= V::e(P::anioHubPath((string) $m['FECHA'])) ?>"><?= V::e($m['FECHA']) ?></a><?php endif; ?> › M-<?= $mid ?></span>
-    <span class="regnav">
-<?php if ($prev): ?>
-        <a href="<?= V::e(S::buildDetailPath('marcha', $prev['ID_MARCHA'], (string) $prev['TITULO'])) ?>">‹ M-<?= (int) $prev['ID_MARCHA'] ?></a> ·
-<?php endif; ?>
-        registro <?= $num($m['REG_POS']) ?> de <?= $num($m['REG_TOTAL']) ?>
-<?php if ($next): ?>
-        · <a href="<?= V::e(S::buildDetailPath('marcha', $next['ID_MARCHA'], (string) $next['TITULO'])) ?>">M-<?= (int) $next['ID_MARCHA'] ?> ›</a>
-<?php endif; ?>
-    </span>
 </div>
 
 <article class="record">
     <div class="head">
         <span class="eb"><?= V::e($tipo) ?></span>
-        <span class="sig">MDC · M-<?= $mid ?></span>
     </div>
     <h1><?= V::e($m['TITULO']) ?></h1>
 <?php if ($asiento[0] !== '' || count($asiento) > 1): ?>
@@ -103,19 +88,19 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 
     <dl class="desc">
 <?php foreach ($autores as $a): ?>
-        <div class="f"><dt>Compositor</dt><dd><a href="<?= V::e(S::buildDetailPath('autor', $a['ID_AUTOR'], trim(($a['NOMBRE'] ?? '') . ' ' . ($a['APELLIDOS'] ?? '')))) ?>"><?= V::e($autoridad($a)) ?></a><?php if ((int) $a['N_MARCHAS'] > 1): ?> <span class="cnt">(<?= $num($a['N_MARCHAS']) ?> marchas)</span><?php endif; ?></dd></div>
+        <div class="f"><dt>Compositor</dt><dd><a href="<?= V::e(S::buildDetailPath('autor', $a['ID_AUTOR'], trim(($a['NOMBRE'] ?? '') . ' ' . ($a['APELLIDOS'] ?? '')))) ?>"><?= V::e($autoridad($a)) ?></a><?php if ((int) $a['N_MARCHAS'] > 1): ?><br><span class="cnt"><?= $num($a['N_MARCHAS']) ?> marchas compuestas</span><?php endif; ?></dd></div>
 <?php endforeach; ?>
 <?php if ($t($m['FECHA'])): ?>
         <div class="f"><dt>Año</dt><dd><?= V::e($m['FECHA']) ?></dd></div>
 <?php endif; ?>
-<?php if ($t($m['TIPO'])): ?>
+<?php if ($t($m['TIPO']) && mb_strtolower($tipo, 'UTF-8') !== 'marcha procesional'): ?>
         <div class="f"><dt>Tipo</dt><dd><?= V::e($tipo) ?></dd></div>
 <?php endif; ?>
 <?php if ($estilo !== ''): ?>
         <div class="f"><dt>Estilo</dt><dd><?= V::e($estilo) ?></dd></div>
 <?php endif; ?>
 <?php if ($duracion !== ''): ?>
-        <div class="f"><dt>Duración</dt><dd><?= V::e($duracion) ?> <span class="cnt">(<?= (int) $m['DURACION_SEG'] ?> s)</span></dd></div>
+        <div class="f"><dt>Duración</dt><dd><?= V::e($duracion) ?></dd></div>
 <?php endif; ?>
 <?php if ($t($m['DEDICATORIA']) && $m['DEDICATORIA'] !== '0'): ?>
         <div class="f"><dt>Dedicatoria</dt><dd><?= V::e($m['DEDICATORIA']) ?></dd></div>
@@ -124,14 +109,15 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
         <div class="f"><dt>Localidad</dt><dd><?= V::e($localidad) ?></dd></div>
 <?php endif; ?>
 <?php if ($t($m['BANDA_ESTRENO'])): ?>
-        <div class="f"><dt>Estreno</dt><dd><a href="<?= V::e(S::buildDetailPath('banda', $m['BANDA_ESTRENO'], (string) $m['BANDA_NOMBRE'])) ?>"><?= V::e($m['BANDA_NOMBRE']) ?></a><?php if ($t($m['BANDA_LOC'])): ?>, <?= V::e($m['BANDA_LOC']) ?><?php endif; ?><?php if ((int) $m['BANDA_ESTRENOS'] > 1): ?> <span class="cnt">(<?= $num($m['BANDA_ESTRENOS']) ?> estrenos)</span><?php endif; ?></dd></div>
+        <div class="f"><dt>Estrenada por</dt><dd><a href="<?= V::e(S::buildDetailPath('banda', $m['BANDA_ESTRENO'], (string) $m['BANDA_NOMBRE'])) ?>"><?= V::e($m['BANDA_NOMBRE']) ?></a><?php if ($t($m['BANDA_LOC'])): ?>, <?= V::e($m['BANDA_LOC']) ?><?php endif; ?><?php if ((int) $m['BANDA_ESTRENOS'] > 1): ?><br><span class="cnt"><?= $num($m['BANDA_ESTRENOS']) ?> marchas estrenadas</span><?php endif; ?></dd></div>
 <?php endif; ?>
         <div class="f"><dt>Grabaciones</dt><dd><?= $num($nGrab) ?><?php if ($m['PRIMERA_GRABACION']): ?> <span class="cnt">· primera en <?= (int) $m['PRIMERA_GRABACION'] ?></span><?php endif; ?></dd></div>
     </dl>
 
 <?php $enl = $enlaces ?? []; if ($t($m['AUDIO']) || $enl !== []): ?>
-    <div class="listen">
-        <div class="listen-head"><span class="pt">Escuchar</span></div>
+    <details class="collapse listen">
+        <summary class="collapse-title">Escuchar</summary>
+        <div class="collapse-content">
 <?php if ($ytid !== null): ?>
         <div class="ytembed" data-ytid="<?= V::e($ytid) ?>">
             <button type="button" class="ytfacade" aria-label="Reproducir el vídeo (carga YouTube al pulsar)">
@@ -143,13 +129,14 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php if ($ytid !== null || $audioEsUrl): ?>
         <div class="svcs">
 <?php if ($ytid !== null): ?>
-            <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ YouTube ↗</a>
+            <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ YouTube</a>
 <?php else: ?>
-            <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ Escuchar ↗</a>
+            <a class="svc" href="<?= V::e($m['AUDIO']) ?>" rel="noopener" target="_blank">▶ Escuchar</a>
 <?php endif; ?>
         </div>
 <?php endif; ?>
-    </div>
+        </div>
+    </details>
 <?php endif; ?>
 
 <?php if ($notas !== ''): ?>
@@ -175,7 +162,6 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
             <th data-type="num">Año <span class="ar">↕</span></th>
             <th>Grabación <span class="ar">↕</span></th>
             <th>Banda <span class="ar">↕</span></th>
-            <th class="num" data-type="num">Pista <span class="ar">↕</span></th>
         </tr></thead>
         <tbody>
 <?php foreach ($m['discos'] as $d):
@@ -186,8 +172,7 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
             <tr>
                 <td><?= $anio > 1800 ? $anio : '—' ?></td>
                 <td><a href="<?= V::e(S::buildDetailPath('disco', $d['ID_DISCO'], (string) $d['NOMBRE_CD'])) ?>"><?= V::e($d['NOMBRE_CD']) ?></a><?php if ($es1a): ?><span class="badge-1a">◆ 1.ª grabación</span><?php endif; ?></td>
-                <td><?php if ($t($d['ID_BANDA'])): ?><a href="<?= V::e(S::buildDetailPath('banda', $d['ID_BANDA'], (string) $d['BANDA_BREVE'])) ?>"><?= V::e($d['BANDA_BREVE']) ?></a><?php else: ?><span class="muted">—</span><?php endif; ?></td>
-                <td class="num"><?= $t($d['NUMEROMARCHA']) ? (int) $d['NUMEROMARCHA'] : '—' ?></td>
+                <td><?php if ($t($d['ID_BANDA'])): ?><a href="<?= V::e(S::buildDetailPath('banda', $d['ID_BANDA'], (string) $d['BANDA_BREVE'])) ?>"><?= V::e($d['BANDA_BREVE']) ?></a><?php if ($t($d['BANDA_LOC'])): ?> - <?= V::e($d['BANDA_LOC']) ?><?php endif; ?><?php else: ?><span class="muted">—</span><?php endif; ?></td>
             </tr>
 <?php endforeach; ?>
         </tbody>
@@ -229,8 +214,7 @@ if ($t($m['PROVINCIA']) && (int) $m['N_MISMA_PROV'] > 1) {
 
     <div class="ids">
 <?php if (!empty($url)): ?>
-        <span>permalink: <?= V::e(preg_replace('#^https?://#', '', (string) $url)) ?></span>
+        <span>permalink: <a href="<?= V::e($url) ?>"><?= V::e(preg_replace('#^https?://#', '', (string) $url)) ?></a></span>
 <?php endif; ?>
-        <span>registro M-<?= $mid ?></span>
     </div>
 </article>

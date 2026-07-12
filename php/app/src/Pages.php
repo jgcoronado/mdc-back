@@ -40,14 +40,21 @@ final class Pages
         Http::cachePublic(1800);
         $minHub = static fn(array $r): bool => (int) $r['N'] >= Repo::HUB_MIN_MARCHAS;
         $hubAniosVivos = array_values(array_filter(Repo::hubAnios(), $minHub));
+        $hubEstilosVivos = array_values(array_filter(Repo::hubEstilos(), $minHub));
+        $hubProvinciasVivas = array_values(array_filter(Repo::hubProvincias(), $minHub));
+        $marchaDelDia = self::marchaDelDia();
+
         View::render('home', [
             'ultimas' => Repo::fetchUltimas(),
             'estado' => Repo::fetchEstado(),
-            'marchaDelDia' => self::marchaDelDia(),
-            'hubEstilos' => array_values(array_filter(Repo::hubEstilos(), $minHub)),
-            'hubProvincias' => array_slice(array_values(array_filter(Repo::hubProvincias(), $minHub)), 0, 6),
-            // Más recientes primero: hubAnios() viene ordenado ASC por año.
-            'hubAniosRecientes' => array_slice(array_reverse($hubAniosVivos), 0, 6),
+            'marchaDelDia' => $marchaDelDia,
+            'sugerencias' => self::homeSugerencias(
+                $marchaDelDia,
+                $hubEstilosVivos,
+                // Más recientes primero: hubAnios() viene ordenado ASC por año.
+                array_slice(array_reverse($hubAniosVivos), 0, 6),
+                $hubProvinciasVivas
+            ),
         ], [
             'title' => 'Marchas de Cristo — Música procesional',
             'description' => 'Descubre marchas procesionales, compositores, bandas y discos de música de Semana Santa.',
@@ -69,6 +76,62 @@ final class Pages
         $seed = (int) gmdate('Ymd');
         $id = (string) $ids[$seed % count($ids)];
         return Repo::fetchMarcha($id);
+    }
+
+    /**
+     * Hasta 6 accesos de descubrimiento para la columna estrecha de la home.
+     * Prioriza los relacionados con la marcha del día en concreto (su año,
+     * su estilo, su provincia — normalmente al menos 2 de los 3 tienen dato)
+     * y completa con estilo/año/provincia/dedicatorias generales, sin
+     * repetir ningún href.
+     *
+     * @param array<string,mixed>|null $mdd
+     * @param list<array{K:string,N:int}> $hubEstilos
+     * @param list<array{K:int,N:int}> $hubAniosRecientes
+     * @param list<array{K:string,N:int}> $hubProvincias
+     * @return list<array{href:string,label:string,cnt:?int}>
+     */
+    private static function homeSugerencias(?array $mdd, array $hubEstilos, array $hubAniosRecientes, array $hubProvincias): array
+    {
+        $out = [];
+        $seen = [];
+        $add = static function (string $href, string $label, ?int $cnt) use (&$out, &$seen): void {
+            if (isset($seen[$href]) || count($out) >= 6) return;
+            $seen[$href] = true;
+            $out[] = ['href' => $href, 'label' => $label, 'cnt' => $cnt];
+        };
+
+        if ($mdd !== null) {
+            $anio = (string) ($mdd['FECHA'] ?? '');
+            if (preg_match('/^\d{4}$/', $anio) === 1) {
+                $add(self::anioHubPath($anio), "Marchas de $anio", (int) ($mdd['N_MISMO_ANIO'] ?? 0));
+            }
+            $estiloDb = (string) ($mdd['ESTILO'] ?? '');
+            $estiloPath = self::estiloHubPath($estiloDb);
+            $estiloLabel = self::estiloHubLabel($estiloDb);
+            if ($estiloPath !== null && $estiloLabel !== null) {
+                $add($estiloPath, 'Marchas de ' . $estiloLabel, (int) ($mdd['N_MISMO_ESTILO'] ?? 0));
+            }
+            $prov = (string) ($mdd['PROVINCIA'] ?? '');
+            if ($prov !== '') {
+                $add(self::provinciaHubPath($prov), 'Marchas de la provincia de ' . $prov, (int) ($mdd['N_MISMA_PROV'] ?? 0));
+            }
+        }
+
+        foreach ($hubEstilos as $e) {
+            $path = self::estiloHubPath((string) $e['K']);
+            $label = self::estiloHubLabel((string) $e['K']);
+            if ($path !== null && $label !== null) $add($path, 'Marchas de ' . $label, (int) $e['N']);
+        }
+        foreach ($hubAniosRecientes as $a) {
+            $add(self::anioHubPath($a['K']), 'Marchas de ' . $a['K'], (int) $a['N']);
+        }
+        foreach ($hubProvincias as $pr) {
+            $add(self::provinciaHubPath((string) $pr['K']), 'Marchas de la provincia de ' . $pr['K'], (int) $pr['N']);
+        }
+        $add('/dedicatorias', 'Dedicatorias — advocaciones y hermandades', null);
+
+        return $out;
     }
 
     // ── Listados / buscadores ─────────────────────────────────────────────────

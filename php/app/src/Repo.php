@@ -136,6 +136,7 @@ final class Repo
             "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, dm.NUMEROMARCHA,
                     COALESCE(bi.ID_BANDA, b.ID_BANDA) AS ID_BANDA,
                     COALESCE(bi.NOMBRE_BREVE, b.NOMBRE_BREVE) AS BANDA_BREVE,
+                    COALESCE(bi.LOCALIDAD, b.LOCALIDAD) AS BANDA_LOC,
                     (COALESCE(bi.NOMBRE_BREVE, b.NOMBRE_BREVE) || ' (' || COALESCE(bi.LOCALIDAD, b.LOCALIDAD) || ')') AS BANDA
              FROM disco d
              INNER JOIN disco_marcha dm ON dm.ID_DISCO = d.ID_DISCO

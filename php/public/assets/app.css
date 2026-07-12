@@ -177,10 +177,9 @@ dl.desc dd { margin: 0; font-size: 0.89rem; }
 .filter { font-family: var(--mono); font-size: 0.76rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.32rem 0.55rem; background: var(--card); color: var(--ink); min-width: 11rem; }
 .filter::placeholder { color: var(--faint); }
 
-/* Escuchar — enlaces por servicio (pendiente de datos) */
-.listen { margin: 1.1rem 0 0; padding: 0.7rem 0.85rem; border-radius: var(--radius-sm); background: var(--s2); border: 1px dashed var(--line); }
-.listen-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
-.listen-head .pt { font-weight: 600; font-size: 0.9rem; }
+/* Escuchar — details.collapse (ver .collapse más abajo); solo el espaciado
+   de los botones de servicio es propio de este bloque. */
+.listen.collapse { margin: 1.1rem 0 0; }
 .todo { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rec); background: var(--rec-bg); border-radius: 3px; padding: 0.12rem 0.42rem; font-weight: 700; }
 .svcs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .svc { font-size: 0.76rem; color: var(--acc); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.26rem 0.6rem; text-decoration: none; }
@@ -294,6 +293,10 @@ a.fopt .fcount { margin-left: auto; font-family: var(--mono); font-size: 0.7rem;
 /* ── Paginación ─────────────────────────────────────────────────────────── */
 .pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.35rem; margin-top: 1rem; font-family: var(--mono); font-size: 0.8rem; }
 .pagination .ellipsis { padding: 0 0.25rem; color: var(--faint); }
+
+/* ── Home: marcha del día + descubrimiento en dos columnas ──────────────── */
+.home-top { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: start; }
+@media (min-width: 720px) { .home-top { grid-template-columns: 7fr 3fr; } }
 
 /* ── Home: últimas incorporaciones ──────────────────────────────────────── */
 .welcome-text { margin: 0; font-size: 0.92rem; }
