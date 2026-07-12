@@ -75,6 +75,7 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
     <form id="bulkForm" method="POST" action="/dashboard/enlaces/rechazar-multiple">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
         <input type="hidden" name="ref" value="<?= V::e($backQs) ?>">
+    </form>
 <?php if ($puedeRechazarMultiple): ?>
         <div class="row" style="align-items:center;gap:0.75rem;margin-bottom:0.5rem">
             <button type="button" id="btnRechazarSeleccionados" class="btn btn-sm btn-danger" disabled>Rechazar seleccionados (<span id="numSeleccionados">0</span>)</button>
@@ -91,7 +92,7 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
 <?php if ($puedeRechazarMultiple): ?>
             <td style="width:1.5rem">
                 <input type="checkbox" class="enlace-check" name="ids[]" value="<?= (int) $c['ID_CAND'] ?>"
-                       data-disco="<?= V::e($nombre) ?>" data-servicio="<?= V::e($c['SERVICIO']) ?>">
+                       form="bulkForm" data-disco="<?= V::e($nombre) ?>" data-servicio="<?= V::e($c['SERVICIO']) ?>">
             </td>
 <?php endif; ?>
             <td><span class="badge"><?= V::e(ucfirst((string) $c['SERVICIO'])) ?></span></td>
@@ -135,7 +136,6 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
         </tr>
 <?php endforeach; ?>
     </tbody></table></div>
-    </form>
     <?= H::pagination($page, $result['totalRows'], $limit, '/dashboard/enlaces', $filters) ?>
 <?php else: ?>
     <p class="muted">No hay candidatos con estos filtros.</p>

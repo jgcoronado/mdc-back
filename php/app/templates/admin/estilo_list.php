@@ -46,6 +46,7 @@ $csrf = Auth::csrfToken($session);
             <button type="submit" name="estilo" value="CCTT" id="btnBulkCCTT" class="btn btn-sm" disabled>Asignar CCTT a seleccionadas</button>
             <button type="submit" name="estilo" value="AM" id="btnBulkAM" class="btn btn-sm" disabled>Asignar AM a seleccionadas</button>
         </div>
+    </form>
     <div class="tableList"><table class="table table-zebra table-sm"><tbody>
 <?php foreach ($result['data'] as $m):
     $ctx = $m['BANDA_ESTRENO_NOMBRE'] ?? null;
@@ -79,7 +80,6 @@ $csrf = Auth::csrfToken($session);
         </tr>
 <?php endforeach; ?>
     </tbody></table></div>
-    </form>
     <?= H::pagination($page, $result['totalRows'], $limit, '/dashboard/estilos', $filters) ?>
 <?php else: ?>
     <p class="muted">No hay marchas con estos filtros.</p>
