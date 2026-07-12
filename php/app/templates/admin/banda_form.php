@@ -1,10 +1,12 @@
-<?php use App\View as V; use App\Auth; use App\Slug as S;
+<?php use App\View as V; use App\Auth; use App\Slug as S; use App\EnlaceRepo; use App\Html as H;
 /** @var array $session @var array<string,mixed> $banda @var string $action
  *  @var list<array<string,mixed>> $relaciones @var list<string> $tipos
- *  @var bool $showLinaje @var bool $proposalMode @var array|null $notice @var string|null $error */
+ *  @var bool $showLinaje @var bool $proposalMode @var array|null $notice @var string|null $error
+ *  @var array<string,string> $enlaces */
 $csrf = Auth::csrfToken($session);
 $showLinaje = $showLinaje ?? true;
 $proposalMode = $proposalMode ?? false;
+$enlaces = $enlaces ?? [];
 $id = (int) $banda['ID_BANDA'];
 
 // Los años se guardan como "1980.0" en datos heredados; se muestran como año limpio.
@@ -23,7 +25,6 @@ $fields = [
     ['FECHA_EXT', 'Fecha de extinción (año)', 'number'],
     ['DIRECTOR_ACTUAL', 'Director actual', 'text'],
     ['DIR_MUS_ACTUAL', 'Director musical actual', 'text'],
-    ['WEB', 'Web', 'text'],
 ];
 
 $tipoLabel = [
@@ -57,7 +58,13 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
 <?php if ($proposalMode): ?><div class="alert alert-info">Verás una <strong>previsualización</strong> antes de enviar. Tu propuesta la revisará un administrador; no se guarda directamente en la base de datos.</div><?php endif; ?>
 
-    <form class="panel" action="<?= V::e($action) ?>" method="POST">
+    <div class="row tabs" role="tablist" style="gap:0.5rem;margin-bottom:0.75rem">
+        <button type="button" class="btn btn-sm btn-neutral tab-btn" data-tab="datos" aria-selected="true">Datos</button>
+        <button type="button" class="btn btn-sm btn-ghost tab-btn" data-tab="social" aria-selected="false">Social</button>
+    </div>
+
+    <div data-tab-panel="datos">
+    <form class="panel" id="bandaForm" action="<?= V::e($action) ?>" method="POST">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
 <?php foreach ($fields as [$key, $label, $type]): ?>
         <div class="field">
@@ -161,7 +168,54 @@ $punta = static function (?int $bid, ?string $nombre, ?string $loc) use ($id): s
         </form>
     </section>
 <?php endif; ?>
+    </div>
+
+    <div data-tab-panel="social" hidden>
+        <section>
+            <h2 class="section-title">Web y enlaces oficiales</h2>
+            <div class="field">
+                <label class="field-label" for="WEB">Web</label>
+                <input class="input" id="WEB" name="WEB" type="text" form="bandaForm" value="<?= $val('WEB') ?>">
+                <p class="muted small">Se guarda junto con la pestaña «Datos».</p>
+            </div>
+        </section>
+
+<?php if ($showLinaje): // enlace_streaming se escribe directo, sin flujo de propuestas: solo admin ?>
+        <section>
+            <h2 class="section-title">Enlaces de streaming / RRSS musicales</h2>
+            <p class="muted small">Vincula el perfil oficial de esta banda en cada servicio. Vacío = sin enlace.</p>
+            <form class="panel" action="/dashboard/banda/<?= $id ?>/social" method="POST">
+                <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
+<?php foreach (EnlaceRepo::SERVICIOS as $servicio): ?>
+                <div class="field">
+                    <label class="field-label" for="social_<?= $servicio ?>"><?= V::e(H::STREAMING_LABELS[$servicio] ?? ucfirst($servicio)) ?></label>
+                    <input class="input" id="social_<?= $servicio ?>" name="<?= $servicio ?>" type="url" placeholder="https://…" value="<?= V::e($enlaces[$servicio] ?? '') ?>">
+                </div>
+<?php endforeach; ?>
+                <div><button class="btn btn-neutral" type="submit">Guardar enlaces</button></div>
+            </form>
+        </section>
+<?php endif; ?>
+    </div>
 </div>
 <?php if ($showLinaje): ?>
 <script src="/assets/banda-relaciones.js" defer></script>
 <?php endif; ?>
+<script>
+(function () {
+    var btns = Array.from(document.querySelectorAll('.tab-btn'));
+    var panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+    btns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            btns.forEach(function (b) {
+                b.classList.toggle('btn-neutral', b === btn);
+                b.classList.toggle('btn-ghost', b !== btn);
+                b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+            });
+            panels.forEach(function (p) {
+                p.hidden = p.dataset.tabPanel !== btn.dataset.tab;
+            });
+        });
+    });
+})();
+</script>

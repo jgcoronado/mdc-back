@@ -48,6 +48,7 @@ final class Admin
         if (isset($_GET['aplicada'])) return ['type' => 'ok', 'msg' => 'Propuesta aceptada y aplicada a la base de datos.'];
         if (isset($_GET['rechazada'])) return ['type' => 'info', 'msg' => 'Propuesta rechazada.'];
         if (isset($_GET['nochanges'])) return ['type' => 'info', 'msg' => 'No había cambios que guardar.'];
+        if (isset($_GET['social'])) return ['type' => 'ok', 'msg' => 'Enlaces sociales actualizados.'];
         if (isset($_GET['err'])) return ['type' => 'error', 'msg' => 'Error: ' . preg_replace('/[^A-Z_]/', '', (string) $_GET['err'])];
         return null;
     }
@@ -436,6 +437,7 @@ final class Admin
             'relaciones' => $showLinaje ? Repo::bandaRelaciones($id) : [],
             'tipos' => AdminRepo::RELACION_TIPOS,
             'showLinaje' => $showLinaje, 'proposalMode' => !self::isAdmin($session),
+            'enlaces' => $showLinaje ? EnlaceRepo::publicadosDe('banda', (int) $id) : [],
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => "Editar banda #$id — Marchas de Cristo", 'noindex' => true]);
     }
@@ -533,6 +535,21 @@ final class Admin
         $r = AdminRepo::deleteRelacion($rel);
         if (($r['code'] ?? '') === 'DELETED') Http::redirect("/dashboard/banda/$id?deleted=1", 302);
         Http::redirect("/dashboard/banda/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    /** Alta/edición/baja manual de los enlaces de streaming/RRSS musicales de una banda (pestaña Social). */
+    public static function bandaSocialPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/banda/$id?err=CSRF", 302);
+
+        foreach (EnlaceRepo::SERVICIOS as $servicio) {
+            $url = $_POST[$servicio] ?? null;
+            $r = AdminRepo::setEnlaceStreaming('banda', $id, $servicio, is_string($url) ? $url : null);
+            if (($r['code'] ?? '') === 'BAD_REQUEST') Http::redirect("/dashboard/banda/$id?err=BAD_REQUEST", 302);
+        }
+        Http::redirect("/dashboard/banda/$id?social=1", 302);
     }
 
     // ── Autocomplete de bandas (JSON, para el selector de relaciones) ────────

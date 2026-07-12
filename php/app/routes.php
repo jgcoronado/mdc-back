@@ -123,6 +123,7 @@ $router->get('/dashboard/banda/{id}', [Admin::class, 'bandaEditForm']);
 $router->post('/dashboard/banda/{id}', [Admin::class, 'bandaEditPost']);
 $router->post('/dashboard/banda/{id}/relacion', [Admin::class, 'bandaRelacionAddPost']);
 $router->post('/dashboard/banda/{id}/relacion/{rel}/borrar', [Admin::class, 'bandaRelacionDeletePost']);
+$router->post('/dashboard/banda/{id}/social', [Admin::class, 'bandaSocialPost']);
 $router->get('/api/autor/fastSearch', [Admin::class, 'autorFastSearch']);
 $router->get('/api/banda/fastSearch', [Admin::class, 'bandaFastSearch']);
 $router->get('/api/banda/estilo', [Admin::class, 'bandaEstiloSugerido']);

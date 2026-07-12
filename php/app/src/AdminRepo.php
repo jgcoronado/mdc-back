@@ -396,6 +396,36 @@ final class AdminRepo
         });
     }
 
+    /**
+     * Alta/edición/baja manual de un enlace de streaming de una entidad (banda, disco,
+     * marcha), al margen del flujo de candidatos — para vincular a mano un perfil oficial
+     * que la ingesta automática no encontró. $url vacío borra el enlace si existía.
+     *
+     * @return array{code:string}
+     */
+    public static function setEnlaceStreaming(string $tipoEnt, int $idEnt, string $servicio, ?string $url): array
+    {
+        if (!in_array($tipoEnt, ['banda', 'disco', 'marcha'], true)) return ['code' => 'BAD_REQUEST'];
+        if (!in_array($servicio, EnlaceRepo::SERVICIOS, true)) return ['code' => 'BAD_REQUEST'];
+        $url = self::normalize($url);
+
+        if ($url === null) {
+            Db::run('DELETE FROM enlace_streaming WHERE TIPO_ENT = ? AND ID_ENT = ? AND SERVICIO = ?', [$tipoEnt, $idEnt, $servicio]);
+            Db::logAdmin('DELETE', 'enlace_streaming', $idEnt, ['tipo' => $tipoEnt, 'servicio' => $servicio]);
+            return ['code' => 'DELETED'];
+        }
+
+        Db::run(
+            "INSERT INTO enlace_streaming (TIPO_ENT, ID_ENT, SERVICIO, URL, VERIFICADO)
+             VALUES (?, ?, ?, ?, 1)
+             ON CONFLICT(TIPO_ENT, ID_ENT, SERVICIO)
+             DO UPDATE SET URL = excluded.URL, VERIFICADO = 1, FECHA_ALTA = datetime('now')",
+            [$tipoEnt, $idEnt, $servicio, $url]
+        );
+        Db::logAdmin('UPDATE', 'enlace_streaming', $idEnt, ['tipo' => $tipoEnt, 'servicio' => $servicio]);
+        return ['code' => 'UPDATED'];
+    }
+
     /** @return array{code:string} */
     public static function rechazarEnlace(int $idCand): array
     {

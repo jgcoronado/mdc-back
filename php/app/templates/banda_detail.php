@@ -103,6 +103,7 @@ $nMarchas = (int) $b['marchasLength'];
         <div class="f"><dt>Web</dt><dd><a href="<?= V::e($b['WEB']) ?>" rel="noopener" target="_blank"><?= V::e(preg_replace('#^https?://#', '', (string) $b['WEB'])) ?> ↗</a></dd></div>
 <?php endif; ?>
     </dl>
+    <?= H::streaming($enlaces ?? []) ?>
 
     <div class="shead">
         <h2>Formaciones</h2>

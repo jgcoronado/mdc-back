@@ -24,7 +24,7 @@ final class Html
     }
 
     // ── Enlaces de streaming (ficha pública) ─────────────────────────────────
-    private const STREAMING_LABELS = [
+    public const STREAMING_LABELS = [
         'spotify' => 'Spotify', 'apple' => 'Apple Music', 'deezer' => 'Deezer',
         'youtube' => 'YouTube', 'tidal' => 'Tidal', 'amazon' => 'Amazon Music',
     ];
