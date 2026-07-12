@@ -39,15 +39,36 @@ final class Pages
     {
         Http::cachePublic(1800);
         $minHub = static fn(array $r): bool => (int) $r['N'] >= Repo::HUB_MIN_MARCHAS;
+        $hubAniosVivos = array_values(array_filter(Repo::hubAnios(), $minHub));
         View::render('home', [
             'ultimas' => Repo::fetchUltimas(),
             'estado' => Repo::fetchEstado(),
+            'marchaDelDia' => self::marchaDelDia(),
             'hubEstilos' => array_values(array_filter(Repo::hubEstilos(), $minHub)),
             'hubProvincias' => array_slice(array_values(array_filter(Repo::hubProvincias(), $minHub)), 0, 6),
+            // Más recientes primero: hubAnios() viene ordenado ASC por año.
+            'hubAniosRecientes' => array_slice(array_reverse($hubAniosVivos), 0, 6),
         ], [
             'title' => 'Marchas de Cristo — Música procesional',
             'description' => 'Descubre marchas procesionales, compositores, bandas y discos de música de Semana Santa.',
         ]);
+    }
+
+    /**
+     * Selección determinista por fecha (UTC): el mismo día del calendario
+     * siempre da la misma marcha, sin trabajo editorial ni estado que
+     * mantener. Cambia de un día para otro porque cambia el "seed", no por
+     * ningún cron ni tabla de programación.
+     */
+    private static function marchaDelDia(): ?array
+    {
+        $ids = Repo::marchaDelDiaCandidatos();
+        if ($ids === []) {
+            return null;
+        }
+        $seed = (int) gmdate('Ymd');
+        $id = (string) $ids[$seed % count($ids)];
+        return Repo::fetchMarcha($id);
     }
 
     // ── Listados / buscadores ─────────────────────────────────────────────────

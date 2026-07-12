@@ -942,6 +942,36 @@ final class Repo
         return $rows;
     }
 
+    // ── Marcha del día (home, C3) ─────────────────────────────────────────────
+
+    /**
+     * IDs candidatos para "marcha del día": marchas vivas (con autor),
+     * priorizando las que tienen audio embebido (mejor experiencia, con
+     * reproductor visible). Si ninguna marcha tiene audio aún, cae a
+     * cualquier marcha viva para no dejar la sección vacía.
+     *
+     * @return list<int>
+     */
+    public static function marchaDelDiaCandidatos(): array
+    {
+        $ids = static fn(array $rows): array => array_map(static fn(array $r): int => (int) $r['ID_MARCHA'], $rows);
+
+        $conAudio = Db::all(
+            "SELECT m.ID_MARCHA FROM marcha m
+             WHERE m.AUDIO IS NOT NULL AND m.AUDIO != ''
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             ORDER BY m.ID_MARCHA"
+        );
+        if ($conAudio !== []) {
+            return $ids($conAudio);
+        }
+        return $ids(Db::all(
+            "SELECT m.ID_MARCHA FROM marcha m
+             WHERE EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             ORDER BY m.ID_MARCHA"
+        ));
+    }
+
     // ── Dedicatorias: hubs de advocación (N-01 / N-02) ───────────────────────
 
     /**
