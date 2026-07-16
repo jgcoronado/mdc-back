@@ -66,6 +66,8 @@
                     b.className = 'suggest-item';
                     b.textContent = label;
                     b.addEventListener('click', () => {
+                        clearTimeout(timer);
+                        if (controller) { controller.abort(); controller = null; }
                         addChip(r.ID_AUTOR, label);
                         search.value = '';
                         closeSuggest();
@@ -78,7 +80,7 @@
         }, 200);
     });
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('mousedown', (e) => {
         if (!suggest.contains(e.target) && e.target !== search) closeSuggest();
     });
 })();
@@ -126,7 +128,7 @@
             }, 200);
         });
 
-        document.addEventListener('click', (e) => {
+        document.addEventListener('mousedown', (e) => {
             if (!suggestEl.contains(e.target) && e.target !== inputEl) close();
         });
     }
@@ -212,7 +214,7 @@
         }, 200);
     });
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('mousedown', (e) => {
         if (!suggest.contains(e.target) && e.target !== search) close();
     });
 })();
