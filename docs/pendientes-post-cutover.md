@@ -57,8 +57,9 @@
 - [ ] Subir de nuevo el **TTL** del DNS a su valor normal.
 
 ### 6. Opcionales / limpieza
-- [ ] Eliminar el subdominio vacío `marchasdecristo.jaguerra27.helioho.st` (muestra
-      un "Index of /") en Plesk, si no lo usas.
+- [x] ~~Eliminar el subdominio vacío `marchasdecristo.jaguerra27.helioho.st`~~ —
+      **reaprovechado como entorno de PREPRODUCCIÓN** (2026-07-16). Ver
+      [entornos.md](entornos.md) para su configuración y el pipeline de despliegue.
 - [ ] Revisar logs del host y espacio en disco (crecimiento de `private/backups/`).
 - [ ] Borrar el `.sql.zip` viejo del *home* si sigue ahí.
 

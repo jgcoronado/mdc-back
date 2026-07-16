@@ -52,6 +52,11 @@ deben ser hermanos del document root** tanto en local (`php/`) como en el host
 
 ## Deploy en HelioHost (FTP)
 
+> **Desde M5 el deploy de código está automatizado** (push a `main` → PRE;
+> botón en Actions → PRO), con entorno de preproducción incluido — ver
+> [docs/entornos.md](../docs/entornos.md). La tabla siguiente documenta el
+> equivalente manual (útil para entender qué hace el pipeline, o como plan B).
+
 | Local | Destino en HelioHost |
 |-------|----------------------|
 | `php/public/*` | `public_html/` |

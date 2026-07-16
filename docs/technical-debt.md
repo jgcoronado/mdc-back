@@ -7,7 +7,7 @@
 
 | Categoría | Items abiertos | Severidad máxima |
 |-----------|-----------------|-------------------|
-| Operativa / observabilidad | 1 | 🟡 Media |
+| Operativa / observabilidad | 0 | — |
 | Deploy | 1 | 🟡 Media |
 | Calidad de código PHP | 2 | 🟡 Media |
 | Base de datos (SQLite) | 1 | 🟢 Baja |
@@ -34,14 +34,15 @@ además de deuda).
   necesario para que el monitor externo cubra caídas de datos y no solo de
   proceso PHP.
 
-### 1.2 CI verifica, pero no despliega ni alerta si producción diverge 🟡
-- El workflow de GitHub Actions (`ci.yml`) da confianza sobre el código antes
-  de subirlo, pero el sync a producción (`sync_db_to_prod.php`) y el deploy de
-  código siguen siendo **manuales por FTP**. Si CI está roja, nada impide
-  ejecutar el sync igualmente — depende de que el mantenedor lo compruebe.
-- **Fix** (medio plazo, tarea **M5** del consejo): deploy FTP automatizado
-  desde CI (`lftp mirror` con manifiesto, solo en `main` verde), cerrando el
-  ciclo que hoy abre C5.
+### ~~1.2 CI verifica, pero no despliega ni alerta si producción diverge~~ ✅ Resuelto (M5, 2026-07-16)
+- Pipeline en `.github/workflows/deploy.yml`: cada push a `main` con CI verde
+  despliega automáticamente el código a **preproducción** (subdominio con
+  Basic Auth + noindex) y ejecuta un smoke remoto con datos reales
+  (`php/tools/smoke_remote.php`); la promoción a **producción** es un botón
+  manual en Actions, con modo mantenimiento durante el mirror y smoke remoto
+  posterior. Ver [entornos.md](entornos.md). El **sync de BD** sigue siendo
+  manual **a propósito** (`sync_db_to_prod.php [--env pre]`) — datos y código
+  separados, la maestra es la local.
 
 ---
 

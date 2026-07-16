@@ -113,6 +113,14 @@ del despliegue.
 o, si se actualiza primero el monitor, hay que esperar al despliegue antes
 de fiarse del resultado.
 
+> **Actualización (M5, 2026-07-16)**: con el pipeline de despliegue de
+> [entornos.md](entornos.md) este desfase ya no ocurre por olvido — el código
+> de `main` llega a producción con el botón de deploy, no por FTP a mano.
+> Quedan dos ecos menores del mismo fenómeno: el desfase existe *hasta que
+> pulses el botón* (PRE va por delante de PRO entre medias, que es justo el
+> diseño), y el propio deploy de PRO activa el modo mantenimiento unos
+> segundos (mismo caso benigno que el sync de BD, caso 1).
+
 ## Runbook — qué hacer si salta la alerta
 
 1. Mira el detalle de la incidencia en el dashboard de UptimeRobot: motivo

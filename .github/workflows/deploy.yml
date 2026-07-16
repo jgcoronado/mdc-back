@@ -1,0 +1,146 @@
+name: Deploy
+
+# Pipeline de despliegue de CÓDIGO (M5 + entorno PRE). La base de datos va
+# aparte y siempre manual: scripts/sync_db_to_prod.php [--env pre].
+#
+#   push a main            → verify (CI reutilizable) → deploy a PRE → smoke remoto PRE
+#   workflow_dispatch      → verify → deploy al entorno elegido (pro por defecto)
+#                            (para PRO: es el gesto de «valido PRE y promociono».
+#                             Para rollback: Run workflow eligiendo un tag/commit
+#                             anterior en el desplegable de ref.)
+#
+# Secrets requeridos (Settings → Secrets and variables → Actions):
+#   FTP_HOST, FTP_USER, FTP_PASSWORD  — credenciales FTP de HelioHost
+#   PRE_BASIC_AUTH                    — usuario:clave del Basic Auth de PRE
+# Variables opcionales:
+#   PRE_BASE_URL / PRO_BASE_URL       — para sobrescribir las URLs por defecto
+#
+# El pipeline NUNCA toca: config.local.php (secretos por host), private/
+# (BD, backups, propuestas, rate-limit), cover/ (las portadas solo viven en
+# el servidor) ni .well-known/ (retos de Let's Encrypt de Plesk).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Entorno de destino'
+        type: choice
+        options: [pro, pre]
+        default: pro
+
+# Un despliegue cada vez, sin cancelar el que esté en curso (un mirror FTP
+# interrumpido a mitad deja el entorno en un estado mixto).
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  deploy-pre:
+    needs: verify
+    if: github.event_name == 'push' || github.event.inputs.target == 'pre'
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ vars.PRE_BASE_URL || 'https://marchasdecristo.jaguerra27.helioho.st' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, dom, json
+          coverage: none
+
+      - name: Instalar lftp
+        run: sudo apt-get update -q && sudo apt-get install -y -q lftp
+
+      - name: Desplegar código a PRE (lftp mirror)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          # FTP plano, como los scripts de sync existentes (el FTP de HelioHost).
+          # cmd:fail-exit corta el mirror al primer error → el job falla.
+          lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST" <<'LFTP'
+          set cmd:fail-exit true
+          set ftp:ssl-allow false
+          set net:max-retries 2
+          set net:timeout 30
+          mirror -R --delete --parallel=2 -x ^config\.local\.php$ php/app pre/app
+          mirror -R --delete --parallel=2 -x ^cover/ -x ^\.well-known/ php/public pre/httpdocs
+          quit
+          LFTP
+
+      - name: Smoke remoto contra PRE
+        run: php php/tools/smoke_remote.php "$BASE_URL" --pre --auth "${{ secrets.PRE_BASIC_AUTH }}"
+
+  deploy-pro:
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pro'
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ vars.PRO_BASE_URL || 'https://marchasdecristo.com' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, dom, json
+          coverage: none
+
+      - name: Instalar lftp
+        run: sudo apt-get update -q && sudo apt-get install -y -q lftp
+
+      - name: Activar modo mantenimiento
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          echo "deploy de código en curso desde CI — $(date -u +%FT%TZ)" > /tmp/maint
+          lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST" <<'LFTP'
+          set cmd:fail-exit true
+          set ftp:ssl-allow false
+          put /tmp/maint -o private/.maintenance
+          quit
+          LFTP
+
+      - name: Desplegar código a PRO (lftp mirror)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST" <<'LFTP'
+          set cmd:fail-exit true
+          set ftp:ssl-allow false
+          set net:max-retries 2
+          set net:timeout 30
+          mirror -R --delete --parallel=2 -x ^config\.local\.php$ php/app app
+          mirror -R --delete --parallel=2 -x ^cover/ -x ^\.well-known/ php/public marchasdecristo.com
+          quit
+          LFTP
+
+      - name: Desactivar modo mantenimiento (siempre, incluso si el mirror falló)
+        if: always()
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST" <<'LFTP'
+          set ftp:ssl-allow false
+          rm -f private/.maintenance
+          quit
+          LFTP
+
+      - name: Smoke remoto contra PRO
+        run: php php/tools/smoke_remote.php "$BASE_URL"

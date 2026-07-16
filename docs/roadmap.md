@@ -47,7 +47,7 @@ plazo del consejo de sabios está cerrado.
 | M2 | Campaña de cobertura de audio (ingesta + curación) | 15 h+ | Alta | 🎺 | ⏳ Pendiente — trabajo mayoritariamente manual del admin, no solo código | [#16](https://github.com/jgcoronado/mdc-back/issues/16) |
 | M3 | Búsqueda global unificada + autocompletado público | 10 h | Media-alta | 🎺 | ⏳ Pendiente | [#17](https://github.com/jgcoronado/mdc-back/issues/17) |
 | M4 | `og:image` dinámica por entidad | 8 h | Media | 🔍 | ⏳ Pendiente | [#18](https://github.com/jgcoronado/mdc-back/issues/18) |
-| M5 | Deploy FTP automatizado desde CI en `main` verde | 5 h | Media-alta | ⚙️ | ⏳ Pendiente — sin dependencias, menor riesgo del lote | [#19](https://github.com/jgcoronado/mdc-back/issues/19) |
+| M5 | Deploy FTP automatizado desde CI en `main` verde | 5 h | Media-alta | ⚙️ | ✅ Completado con alcance ampliado: entorno de **preproducción** (subdominio, Basic Auth, noindex) + pipeline main→PRE automático→PRO manual. Ver [entornos.md](entornos.md). Requiere la puesta en marcha única en Plesk/GitHub descrita ahí | [#19](https://github.com/jgcoronado/mdc-back/issues/19) |
 | M6 | Accesibilidad + hoja de impresión de fichas | 6 h | Media | 🎺 | ⏳ Pendiente | [#20](https://github.com/jgcoronado/mdc-back/issues/20) |
 | M7 | Notificaciones editoriales (email + digest semanal) | 6 h | Media | ⚙️ | ⏳ Pendiente | [#21](https://github.com/jgcoronado/mdc-back/issues/21) |
 | M8 | Unificar slugify + test canónica↔JSON-LD + CSP/HSTS | 4 h | Media | 🔍⚙️ | ✅ Completado — de paso corrigió un bug real (URL de banda en JSON-LD nunca coincidía con la canónica) | [#22](https://github.com/jgcoronado/mdc-back/issues/22) |

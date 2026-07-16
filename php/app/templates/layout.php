@@ -11,7 +11,8 @@ use App\View;
 
 $title = (string) ($meta['title'] ?? 'Marchas de Cristo');
 $description = $meta['description'] ?? null;
-$noindex = !empty($meta['noindex']);
+$esPre = !empty($GLOBALS['config']['preproduccion']);
+$noindex = !empty($meta['noindex']) || $esPre; // en PRE, noindex SIEMPRE
 $canonical = $meta['canonical'] ?? null;
 $jsonld = $meta['jsonld'] ?? [];
 
@@ -100,6 +101,9 @@ $search = $searchBySection[$current] ?? null;
 <?php endforeach; ?>
 </head>
 <body>
+<?php if ($esPre): ?>
+    <div class="pre-ribbon" role="status">Entorno de preproducción — los cambios aquí no afectan a marchasdecristo.com</div>
+<?php endif; ?>
     <header>
         <nav>
             <a class="brand" href="/"><?= $siteName ?><span class="brand-sub">Base de datos de música procesional</span></a>
