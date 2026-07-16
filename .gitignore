@@ -6,6 +6,11 @@
 /data
 /snapshots
 
+# SQLite databases — nunca subir al repo (prod tiene sus propias escrituras)
+*.db
+*.db-shm
+*.db-wal
+
 # Salidas generadas del matcher de streaming
 /tools/music_links/*.csv
 __pycache__/
