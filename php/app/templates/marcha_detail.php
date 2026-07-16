@@ -131,6 +131,7 @@ $anioOk = preg_match('/^\d{4}$/', (string) $m['FECHA']) === 1;
 <?php endif; ?>
         </div>
 <?php endif; ?>
+        <?= H::streaming($enl) ?>
         </div>
     </details>
 <?php endif; ?>

@@ -46,6 +46,7 @@ $asiento[] = $num($nP) . ' pistas' . ($multi ? ' en ' . (int) $d['DISCOS'] . ' v
                 <div class="f"><dt>Volúmenes</dt><dd><?= (int) $d['DISCOS'] ?></dd></div>
 <?php endif; ?>
             </dl>
+            <?= H::streaming($enlaces ?? []) ?>
         </div>
     </div>
 
