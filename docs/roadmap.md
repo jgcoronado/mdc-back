@@ -43,7 +43,7 @@ plazo del consejo de sabios está cerrado.
 
 | # | Tarea | Coste | Repercusión | Foco | Estado | Issue |
 |---|-------|-------|-------------|------|--------|-------|
-| M1 | API JSON de solo lectura + `llms.txt` + feed de novedades + página «Datos» | 10 h | Alta | 🔍 | ⏳ Pendiente — requiere antes decidir la licencia de datos (nota en el propio issue) | [#15](https://github.com/jgcoronado/mdc-back/issues/15) |
+| M1 | API JSON de solo lectura + `llms.txt` + feed de novedades + página «Datos» | 10 h | Alta | 🔍 | ✅ Completado — licencia CC BY 4.0; de paso corrigió otro caso de URL de banda no canónica (308) en la ficha de disco | [#15](https://github.com/jgcoronado/mdc-back/issues/15) |
 | M2 | Campaña de cobertura de audio (ingesta + curación) | 15 h+ | Alta | 🎺 | ⏳ Pendiente — trabajo mayoritariamente manual del admin, no solo código | [#16](https://github.com/jgcoronado/mdc-back/issues/16) |
 | M3 | Búsqueda global unificada + autocompletado público | 10 h | Media-alta | 🎺 | ⏳ Pendiente | [#17](https://github.com/jgcoronado/mdc-back/issues/17) |
 | M4 | `og:image` dinámica por entidad | 8 h | Media | 🔍 | ⏳ Pendiente | [#18](https://github.com/jgcoronado/mdc-back/issues/18) |
