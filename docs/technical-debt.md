@@ -7,33 +7,32 @@
 
 | Categoría | Items abiertos | Severidad máxima |
 |-----------|-----------------|-------------------|
-| Operativa / observabilidad | 2 | 🟠 Alta |
+| Operativa / observabilidad | 1 | 🟡 Media |
 | Deploy | 1 | 🟡 Media |
 | Calidad de código PHP | 2 | 🟡 Media |
 | Base de datos (SQLite) | 1 | 🟢 Baja |
 | Panel de administración | 1 | 🟢 Baja |
 
-**Contexto**: desde el consejo de sabios (2026-07-12) se han cerrado 6 de las 8
-tareas de corto plazo — incluyendo CI (C5) y el endurecimiento del sync (C7),
-que resolvían la mayor parte de la deuda operativa crítica que tenía el
-proyecto en ese momento. Lo que queda aquí es deuda real vigente, no un
-resumen del informe del consejo (ver ese documento para el plan de mejora
-completo, que incluye trabajo de producto y SEO además de deuda).
+**Contexto**: desde el consejo de sabios (2026-07-12) se han cerrado las 8
+tareas de corto plazo — incluyendo CI (C5), el endurecimiento del sync (C7) y
+la monitorización externa (C6), que resolvían la mayor parte de la deuda
+operativa crítica que tenía el proyecto en ese momento. Lo que queda aquí es
+deuda real vigente, no un resumen del informe del consejo (ver ese documento
+para el plan de mejora completo, que incluye trabajo de producto y SEO
+además de deuda).
 
 ---
 
 ## 1. Operativa / observabilidad
 
-### 1.1 Sin monitorización externa de uptime 🟠
-- Nadie vigila `https://marchasdecristo.com/health` salvo el CI (que solo lo
-  ejercita contra el fixture local, no contra producción). Una caída del
-  hosting compartido en plena Cuaresma/Semana Santa pasaría desapercibida
-  hasta que la reportaran los propios usuarios.
-- **Fix**: dar de alta un monitor externo gratuito (p. ej. UptimeRobot) contra
-  `/health` con alerta por email/Telegram. Es la tarea **C6** del plan del
-  consejo ([issue #12](https://github.com/jgcoronado/mdc-back/issues/12)) —
-  requiere una acción manual del mantenedor en un servicio de terceros, no
-  solo cambios de código.
+### ~~1.1 Sin monitorización externa de uptime~~ ✅ Resuelto (C6, 2026-07-16)
+- Monitor UptimeRobot activo sobre `https://marchasdecristo.com/health`
+  (keyword `db: ok`, 5 min, alerta por email). Detalle completo, runbook y
+  falsas alarmas esperadas (modo mantenimiento, desfase deploy/monitor) en
+  [monitoring.md](monitoring.md). `/health` se amplió para exponer un
+  chequeo de BD también a visitantes anónimos (antes solo con sesión admin),
+  necesario para que el monitor externo cubra caídas de datos y no solo de
+  proceso PHP.
 
 ### 1.2 CI verifica, pero no despliega ni alerta si producción diverge 🟡
 - El workflow de GitHub Actions (`ci.yml`) da confianza sobre el código antes

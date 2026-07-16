@@ -18,8 +18,9 @@ ver [context.md](context.md) §7 y [archive/](archive/).
 7. **[admin-panel.md](admin-panel.md)** — Estado del panel de administración: URL, acceso, funcionalidades, implementación PHP actual.
 8. **[pendientes-post-cutover.md](pendientes-post-cutover.md)** — Checklist operativo pendiente tras el cutover a PHP (verificación en producción, cron de backup, Search Console, desmantelar el VPS).
 9. **[cutover-fase5.md](cutover-fase5.md)** — Runbook ejecutado del cutover DNS a PHP.
-10. **[plan-music-apps.md](plan-music-apps.md)** / **[youtube-canales-bandas.md](youtube-canales-bandas.md)** — Notas de trabajo sobre ingesta de audio (YouTube) y enlaces de streaming.
-11. **[archive/](archive/)** — Documentos históricos del stack Next.js/VPS/MySQL, ya desmantelado. Conservados por su razonamiento, no como referencia vigente: [redesign-options.md](archive/redesign-options.md), [vps-migration-3b.md](archive/vps-migration-3b.md).
+10. **[monitoring.md](monitoring.md)** — Monitorización externa de uptime (UptimeRobot sobre `/health`): configuración, qué cubre y qué no, falsas alarmas esperadas, runbook.
+11. **[plan-music-apps.md](plan-music-apps.md)** / **[youtube-canales-bandas.md](youtube-canales-bandas.md)** — Notas de trabajo sobre ingesta de audio (YouTube) y enlaces de streaming.
+12. **[archive/](archive/)** — Documentos históricos del stack Next.js/VPS/MySQL, ya desmantelado. Conservados por su razonamiento, no como referencia vigente: [redesign-options.md](archive/redesign-options.md), [vps-migration-3b.md](archive/vps-migration-3b.md).
 
 Además, `../php/README.md` documenta el desarrollo local y el deploy por FTP con más detalle operativo del día a día que `context.md`.
 

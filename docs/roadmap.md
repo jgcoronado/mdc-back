@@ -32,12 +32,12 @@ del 2026-07-12 y no se reescribe con cada avance.
 | C3 | «Marcha del día» + bloque de descubrimiento en la home | ✅ Completado | [#9](https://github.com/jgcoronado/mdc-back/issues/9) |
 | C4 | `og:image` de marca + Twitter Card | ✅ Completado | [#10](https://github.com/jgcoronado/mdc-back/issues/10) |
 | C5 | CI con smoke tests (GitHub Actions) | ✅ Completado | [#11](https://github.com/jgcoronado/mdc-back/issues/11) |
-| C6 | Monitorización externa de uptime con alerta | ⏳ Pendiente — requiere alta manual en un servicio externo (p. ej. UptimeRobot) por el mantenedor; ver detalle en el propio issue | [#12](https://github.com/jgcoronado/mdc-back/issues/12) |
+| C6 | Monitorización externa de uptime con alerta | ✅ Completado — monitor UptimeRobot activo sobre `/health`, ver [monitoring.md](monitoring.md) | [#12](https://github.com/jgcoronado/mdc-back/issues/12) |
 | C7 | Endurecer `sync_db_to_prod.php`: checksum, chequeo de propuestas, modo mantenimiento | ✅ Completado | [#13](https://github.com/jgcoronado/mdc-back/issues/13) |
 | C8 | Actualizar documentación (`context.md`/`architecture.md`/`roadmap.md`/`technical-debt.md`) al stack PHP real | ✅ Completado (este documento es parte del entregable) | [#14](https://github.com/jgcoronado/mdc-back/issues/14) |
 
-**6 de 8 tareas de corto plazo completadas.** Solo queda C6, que depende de
-una acción del mantenedor fuera del repositorio (dar de alta el monitor).
+**8 de 8 tareas de corto plazo completadas.** El plan de acción de corto
+plazo del consejo de sabios está cerrado.
 
 ### Medio plazo (1–4 meses) — no iniciado
 
