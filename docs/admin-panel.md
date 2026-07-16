@@ -1,6 +1,6 @@
 # Panel de administración — marchasdecristo.com
 
-> Última actualización: 2026-07-10 (curación de estilo CCTT/AM) · 2026-07-08 (relaciones de linaje de bandas)
+> Última actualización: 2026-07-12 (scripts de herramientas) · 2026-07-10 (curación de estilo CCTT/AM) · 2026-07-08 (relaciones de linaje de bandas)
 > Documento complementario de [context.md](context.md) y [roadmap.md](roadmap.md).
 >
 > ⚠️ **Nota de implementación**: tras el cutover a PHP (2026-07-04) el panel se sirve
@@ -205,3 +205,186 @@ corregir asignaciones automáticas si hiciera falta.
 Mismo patrón que el resto del panel: `Auth::requireAuth()` + CSRF (`Auth::checkCsrf`) +
 PRG (`?asignadas=N` / `?err=CODE`), preservando los filtros activos (`ref`) para volver
 a la misma pestaña/página tras guardar.
+
+---
+
+## 8. Scripts de herramientas (`php/app/tools/`)
+
+Todos los scripts se ejecutan desde la raíz del repo (`mysql-simple/`). La variable de
+entorno `DB_PATH` permite apuntar a una BD distinta de la que resuelve `config.php`
+(útil para pruebas). Salvo que se indique lo contrario, todos son **solo lectura** o
+cuentan con un modo dry-run por defecto.
+
+### `fill_enlaces_streaming.php` — Completar enlaces Spotify de discos y marchas
+
+Obtiene los álbumes/pistas del artista en Spotify y los cruza (fuzzy) con los discos y
+marchas de la BD para cada banda que ya tenga ≥ 2 servicios de streaming enlazados.
+
+| Score | Acción en `--commit` |
+|-------|----------------------|
+| ≥ 85 % | INSERT directo en `enlace_streaming` (VERIFICADO=1) |
+| 70–84 % | INSERT en `enlace_candidato` (ESTADO='pendiente') → visible en `/dashboard/enlaces` |
+| < 70 % | Solo se lista en el resumen, sin escribir |
+
+Re-ejecuciones son seguras: excluye entidades ya enlazadas o ya encoladas (pendientes/aprobadas).
+
+```bash
+# Dry-run (sin escribir nada):
+php php/app/tools/fill_enlaces_streaming.php
+
+# Escritura real para todas las bandas:
+php php/app/tools/fill_enlaces_streaming.php --commit
+
+# Solo una banda:
+php php/app/tools/fill_enlaces_streaming.php --commit --banda=28
+```
+
+Requiere `SPOTIFY_CLIENT_ID` y `SPOTIFY_CLIENT_SECRET` en `.env`.
+
+---
+
+### `backup.php` — Copia de seguridad de la BD
+
+Hace una copia consistente con `VACUUM INTO` en `data/backups/` y borra las copias con
+más de `backup_keep_days` días (configurado en `config.php`). Pensado para cron.
+
+```bash
+# En producción (HelioHost):
+/usr/local/bin/php /home/USUARIO/app/tools/backup.php
+
+# En local:
+DB_PATH=php/data/mdc.db php php/app/tools/backup.php
+```
+
+---
+
+### `export_marchas.php` — Exportar marchas a JSON para el pipeline de ingesta
+
+Solo lectura. Vuelca las marchas de las bandas que tienen canal de YouTube en
+`ingest_canal` como JSON, para que `tools/ingest/dedup.mjs` las use en el dedup.
+
+```bash
+php php/app/tools/export_marchas.php > tools/ingest/out/marchas.json
+# Con BD explícita:
+DB_PATH=php/data/mdc.db php php/app/tools/export_marchas.php > tools/ingest/out/marchas.json
+```
+
+---
+
+### `import_candidatos.php` — Importar candidatos de YouTube al panel de ingesta
+
+Carga el fichero `candidatos.ndjson` generado por el pipeline de ingesta (Fase 2/3) en
+la tabla `ingest_candidato`. Upsert por `VIDEO_ID`: no sobreescribe candidatos ya
+revisados (aceptados/descartados/duplicados).
+
+```bash
+php php/app/tools/import_candidatos.php tools/ingest/out/candidatos.ndjson
+DB_PATH=php/data/mdc.db php php/app/tools/import_candidatos.php tools/ingest/out/candidatos.ndjson
+```
+
+---
+
+### `load_canales.php` — Cargar/actualizar el mapeo banda ↔ canal de YouTube
+
+Lee un CSV con cabecera `ID_BANDA,CANAL_URL` e inserta o actualiza filas en
+`ingest_canal`. Idempotente: re-ejecutar no duplica.
+
+```bash
+php php/app/tools/load_canales.php tools/ingest/config/canales.csv
+DB_PATH=php/data/mdc.db php php/app/tools/load_canales.php tools/ingest/config/canales.csv
+```
+
+---
+
+### `migrate_ingest.php` — Aplicar migraciones de staging (tablas de ingesta)
+
+Ejecuta en orden alfabético todos los `.sql` de `php/app/tools/sql/` contra la BD.
+Los `.sql` son todos `CREATE ... IF NOT EXISTS`, así que es idempotente.
+
+```bash
+DB_PATH=php/data/mdc.db php php/app/tools/migrate_ingest.php
+# En producción:
+/usr/local/bin/php /home/USUARIO/app/tools/migrate_ingest.php
+```
+
+---
+
+### `reevaluar_ingesta.php` — Reevaluar candidatos de YouTube pendientes
+
+Backfill: cruza los candidatos aún pendientes/descartados contra todas las marchas de
+su banda, por si hay coincidencias que se escaparon del chequeo automático inicial.
+Dry-run por defecto.
+
+```bash
+# Ver qué cambiaría (sin escribir):
+DB_PATH=php/data/mdc.db php php/app/tools/reevaluar_ingesta.php
+
+# Aplicar los cambios:
+DB_PATH=php/data/mdc.db php php/app/tools/reevaluar_ingesta.php --aplicar
+```
+
+---
+
+### `migrate_banda_relacion.php` — Migración one-shot: linaje de bandas
+
+Mueve los datos de `FORMACION_ANT`/`FORMACION_SIG` a la tabla `banda_relacion` y hace
+DROP COLUMN de los campos legacy. Hace backup con `VACUUM INTO` antes de tocar nada.
+Re-ejecutable con seguridad (INSERT OR IGNORE + columnas ya eliminadas → se salta).
+
+```bash
+php php/app/tools/migrate_banda_relacion.php
+DB_PATH=/ruta/a/mdc.db php php/app/tools/migrate_banda_relacion.php
+```
+
+---
+
+### `seed_dedicatorias.php` — Seed/normalización de advocaciones
+
+Agrupa los valores de `marcha.DEDICATORIA` en advocaciones canónicas (`dedicatoria`) y
+crea los alias (`dedicatoria_alias`). Idempotente: no sobreescribe curación manual
+existente. Ver `php/app/tools/sql/003_dedicatoria.sql`.
+
+```bash
+DB_PATH=php/data/mdc.db php php/app/tools/seed_dedicatorias.php
+```
+
+---
+
+### `migrate_marcha_estilo.php` — Migración one-shot: campo ESTILO en marcha
+
+Añade `marcha.ESTILO TEXT CHECK (ESTILO IN ('CCTT','AM'))` y lo rellena derivándolo
+del nombre de la banda que estrenó la marcha. Las que no resuelven quedan con
+`ESTILO = NULL` para revisión manual en el panel. Re-ejecutable: aborta si la columna
+ya existe.
+
+```bash
+DB_PATH=php/data/mdc.db php php/app/tools/migrate_marcha_estilo.php
+```
+
+---
+
+### `completar_provincia.php` — Backfill de PROVINCIA en marchas y bandas
+
+Rellena `marcha.PROVINCIA` y `banda.PROVINCIA` a partir de `LOCALIDAD` usando una
+tabla estática de localidades → provincia. Solo actualiza filas con `PROVINCIA` vacía;
+no toca asignaciones ya hechas. Hace backup previo si hay cambios pendientes. Lista al
+final las localidades no reconocidas para revisión manual.
+
+```bash
+php php/app/tools/completar_provincia.php
+DB_PATH=/ruta/a/mdc.db php php/app/tools/completar_provincia.php
+```
+
+---
+
+### `migrate_roles.php` — Migración one-shot: columna ROL en usuarios
+
+Añade `usuarios.ROL TEXT NOT NULL DEFAULT 'editor'` y marca como `admin` al usuario
+indicado (por defecto `estprocesional`). Re-ejecutable: solo reafirma el rol admin si
+la columna ya existe.
+
+```bash
+php php/app/tools/migrate_roles.php
+php php/app/tools/migrate_roles.php --admin estprocesional
+DB_PATH=/ruta/a/mdc.db php php/app/tools/migrate_roles.php
+```
