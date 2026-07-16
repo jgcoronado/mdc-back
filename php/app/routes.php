@@ -75,6 +75,19 @@ $router->get('/health', static function (): void {
     echo "status: ok\n";
     echo 'php: ' . PHP_VERSION . "\n";
 
+    // Chequeo de BD visible para cualquiera (incluido un monitor externo):
+    // solo ok/error, sin ruta ni mensaje de excepción — el detalle completo
+    // sigue reservado a sesión admin, más abajo. Código 503 si falla, para
+    // que un monitor que solo mire el status HTTP (sin keyword) también lo
+    // detecte.
+    try {
+        Db::pdo()->query('SELECT 1')->fetchColumn();
+        echo "db: ok\n";
+    } catch (\Throwable) {
+        echo "db: error\n";
+        http_response_code(503);
+    }
+
     if (Auth::currentSession() === null) {
         return; // sin sesión no revelamos más
     }
