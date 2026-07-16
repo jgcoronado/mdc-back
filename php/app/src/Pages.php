@@ -642,6 +642,7 @@ final class Pages
             [$base . '/disco', 'weekly', '0.8'],
             [$base . '/dedicatorias', 'weekly', '0.8'],
             [$base . '/estadisticas', 'weekly', '0.7'],
+            [$base . '/datos', 'monthly', '0.5'],
         ];
 
         try {
@@ -709,5 +710,210 @@ final class Pages
         echo "Disallow: /dashboard\n";
         echo "\n";
         echo "Sitemap: $base/sitemap.xml\n";
+    }
+
+    // ── Datos abiertos: página, feeds y llms.txt (M1) ─────────────────────────
+
+    /** Página «Datos»: licencia CC BY 4.0, política de citación y accesos. */
+    public static function datos(): void
+    {
+        Http::cachePublic(86400);
+        $base = self::base();
+        try {
+            $counts = Db::counts();
+        } catch (Throwable) {
+            $counts = null;
+        }
+        // Ejemplo real de la API: la marcha del día candidata (existe y suele
+        // tener datos ricos); si no hubiera, se omite el enlace de ejemplo.
+        $ejemploApi = $base . '/api/marcha/1.json';
+        try {
+            $cand = Repo::marchaDelDiaCandidatos();
+            if ($cand !== []) {
+                $ejemploApi = $base . '/api/marcha/' . $cand[0] . '.json';
+            }
+        } catch (Throwable) {
+            // se queda el ejemplo por defecto
+        }
+
+        $dataset = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Dataset',
+            'name' => 'Marchas de Cristo — base de datos de música procesional',
+            'description' => 'Catálogo de marchas procesionales españolas con sus compositores, '
+                . 'bandas de estreno, grabaciones y dedicatorias. Datos abiertos bajo CC BY 4.0.',
+            'url' => $base . '/datos',
+            'license' => Api::licencia()['url'],
+            'isAccessibleForFree' => true,
+            'inLanguage' => 'es',
+            'creator' => [
+                '@type' => 'Person',
+                'name' => 'Javier Guerra',
+                'url' => 'https://x.com/JaviWarSVQ',
+            ],
+            'keywords' => ['música procesional', 'marchas de Semana Santa', 'cofradías', 'bandas', 'compositores'],
+            'distribution' => [
+                ['@type' => 'DataDownload', 'encodingFormat' => 'application/rss+xml', 'contentUrl' => $base . '/feed.xml'],
+                ['@type' => 'DataDownload', 'encodingFormat' => 'application/feed+json', 'contentUrl' => $base . '/feed.json'],
+            ],
+        ];
+
+        View::render('datos', [
+            'counts' => $counts,
+            'licencia' => Api::licencia(),
+            'base' => $base,
+            'ejemploApi' => $ejemploApi,
+        ], [
+            'title' => 'Datos y licencia — Marchas de Cristo',
+            'canonical' => $base . '/datos',
+            'description' => 'Los datos de música procesional de marchasdecristo.com se publican bajo '
+                . 'licencia CC BY 4.0: API JSON, feeds de novedades y cómo citarlos.',
+            'jsonld' => [$dataset],
+        ]);
+    }
+
+    /** @return list<array<string,mixed>> Últimas marchas para los feeds. */
+    private static function feedItems(): array
+    {
+        try {
+            return Repo::fetchUltimas();
+        } catch (Throwable $e) {
+            error_log('[feed] ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /** Descripción común de una marcha para RSS/JSON. */
+    private static function feedDesc(array $m): string
+    {
+        $autores = implode(', ', array_map(
+            static fn(array $a): string => (string) ($a['nombre'] ?? ''),
+            $m['AUTOR'] ?? []
+        ));
+        $anio = (!empty($m['FECHA']) && $m['FECHA'] !== 's/f') ? (int) $m['FECHA'] : null;
+        return 'Marcha procesional'
+            . ($autores !== '' ? ' de ' . $autores : '')
+            . (!empty($m['BANDA_BREVE']) ? ', estrenada por ' . $m['BANDA_BREVE'] : '')
+            . ($anio !== null ? ' (' . $anio . ')' : '') . '.';
+    }
+
+    /** Feed RSS 2.0 de últimas incorporaciones. */
+    public static function feedRss(): void
+    {
+        header('Content-Type: application/rss+xml; charset=UTF-8');
+        Http::cachePublic(1800);
+        $base = self::base();
+        $x = static fn(string $s): string => htmlspecialchars($s, ENT_XML1, 'UTF-8');
+
+        // No hay timestamp por fila (el .db se reemplaza entero en cada sync),
+        // así que lastBuildDate = mtime del .db es la señal de frescura honesta;
+        // los items no llevan pubDate individual.
+        $dbPath = (string) ($GLOBALS['config']['db_path'] ?? '');
+        $built = is_file($dbPath) ? (int) filemtime($dbPath) : time();
+
+        echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        echo '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">' . "\n";
+        echo '<channel>' . "\n";
+        echo '<title>Marchas de Cristo — últimas incorporaciones</title>' . "\n";
+        echo '<link>' . $x($base . '/') . '</link>' . "\n";
+        echo '<atom:link href="' . $x($base . '/feed.xml') . '" rel="self" type="application/rss+xml"/>' . "\n";
+        echo '<description>Últimas marchas procesionales añadidas al catálogo de marchasdecristo.com.</description>' . "\n";
+        echo '<language>es</language>' . "\n";
+        echo '<lastBuildDate>' . gmdate(DATE_RSS, $built) . '</lastBuildDate>' . "\n";
+        echo '<copyright>CC BY 4.0 — marchasdecristo.com</copyright>' . "\n";
+        foreach (self::feedItems() as $m) {
+            $url = $base . Slug::buildDetailPath('marcha', $m['ID_MARCHA'], (string) $m['TITULO']);
+            echo '<item>' . "\n";
+            echo '<title>' . $x((string) $m['TITULO']) . '</title>' . "\n";
+            echo '<link>' . $x($url) . '</link>' . "\n";
+            echo '<guid isPermaLink="true">' . $x($url) . '</guid>' . "\n";
+            echo '<description>' . $x(self::feedDesc($m)) . '</description>' . "\n";
+            echo '</item>' . "\n";
+        }
+        echo '</channel>' . "\n</rss>\n";
+    }
+
+    /** Feed JSON (JSON Feed 1.1) de últimas incorporaciones. */
+    public static function feedJson(): void
+    {
+        header('Content-Type: application/feed+json; charset=UTF-8');
+        header('Access-Control-Allow-Origin: *');
+        Http::cachePublic(1800);
+        $base = self::base();
+
+        $items = [];
+        foreach (self::feedItems() as $m) {
+            $url = $base . Slug::buildDetailPath('marcha', $m['ID_MARCHA'], (string) $m['TITULO']);
+            $items[] = [
+                'id' => $url,
+                'url' => $url,
+                'title' => (string) $m['TITULO'],
+                'content_text' => self::feedDesc($m),
+            ];
+        }
+
+        echo (string) json_encode([
+            'version' => 'https://jsonfeed.org/version/1.1',
+            'title' => 'Marchas de Cristo — últimas incorporaciones',
+            'home_page_url' => $base . '/',
+            'feed_url' => $base . '/feed.json',
+            'description' => 'Últimas marchas procesionales añadidas al catálogo de marchasdecristo.com.',
+            'language' => 'es',
+            'authors' => [['name' => 'marchasdecristo.com', 'url' => $base . '/']],
+            'items' => $items,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+
+    /** llms.txt: guía de datos/licencia y puntos de acceso, para agentes/LLMs. */
+    public static function llms(): void
+    {
+        header('Content-Type: text/plain; charset=UTF-8');
+        Http::cachePublic(86400);
+        $base = self::base();
+        $lic = Api::licencia();
+
+        $lines = [
+            '# Marchas de Cristo',
+            '',
+            '> Base de datos de música procesional española (marchas, compositores, bandas y '
+                . 'discos). Contenido en español. Datos bajo licencia ' . $lic['nombre'] . '.',
+            '',
+            'marchasdecristo.com cataloga marchas procesionales con sus compositores, bandas de '
+                . 'estreno, grabaciones y dedicatorias/advocaciones. Puedes usar y citar estos datos '
+                . 'enlazando a marchasdecristo.com (' . $lic['nombre'] . ').',
+            '',
+            '## Datos y licencia',
+            '',
+            '- [Datos y licencia](' . $base . '/datos): licencia y política de citación.',
+            '- Licencia: ' . $lic['url'],
+            '- Atribución requerida: ' . $lic['atribucion'],
+            '',
+            '## API JSON (solo lectura)',
+            '',
+            '- Marcha: ' . $base . '/api/marcha/{id}.json',
+            '- Compositor: ' . $base . '/api/autor/{id}.json',
+            '- Banda: ' . $base . '/api/banda/{id}.json',
+            '- Disco: ' . $base . '/api/disco/{id}.json',
+            '',
+            'El {id} es el número al final de la URL de cada ficha '
+                . '(p. ej. /marcha/consuelo-gitano-330 tiene id 330).',
+            '',
+            '## Novedades',
+            '',
+            '- [Feed RSS](' . $base . '/feed.xml)',
+            '- [Feed JSON](' . $base . '/feed.json)',
+            '',
+            '## Índice del sitio',
+            '',
+            '- [Marchas](' . $base . '/marcha)',
+            '- [Compositores](' . $base . '/autor)',
+            '- [Bandas](' . $base . '/banda)',
+            '- [Discos](' . $base . '/disco)',
+            '- [Dedicatorias](' . $base . '/dedicatorias)',
+            '- [Estadísticas](' . $base . '/estadisticas)',
+            '- [Mapa del sitio](' . $base . '/sitemap.xml)',
+            '',
+        ];
+        echo implode("\n", $lines);
     }
 }

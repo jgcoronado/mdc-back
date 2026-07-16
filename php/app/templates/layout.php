@@ -93,6 +93,8 @@ $search = $searchBySection[$current] ?? null;
     <meta name="twitter:image" content="<?= $e($ogImage) ?>">
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/app.css">
+    <link rel="alternate" type="application/rss+xml" title="Marchas de Cristo — últimas incorporaciones" href="/feed.xml">
+    <link rel="alternate" type="application/feed+json" title="Marchas de Cristo — últimas incorporaciones" href="/feed.json">
 <?php foreach ($jsonld as $schema): ?>
     <script type="application/ld+json"><?= Seo::json($schema) ?></script>
 <?php endforeach; ?>
@@ -138,6 +140,7 @@ $search = $searchBySection[$current] ?? null;
 <?php else: ?>
             <?= $siteName ?>
 <?php endif; ?>
+            <span class="foot-sep">·</span> <a href="/datos">Datos y licencia (CC BY 4.0)</a>
         </div>
     </footer>
     <script src="/assets/catalog.js" defer></script>

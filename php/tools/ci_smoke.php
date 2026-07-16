@@ -153,6 +153,57 @@ function assertContains(string $path, string $needle, string $base): void
     }
 }
 
+/**
+ * M1: valida un recurso de la API JSON. 200 + Content-Type JSON + bloque de
+ * licencia + url canónica; y coherencia — cada 'url' de entidad embebida
+ * (incluida la de la banda en un disco) resuelve en 200 directo, no en 308.
+ */
+function assertApi(string $path, string $expectRecurso, string $base): void
+{
+    $r = assertStatus($path, 200, $base);
+    if (!str_contains($r['headers']['content-type'] ?? '', 'application/json')) {
+        throw new RuntimeException("$path → Content-Type no es application/json");
+    }
+    $d = json_decode($r['body'], true);
+    if (!is_array($d)) {
+        throw new RuntimeException("$path → cuerpo no es JSON válido");
+    }
+    if (($d['recurso'] ?? null) !== $expectRecurso) {
+        throw new RuntimeException("$path → recurso='" . ($d['recurso'] ?? 'null') . "', esperado '$expectRecurso'");
+    }
+    if (empty($d['licencia']['url']) || empty($d['url'])) {
+        throw new RuntimeException("$path → falta el bloque 'licencia' o la 'url' canónica");
+    }
+    $prefixes = ['/marcha/', '/autor/', '/banda/', '/disco/'];
+    $paths = [];
+    $walk = static function (mixed $node) use (&$walk, &$paths, $prefixes): void {
+        if (!is_array($node)) {
+            return;
+        }
+        if (isset($node['url']) && is_string($node['url'])) {
+            $p = (string) parse_url($node['url'], PHP_URL_PATH);
+            foreach ($prefixes as $pre) {
+                if (str_starts_with($p, $pre)) {
+                    $paths[] = $p;
+                    break;
+                }
+            }
+        }
+        foreach ($node as $v) {
+            if (is_array($v)) {
+                $walk($v);
+            }
+        }
+    };
+    $walk($d);
+    foreach (array_unique($paths) as $p) {
+        $s = httpGet($base . $p)['status'];
+        if ($s !== 200) {
+            throw new RuntimeException("$path → url interna '$p' no resuelve en 200 directo (status=$s)");
+        }
+    }
+}
+
 function assertHeader(string $path, string $headerName, string $needle, string $base): void
 {
     $r = assertStatus($path, 200, $base);
@@ -270,6 +321,52 @@ $tests = [
     'hub provincia desconocida 404' => static fn() => assertStatus('/marcha/provincia/nada', 404, $base),
 
     'sitemap.xml bien formado + muestra 200' => static fn() => assertSitemap($base),
+
+    // ── Datos abiertos: API JSON, feeds, página «Datos», llms.txt (M1) ──────
+    'API marcha .json + licencia + coherencia' => static fn() => assertApi('/api/marcha/1.json', 'marcha', $base),
+    'API autor .json + coherencia' => static fn() => assertApi('/api/autor/1.json', 'autor', $base),
+    'API banda .json + coherencia' => static fn() => assertApi('/api/banda/1.json', 'banda', $base),
+    'API disco .json + coherencia (banda canónica)' => static fn() => assertApi('/api/disco/1.json', 'disco', $base),
+    'API inexistente → 404 JSON' => static function () use ($base): void {
+        $r = httpGet($base . '/api/marcha/999999.json');
+        if ($r['status'] !== 404) {
+            throw new RuntimeException('/api/marcha/999999.json → esperado 404, obtenido ' . $r['status']);
+        }
+        $d = json_decode($r['body'], true);
+        if (!is_array($d) || ($d['error'] ?? null) !== 'not_found') {
+            throw new RuntimeException('/api/marcha/999999.json → JSON de error inesperado');
+        }
+    },
+    'feed.xml bien formado + items' => static function () use ($base): void {
+        $r = assertStatus('/feed.xml', 200, $base);
+        libxml_use_internal_errors(true);
+        $dom = new DOMDocument();
+        if (!$dom->loadXML($r['body'])) {
+            throw new RuntimeException('/feed.xml → XML mal formado');
+        }
+        if ($dom->getElementsByTagName('item')->length < 1) {
+            throw new RuntimeException('/feed.xml → sin <item>');
+        }
+    },
+    'feed.json es JSON Feed con items' => static function () use ($base): void {
+        $r = assertStatus('/feed.json', 200, $base);
+        $d = json_decode($r['body'], true);
+        if (!is_array($d) || !str_contains((string) ($d['version'] ?? ''), 'jsonfeed.org')) {
+            throw new RuntimeException('/feed.json → no declara versión de JSON Feed');
+        }
+        if (!isset($d['items']) || !is_array($d['items']) || $d['items'] === []) {
+            throw new RuntimeException('/feed.json → sin items');
+        }
+    },
+    'datos 200 + JSON-LD Dataset' => static fn() => assertJsonLd('/datos', $base, 'Dataset'),
+    'datos indexable + licencia CC BY' => static function () use ($base): void {
+        assertNotNoIndex('/datos', $base);
+        assertContains('/datos', 'CC BY 4.0', $base);
+    },
+    'llms.txt licencia + patrón de API' => static function () use ($base): void {
+        assertContains('/llms.txt', 'CC BY 4.0', $base);
+        assertContains('/llms.txt', '/api/marcha/{id}.json', $base);
+    },
 ];
 
 $failed = [];

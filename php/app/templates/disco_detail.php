@@ -36,7 +36,7 @@ $asiento[] = $num($nP) . ' pistas' . ($multi ? ' en ' . (int) $d['DISCOS'] . ' v
             <p class="asiento"><?= implode('. — ', $asiento) ?>.</p>
             <dl class="desc">
 <?php if ($t($d['ID_BANDA'])): ?>
-                <div class="f"><dt>Banda</dt><dd><a href="<?= V::e(S::buildDetailPath('banda', $d['ID_BANDA'], (string) $d['BANDA_BREVE'])) ?>"><?= V::e($d['BANDA_BREVE']) ?></a><?php if ($t($d['BANDA_LOC'])): ?>, <?= V::e($d['BANDA_LOC']) ?><?php endif; ?></dd></div>
+                <div class="f"><dt>Banda</dt><dd><a href="<?= V::e(S::buildDetailPath('banda', $d['ID_BANDA'], (string) ($d['BANDA_COMPLETO'] ?: $d['BANDA_BREVE']))) ?>"><?= V::e($d['BANDA_BREVE']) ?></a><?php if ($t($d['BANDA_LOC'])): ?>, <?= V::e($d['BANDA_LOC']) ?><?php endif; ?></dd></div>
 <?php endif; ?>
 <?php if ($anio > 1800): ?>
                 <div class="f"><dt>Año</dt><dd><?= $anio ?></dd></div>
@@ -96,7 +96,7 @@ $asiento[] = $num($nP) . ' pistas' . ($multi ? ' en ' . (int) $d['DISCOS'] . ' v
 <?php if ($t($d['ID_BANDA'])): ?>
     <div class="shead"><h2>Véase también</h2></div>
     <ul class="vease">
-        <li>→ <a href="<?= V::e(S::buildDetailPath('banda', $d['ID_BANDA'], (string) $d['BANDA_BREVE'])) ?>"><?= V::e($d['BANDA_BREVE']) ?></a> — ficha y discografía de la banda <span class="cnt">(B-<?= (int) $d['ID_BANDA'] ?>)</span></li>
+        <li>→ <a href="<?= V::e(S::buildDetailPath('banda', $d['ID_BANDA'], (string) ($d['BANDA_COMPLETO'] ?: $d['BANDA_BREVE']))) ?>"><?= V::e($d['BANDA_BREVE']) ?></a> — ficha y discografía de la banda <span class="cnt">(B-<?= (int) $d['ID_BANDA'] ?>)</span></li>
     </ul>
 <?php endif; ?>
 

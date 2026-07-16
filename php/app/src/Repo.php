@@ -871,7 +871,7 @@ final class Repo
     {
         $disco = Db::one(
             "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, d.d_DETALLES, b.ID_BANDA,
-                    b.NOMBRE_BREVE AS BANDA_BREVE, b.LOCALIDAD AS BANDA_LOC,
+                    b.NOMBRE_BREVE AS BANDA_BREVE, b.NOMBRE_COMPLETO AS BANDA_COMPLETO, b.LOCALIDAD AS BANDA_LOC,
                     (SELECT MAX(m.N_DISCO) FROM disco_marcha m WHERE m.ID_DISCO = d.ID_DISCO) AS DISCOS,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM disco d LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Admin;
+use App\Api;
 use App\Auth;
 use App\Db;
 use App\Http;
@@ -54,6 +55,19 @@ $router->get('/estadisticas', [Pages::class, 'estadisticas']);
 // ── SEO ────────────────────────────────────────────────────────────────────────
 $router->get('/sitemap.xml', [Pages::class, 'sitemap']);
 $router->get('/robots.txt', [Pages::class, 'robots']);
+
+// ── Datos abiertos (M1): página «Datos», feeds y llms.txt ────────────────────
+$router->get('/datos', [Pages::class, 'datos']);
+$router->get('/feed.xml', [Pages::class, 'feedRss']);
+$router->get('/feed.json', [Pages::class, 'feedJson']);
+$router->get('/llms.txt', [Pages::class, 'llms']);
+
+// API JSON de solo lectura (mismas lecturas que el HTML, forma estable + licencia).
+// El {id} admite número o slug-id; se extrae el id numérico en Api.
+$router->get('/api/marcha/{id}.json', [Api::class, 'marcha']);
+$router->get('/api/autor/{id}.json', [Api::class, 'autor']);
+$router->get('/api/banda/{id}.json', [Api::class, 'banda']);
+$router->get('/api/disco/{id}.json', [Api::class, 'disco']);
 
 // Verificación de IndexNow (C2): solo se registra si hay clave configurada.
 // $config ya está en el scope de bootstrap.php cuando se hace require de este
