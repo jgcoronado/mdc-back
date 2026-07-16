@@ -551,6 +551,26 @@ final class Admin
         echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    /** Devuelve el estilo más frecuente (CCTT o AM) entre las marchas existentes de una banda. */
+    public static function bandaEstiloSugerido(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (Auth::currentSession() === null) {
+            http_response_code(401);
+            echo json_encode(['code' => 'AUTH_REQUIRED', 'estilo' => null]);
+            return;
+        }
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) { echo json_encode(['estilo' => null]); return; }
+        $row = Db::one(
+            "SELECT ESTILO FROM marcha WHERE BANDA_ESTRENO = ? AND ESTILO IN ('CCTT','AM')
+             GROUP BY ESTILO ORDER BY COUNT(*) DESC LIMIT 1",
+            [$id]
+        );
+        echo json_encode(['estilo' => $row !== null ? (string) $row['ESTILO'] : null]);
+    }
+
     // ── Dedicatorias: curación de advocaciones (hubs N-01 / N-02) ────────────
     public static function dedicatoriasList(): void
     {
@@ -685,9 +705,21 @@ final class Admin
             }
         }
 
+        $bandaId = (int) ($cand['BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? 0);
+        $estiloSugerido = null;
+        if ($bandaId > 0) {
+            $eRow = Db::one(
+                "SELECT ESTILO FROM marcha WHERE BANDA_ESTRENO = ? AND ESTILO IN ('CCTT','AM')
+                 GROUP BY ESTILO ORDER BY COUNT(*) DESC LIMIT 1",
+                [$bandaId]
+            );
+            $estiloSugerido = $eRow !== null ? (string) $eRow['ESTILO'] : null;
+        }
+
         View::render('admin/ingesta_detail', [
             'session' => $session, 'cand' => $cand, 'back' => $back,
             'autoresAuto' => $autoresAuto, 'autoresSugeridos' => $autoresSugeridos,
+            'estiloSugerido' => $estiloSugerido,
             'notice' => self::noticeFromQuery(), 'error' => null,
         ], ['title' => 'Revisar candidato #' . $id . ' — Marchas de Cristo', 'noindex' => true]);
     }
