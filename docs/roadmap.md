@@ -39,17 +39,23 @@ del 2026-07-12 y no se reescribe con cada avance.
 **8 de 8 tareas de corto plazo completadas.** El plan de acción de corto
 plazo del consejo de sabios está cerrado.
 
-### Medio plazo (1–4 meses) — no iniciado
+### Medio plazo (1–4 meses) — issues `consejo-sabios` + `medio-plazo`
 
-M1–M9 en `consejo-de-sabios-2026-07.md` §7: API JSON de solo lectura + `llms.txt`
-(M1), campaña de cobertura de audio (M2), búsqueda global unificada (M3),
-`og:image` dinámica por entidad (M4), deploy FTP automatizado desde CI (M5),
-accesibilidad + hoja de impresión (M6), notificaciones editoriales (M7),
-unificación de slugify + CSP/HSTS (M8), estadísticas ampliadas indexables (M9).
+| # | Tarea | Coste | Repercusión | Foco | Estado | Issue |
+|---|-------|-------|-------------|------|--------|-------|
+| M1 | API JSON de solo lectura + `llms.txt` + feed de novedades + página «Datos» | 10 h | Alta | 🔍 | ⏳ Pendiente — requiere antes decidir la licencia de datos (nota en el propio issue) | [#15](https://github.com/jgcoronado/mdc-back/issues/15) |
+| M2 | Campaña de cobertura de audio (ingesta + curación) | 15 h+ | Alta | 🎺 | ⏳ Pendiente — trabajo mayoritariamente manual del admin, no solo código | [#16](https://github.com/jgcoronado/mdc-back/issues/16) |
+| M3 | Búsqueda global unificada + autocompletado público | 10 h | Media-alta | 🎺 | ⏳ Pendiente | [#17](https://github.com/jgcoronado/mdc-back/issues/17) |
+| M4 | `og:image` dinámica por entidad | 8 h | Media | 🔍 | ⏳ Pendiente | [#18](https://github.com/jgcoronado/mdc-back/issues/18) |
+| M5 | Deploy FTP automatizado desde CI en `main` verde | 5 h | Media-alta | ⚙️ | ⏳ Pendiente — sin dependencias, menor riesgo del lote | [#19](https://github.com/jgcoronado/mdc-back/issues/19) |
+| M6 | Accesibilidad + hoja de impresión de fichas | 6 h | Media | 🎺 | ⏳ Pendiente | [#20](https://github.com/jgcoronado/mdc-back/issues/20) |
+| M7 | Notificaciones editoriales (email + digest semanal) | 6 h | Media | ⚙️ | ⏳ Pendiente | [#21](https://github.com/jgcoronado/mdc-back/issues/21) |
+| M8 | Unificar slugify + test canónica↔JSON-LD + CSP/HSTS | 4 h | Media | 🔍⚙️ | ⏳ Pendiente | [#22](https://github.com/jgcoronado/mdc-back/issues/22) |
+| M9 | Estadísticas ampliadas como contenido indexable | 6 h | Media | 🔍 | ⏳ Pendiente | [#23](https://github.com/jgcoronado/mdc-back/issues/23) |
 
-Ninguna tarea de medio plazo tiene issue todavía — se crearán cuando se
-empiece a trabajar en esta fase, siguiendo el mismo patrón de labels
-(`consejo-sabios` + `medio-plazo`).
+Detalle completo de cada tarea en `consejo-de-sabios-2026-07.md` §7 y en el
+cuerpo de cada issue. Regla de secuencia del consejo: "nada del largo plazo
+empieza sin el tablero de KPIs activo" — L1-L6 siguen sin issues por eso.
 
 ### Largo plazo (4–12 meses) — no iniciado
 

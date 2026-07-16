@@ -25,16 +25,23 @@ cambia, sigue siendo el diagnóstico completo para el mantenedor.
 ## Servicio elegido: UptimeRobot
 
 Se evaluaron **UptimeRobot** y **Better Stack** (ambos con plan gratuito
-suficiente). Se eligió UptimeRobot por:
+suficiente en la comparativa inicial). Se eligió UptimeRobot por:
 
 - 50 monitores gratis frente a 10 de Better Stack (aquí solo hace falta uno,
   pero deja margen).
-- Alertas por email/Telegram/Slack/webhook sin coste; Better Stack capa SMS y
-  llamada de voz en el free tier.
 - Better Stack está pensado para equipos con guardias/escalado — funcionalidad
   irrelevante para un proyecto de un solo mantenedor.
 - Ventanas de mantenimiento programadas disponibles en el plan gratuito de
   ambos.
+
+**⚠️ Corrección tras configurarlo en la práctica (2026-07-16)**: en la
+comparativa inicial se asumió que Telegram/Slack/webhook eran gratis en
+UptimeRobot. Al intentar activar Telegram, la opción apareció **de pago**
+(igual que la comprobación de expiración de SSL, ver tabla siguiente).
+UptimeRobot ha ido moviendo funciones del plan gratuito al de pago desde que
+se hizo la comparativa — **no dar por buena la tabla comparativa contra la
+interfaz real sin comprobarlo primero**. A día de hoy, el único canal de
+alerta gratuito confirmado en funcionamiento es **email**.
 
 ## Configuración del monitor
 
@@ -49,8 +56,9 @@ suficiente). Se eligió UptimeRobot por:
 | Ubicación de chequeo | Europa |
 | Método / Auth | `GET`, sin autenticación (ruta pública) |
 | Códigos "up" | `2xx` + `3xx` (por defecto — un `503` cuenta como caída, que es justo lo que queremos) |
-| Alertas | Email a `jaguerra27@gmail.com` |
-| SSL expiry / dominio | **No activado** — UptimeRobot movió esta comprobación a plan de pago después de que se evaluara el servicio; queda fuera de alcance de C6. Si expira el certificado, `/health` empezará a fallar por HTTPS igualmente y el monitor lo detectará, solo que sin aviso previo de "quedan N días". |
+| Alertas | Email a `jaguerra27@gmail.com` — único canal confirmado gratuito |
+| Telegram / Slack / webhook | **No disponible** — de pago en el plan gratuito actual (comprobado 2026-07-16 al intentar activarlo). Si en el futuro se libera o se paga el plan, activar desde *Integrations & API* → conectar Telegram → marcar el nuevo contacto en el monitor. |
+| SSL expiry / dominio | **No activado** — también de pago; queda fuera de alcance de C6. Si expira el certificado, `/health` empezará a fallar por HTTPS igualmente y el monitor lo detectará, solo que sin aviso previo de "quedan N días". |
 
 **Por qué la keyword es `db: ok` y no `status: ok`**: `status: ok` se imprime
 siempre, incluso si la base de datos falla — solo confirma que PHP arrancó.
