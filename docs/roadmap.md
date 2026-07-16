@@ -50,7 +50,7 @@ plazo del consejo de sabios está cerrado.
 | M5 | Deploy FTP automatizado desde CI en `main` verde | 5 h | Media-alta | ⚙️ | ⏳ Pendiente — sin dependencias, menor riesgo del lote | [#19](https://github.com/jgcoronado/mdc-back/issues/19) |
 | M6 | Accesibilidad + hoja de impresión de fichas | 6 h | Media | 🎺 | ⏳ Pendiente | [#20](https://github.com/jgcoronado/mdc-back/issues/20) |
 | M7 | Notificaciones editoriales (email + digest semanal) | 6 h | Media | ⚙️ | ⏳ Pendiente | [#21](https://github.com/jgcoronado/mdc-back/issues/21) |
-| M8 | Unificar slugify + test canónica↔JSON-LD + CSP/HSTS | 4 h | Media | 🔍⚙️ | ⏳ Pendiente | [#22](https://github.com/jgcoronado/mdc-back/issues/22) |
+| M8 | Unificar slugify + test canónica↔JSON-LD + CSP/HSTS | 4 h | Media | 🔍⚙️ | ✅ Completado — de paso corrigió un bug real (URL de banda en JSON-LD nunca coincidía con la canónica) | [#22](https://github.com/jgcoronado/mdc-back/issues/22) |
 | M9 | Estadísticas ampliadas como contenido indexable | 6 h | Media | 🔍 | ⏳ Pendiente | [#23](https://github.com/jgcoronado/mdc-back/issues/23) |
 
 Detalle completo de cada tarea en `consejo-de-sabios-2026-07.md` §7 y en el
