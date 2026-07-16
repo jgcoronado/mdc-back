@@ -91,6 +91,60 @@ function assertJsonLd(string $path, string $base, ?string $expectType = null): v
     }
 }
 
+/**
+ * M8: coherencia canónica ↔ JSON-LD. Recorre el JSON-LD de la página, extrae
+ * cada 'url' que apunte a una ficha de entidad (por su path, no por host: el
+ * JSON-LD usa siempre 'site_url' —producción—, no el $base local de CI) y
+ * comprueba que resuelve en 200 directo contra el servidor de pruebas. Si la
+ * URL embebida en el JSON-LD no fuera exactamente la canónica real,
+ * resolvería con una redirección 308 en vez de 200 (el routing redirige por
+ * ID a la canónica aunque el slug sea distinto).
+ */
+function assertJsonLdUrlsCanonical(string $path, string $base): void
+{
+    $r = assertStatus($path, 200, $base);
+    preg_match_all('#<script type="application/ld\+json">(.*?)</script>#s', $r['body'], $m);
+    if ($m[1] === []) {
+        throw new RuntimeException("$path → sin bloques JSON-LD");
+    }
+    $prefixes = ['/marcha/', '/autor/', '/banda/', '/disco/', '/dedicatoria/'];
+    $paths = [];
+    $collect = static function (mixed $node) use (&$collect, &$paths, $prefixes): void {
+        if (!is_array($node)) {
+            return;
+        }
+        if (isset($node['url']) && is_string($node['url'])) {
+            $p = (string) parse_url($node['url'], PHP_URL_PATH);
+            foreach ($prefixes as $prefix) {
+                if (str_starts_with($p, $prefix)) {
+                    $paths[] = $p;
+                    break;
+                }
+            }
+        }
+        foreach ($node as $v) {
+            if (is_array($v)) {
+                $collect($v);
+            }
+        }
+    };
+    foreach ($m[1] as $json) {
+        $decoded = json_decode($json, true);
+        if (is_array($decoded)) {
+            $collect($decoded);
+        }
+    }
+    if ($paths === []) {
+        throw new RuntimeException("$path → ninguna URL de entidad en el JSON-LD para comprobar coherencia");
+    }
+    foreach (array_unique($paths) as $p) {
+        $status = httpGet($base . $p)['status'];
+        if ($status !== 200) {
+            throw new RuntimeException("$path → URL de JSON-LD '$p' no resuelve en 200 directo (status=$status) — no es la canónica real");
+        }
+    }
+}
+
 function assertContains(string $path, string $needle, string $base): void
 {
     $r = assertStatus($path, 200, $base);
@@ -189,6 +243,7 @@ $tests = [
     'marcha solo-ID → 308 canónica' => static fn() => assertRedirect('/marcha/1', '/marcha/consuelo-gitano-1', $base),
     'marcha slug incorrecto → 308 canónica' => static fn() => assertRedirect('/marcha/titulo-erroneo-1', '/marcha/consuelo-gitano-1', $base),
     'marcha inexistente 404' => static fn() => assertStatus('/marcha/nada-999999', 404, $base),
+    'marcha coherencia canónica ↔ JSON-LD (M8)' => static fn() => assertJsonLdUrlsCanonical('/marcha/costalero-bueno-3', $base),
 
     // ── Autor / Banda / Disco / Dedicatoria ─────────────────────────────────
     'autor listado 200' => static fn() => assertStatus('/autor', 200, $base),

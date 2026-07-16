@@ -18,6 +18,31 @@ Options -MultiViews -Indexes
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # CSP (M8). default-src 'self' bloquea cargar scripts/imágenes/frames desde
+    # dominios no listados aquí (mitiga exfiltración e inyección de recursos
+    # externos vía XSS); form-action/base-uri/frame-ancestors 'self' evitan
+    # secuestro de formularios y de <base>; object-src 'none' bloquea plugins.
+    #
+    # 'unsafe-inline' en script-src/style-src sigue siendo necesario: el panel
+    # admin usa manejadores onclick/onsubmit/onchange y <script>/style="" inline
+    # en varias plantillas (docs/technical-debt.md). Eliminarlos es un refactor
+    # aparte (migrar a JS externo con addEventListener), fuera del alcance de
+    # M8 — esta CSP sigue protegiendo contra la inyección de recursos EXTERNOS,
+    # que es el vector más común, aunque no contra script inline ya presente.
+    #
+    # i.ytimg.com/youtube-nocookie.com: miniaturas y embed de vídeo (Html.php,
+    # catalog.js). *.goatcounter.com/gc.zgo.at: analítica opcional, solo se
+    # usan si 'goatcounter_code' está configurado (ver config.php) — se
+    # permiten ya para que activarla no rompa nada bajo esta CSP.
+    Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data: https://i.ytimg.com https://*.goatcounter.com; frame-src https://www.youtube-nocookie.com; script-src 'self' 'unsafe-inline' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.goatcounter.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+
+    # HSTS. max-age moderado (6 meses), sin includeSubDomains/preload todavía:
+    # hay un subdominio heredado (marchasdecristo.jaguerra27.helioho.st, ver
+    # docs/pendientes-post-cutover.md) sin confirmar que sirva HTTPS correcto;
+    # ampliar cuando se limpie. El navegador solo aplica HSTS sobre respuestas
+    # recibidas por HTTPS, así que es seguro emitirlo siempre.
+    Header always set Strict-Transport-Security "max-age=15768000"
 </IfModule>
 
 # Caché larga para estáticos (assets y portadas).

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App;
 
-use Normalizer;
-
 /**
  * Port de nextjs/lib/schema.ts — genera los objetos JSON-LD (schema.org).
- * OJO: schema.ts usa un slugify PROPIO (distinto de lib/slugify.ts) para las
- * URLs internas del JSON-LD; se replica aquí en self::slugify() para paridad.
+ * Las URLs internas del JSON-LD usan Slug::buildDetailPath (M8) — antes
+ * tenían un slugify propio, distinto del de Slug.php, heredado de que
+ * schema.ts en Next.js ya divergía de lib/slugify.ts; unificado porque esa
+ * paridad histórica ya no aporta nada y era fuente de incoherencia entre la
+ * URL canónica real y la que veían los robots en el JSON-LD.
  * Las claves se construyen en el mismo orden que el objeto JS y se omiten las
  * que en JS quedarían `undefined`.
  */
@@ -18,19 +19,6 @@ final class Seo
     private static function base(): string
     {
         return rtrim((string) ($GLOBALS['config']['site_url'] ?? 'https://marchasdecristo.com'), '/');
-    }
-
-    /** slugify de schema.ts (no el de Slug::slugify). */
-    private static function slugify(string $text): string
-    {
-        $s = mb_strtolower($text, 'UTF-8');
-        $n = Normalizer::normalize($s, Normalizer::FORM_D);
-        if ($n !== false) $s = $n;
-        $s = preg_replace('/[\x{0300}-\x{036f}]/u', '', $s) ?? $s;
-        $s = preg_replace('/[^\w\s-]/u', '', $s) ?? $s;
-        $s = preg_replace('/\s+/u', '-', $s) ?? $s;
-        $s = preg_replace('/-+/', '-', $s) ?? $s;
-        return $s;
     }
 
     private static function formatDate(mixed $dateStr): ?string
@@ -48,7 +36,7 @@ final class Seo
         $autores = array_map(static fn(array $a): array => [
             '@type' => 'Person',
             'name' => $a['nombre'],
-            'url' => "$base/autor/" . self::slugify((string) $a['nombre']) . '-' . $a['autorId'],
+            'url' => $base . Slug::buildDetailPath('autor', $a['autorId'], (string) $a['nombre']),
         ], $data['AUTOR']);
 
         $schema = [
@@ -62,10 +50,15 @@ final class Seo
         $schema['description'] = 'Marcha procesional'
             . (!empty($data['DEDICATORIA']) ? ' dedicada a ' . $data['DEDICATORIA'] : '') . '.';
         if (!empty($data['BANDA_ESTRENO'])) {
+            // La URL usa NOMBRE_COMPLETO (el mismo campo que Pages::bandaDetail
+            // usa para la canónica) — 'name' sigue mostrando el nombre corto +
+            // localidad de $data['BANDA']: qué se muestra y a qué URL apunta
+            // son cosas distintas.
+            $bandaNombreCompleto = !empty($data['BANDA_NOMBRE_COMPLETO']) ? $data['BANDA_NOMBRE_COMPLETO'] : $data['BANDA'];
             $schema['performanceLocation'] = [
                 '@type' => 'MusicGroup',
                 'name' => $data['BANDA'],
-                'url' => "$base/banda/" . self::slugify((string) $data['BANDA']) . '-' . $data['BANDA_ESTRENO'],
+                'url' => $base . Slug::buildDetailPath('banda', $data['BANDA_ESTRENO'], (string) $bandaNombreCompleto),
             ];
         }
         if (($data['discosLength'] ?? 0) > 0) {
@@ -182,7 +175,7 @@ final class Seo
                 'item' => [
                     '@type' => 'MusicComposition',
                     'name' => $m['TITULO'],
-                    'url' => self::base() . '/marcha/' . self::slugify((string) $m['TITULO']) . '-' . $m['ID_MARCHA'],
+                    'url' => self::base() . Slug::buildDetailPath('marcha', $m['ID_MARCHA'], (string) $m['TITULO']),
                 ],
             ],
             $data['marchas'],

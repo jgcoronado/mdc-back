@@ -100,6 +100,7 @@ final class Repo
             "SELECT m.ID_MARCHA, m.TITULO, m.DEDICATORIA, m.LOCALIDAD, m.PROVINCIA, m.AUDIO, m.FECHA,
                     m.BANDA_ESTRENO, m.DETALLES_MARCHA, m.TIPO, m.ESTILO, m.DURACION_SEG,
                     b.NOMBRE_BREVE AS BANDA_NOMBRE, b.LOCALIDAD AS BANDA_LOC,
+                    b.NOMBRE_COMPLETO AS BANDA_NOMBRE_COMPLETO,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM marcha m
              LEFT OUTER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO

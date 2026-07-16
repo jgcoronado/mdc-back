@@ -82,6 +82,11 @@ $ins('INSERT INTO banda (ID_BANDA, NOMBRE_BREVE, NOMBRE_COMPLETO, LOCALIDAD, PRO
 $ins('INSERT INTO autor (ID_AUTOR, NOMBRE, APELLIDOS, F_NAC, F_DEF, LUGAR_NAC) VALUES (?,?,?,?,?,?)', [
     [1, 'José', 'García Pérez', 1950, null, 'Sevilla'],
     [2, 'Manuel', 'López Ruiz', 1962, null, 'Cádiz'],
+    // Nombre con apóstrofe (M8): caso adversarial para el test de coherencia
+    // canónica↔JSON-LD — con el slugify legado que Seo.php tenía antes de
+    // unificarse con Slug.php, este nombre generaba una URL de JSON-LD
+    // distinta de la canónica real.
+    [3, 'Rafael', "O'Donnell", null, null, null],
 ]);
 
 $ins('INSERT INTO marcha (ID_MARCHA, TITULO, DEDICATORIA, LOCALIDAD, PROVINCIA, AUDIO, FECHA, BANDA_ESTRENO, TIPO, ESTILO, DURACION_SEG) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
@@ -93,7 +98,7 @@ $ins('INSERT INTO marcha (ID_MARCHA, TITULO, DEDICATORIA, LOCALIDAD, PROVINCIA, 
 ]);
 
 $ins('INSERT INTO marcha_autor (ID_MARCHA, ID_AUTOR) VALUES (?,?)', [
-    [1, 1], [2, 1], [3, 2], [4, 2], [5, 1],
+    [1, 1], [2, 1], [3, 2], [3, 3], [4, 2], [5, 1],
 ]);
 
 $ins('INSERT INTO disco (ID_DISCO, NOMBRE_CD, FECHA_CD, BANDADISCO) VALUES (?,?,?,?)', [
