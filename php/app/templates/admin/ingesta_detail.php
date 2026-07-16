@@ -2,6 +2,7 @@
 /** @var array $session @var array<string,mixed> $cand
  *  @var list<array{ID_AUTOR:int,NOMBRE_COMPLETO:string,score:float}> $autoresAuto
  *  @var list<string> $autoresSugeridos @var string $back
+ *  @var string|null $estiloSugerido
  *  @var array|null $notice @var string|null $error */
 $csrf = Auth::csrfToken($session);
 $val = static fn(string $k, string $default = ''): string => V::e($cand[$k] ?? $default);
@@ -34,7 +35,7 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
 <?php if (!empty($cand['MATCH_MARCHA_ID'])): ?>
     <div class="alert alert-error">
         ⚠ Posible coincidencia con una marcha ya existente:
-        <a href="/dashboard/marcha/<?= (int) $cand['MATCH_MARCHA_ID'] ?>" target="_blank"><?= V::e($cand['MATCH_TITULO']) ?> (#<?= (int) $cand['MATCH_MARCHA_ID'] ?>)</a>
+        <a href="/marcha/<?= (int) $cand['MATCH_MARCHA_ID'] ?>" target="_blank"><?= V::e($cand['MATCH_TITULO']) ?> (#<?= (int) $cand['MATCH_MARCHA_ID'] ?>)</a>
         — similitud <?= (int) round(((float) $cand['MATCH_SCORE']) * 100) ?>%. Revisa antes de aceptar.
     </div>
 <?php endif; ?>
@@ -91,6 +92,15 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
             <p class="muted">Banda del candidato: <strong><?= V::e($cand['NOMBRE_BREVE'] ?? ('#' . $cand['ID_BANDA'])) ?></strong> (#<?= (int) $cand['ID_BANDA'] ?>)<?php if ($cand['BANDA_LOCALIDAD']): ?> — <?= V::e($cand['BANDA_LOCALIDAD']) ?><?php endif; ?><?php if ((string) $bandaEstrenoVal !== (string) $cand['ID_BANDA']): ?> — el valor del campo es distinto, revísalo<?php endif; ?>.</p>
         </div>
         <div class="field">
+            <label class="field-label" for="ESTILO">Estilo</label>
+            <select class="input" id="ESTILO" name="ESTILO">
+                <option value="">— Sin asignar —</option>
+                <option value="CCTT"<?= ($estiloSugerido ?? '') === 'CCTT' ? ' selected' : '' ?>>Cornetas y Tambores (CCTT)</option>
+                <option value="AM"<?= ($estiloSugerido ?? '') === 'AM' ? ' selected' : '' ?>>Agrupación Musical (AM)</option>
+            </select>
+            <p class="muted small" id="estiloHint"><?= $estiloSugerido ? 'Sugerido automáticamente según las marchas existentes de esta banda.' : 'No hay marchas previas de esta banda; selecciónalo manualmente.' ?></p>
+        </div>
+        <div class="field">
             <label class="field-label" for="DETALLES_MARCHA">Detalles</label>
             <textarea class="input" id="DETALLES_MARCHA" name="DETALLES_MARCHA" rows="3"></textarea>
         </div>
@@ -135,14 +145,18 @@ $bandaEstrenoVal = $cand['P_BANDA_ESTRENO'] ?? $cand['ID_BANDA'] ?? '';
         </div>
     </form>
 
-    <form class="panel" action="/dashboard/ingesta/<?= (int) $cand['ID_CAND'] ?>/descartar" method="POST">
+    <form class="panel" style="border:2px solid var(--color-danger,#dc2626);background:color-mix(in srgb,var(--color-danger,#dc2626) 5%,transparent)"
+          action="/dashboard/ingesta/<?= (int) $cand['ID_CAND'] ?>/descartar" method="POST">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
         <input type="hidden" name="ref" value="<?= V::e($back) ?>">
-        <div class="field">
-            <label class="field-label" for="motivo">Motivo del descarte (opcional)</label>
-            <input class="input" id="motivo" name="motivo" type="text" placeholder="p.ej. no es una marcha nueva, es un cover…">
+        <p class="small" style="color:var(--color-danger,#dc2626);font-weight:600;margin-bottom:0.5rem">⚠ Zona de descarte</p>
+        <div class="row" style="align-items:flex-end;gap:0.75rem;flex-wrap:wrap">
+            <div class="field" style="flex:1;min-width:220px;margin-bottom:0">
+                <label class="field-label" for="motivo">Motivo del descarte (opcional)</label>
+                <input class="input" id="motivo" name="motivo" type="text" placeholder="p.ej. no es una marcha nueva, es un cover…">
+            </div>
+            <button class="btn btn-danger" type="submit" style="white-space:nowrap;flex-shrink:0">Descartar candidato</button>
         </div>
-        <div><button class="btn btn-sm btn-danger" type="submit">Descartar candidato</button></div>
     </form>
 <?php endif; ?>
 </div>
@@ -233,8 +247,40 @@ document.querySelectorAll('.sugerido-autor').forEach(function (btn) {
         }, 200);
     });
 
-    document.addEventListener('click', function (e) {
+    document.addEventListener('mousedown', function (e) {
         if (!suggest.contains(e.target) && e.target !== input) closeSuggest();
     });
+})();
+
+// Estilo CCTT/AM: se sugiere automáticamente al cargar (PHP) y se actualiza
+// cuando el revisor cambia el ID de banda de estreno. Solo actualiza si el
+// revisor no ha tocado el select manualmente.
+(function () {
+    var bandaInput = document.getElementById('BANDA_ESTRENO');
+    var estiloSelect = document.getElementById('ESTILO');
+    var estiloHint = document.getElementById('estiloHint');
+    if (!bandaInput || !estiloSelect) return;
+
+    var autoModified = false;
+    estiloSelect.addEventListener('change', function () { autoModified = true; });
+
+    async function fetchEstilo(bandaId) {
+        if (!bandaId) return;
+        try {
+            var res = await fetch('/api/banda/estilo?id=' + encodeURIComponent(bandaId), { credentials: 'same-origin' });
+            var data = await res.json();
+            if (!autoModified) {
+                estiloSelect.value = data.estilo || '';
+                if (estiloHint) {
+                    estiloHint.textContent = data.estilo
+                        ? 'Sugerido automáticamente según las marchas existentes de esta banda.'
+                        : 'No hay marchas previas de esta banda; selecciónalo manualmente.';
+                }
+            }
+        } catch (e) { /* red: ignorar */ }
+    }
+
+    bandaInput.addEventListener('change', function () { fetchEstilo(bandaInput.value.trim()); });
+    bandaInput.addEventListener('blur', function () { fetchEstilo(bandaInput.value.trim()); });
 })();
 </script>
