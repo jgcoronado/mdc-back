@@ -45,7 +45,7 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
                     <option value="">Todas</option>
 <?php foreach ($bandas as $b): ?>
                     <option value="<?= (int) $b['ID_BANDA'] ?>" <?= (string) $b['ID_BANDA'] === $filters['banda'] ? 'selected' : '' ?>>
-                        <?= V::e($b['NOMBRE_BREVE'] ?? ('Banda #' . $b['ID_BANDA'])) ?>
+                        <?= V::e($b['NOMBRE_BREVE'] ?? ('Banda #' . $b['ID_BANDA'])) ?><?= $b['LOCALIDAD'] ? ' — ' . V::e($b['LOCALIDAD']) : '' ?>
                     </option>
 <?php endforeach; ?>
                 </select>
@@ -75,6 +75,7 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
     <form id="bulkForm" method="POST" action="/dashboard/enlaces/rechazar-multiple">
         <input type="hidden" name="_csrf" value="<?= V::e($csrf) ?>">
         <input type="hidden" name="ref" value="<?= V::e($backQs) ?>">
+    </form>
 <?php if ($puedeRechazarMultiple): ?>
         <div class="row" style="align-items:center;gap:0.75rem;margin-bottom:0.5rem">
             <button type="button" id="btnRechazarSeleccionados" class="btn btn-sm btn-danger" disabled>Rechazar seleccionados (<span id="numSeleccionados">0</span>)</button>
@@ -91,14 +92,14 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
 <?php if ($puedeRechazarMultiple): ?>
             <td style="width:1.5rem">
                 <input type="checkbox" class="enlace-check" name="ids[]" value="<?= (int) $c['ID_CAND'] ?>"
-                       data-disco="<?= V::e($nombre) ?>" data-servicio="<?= V::e($c['SERVICIO']) ?>">
+                       form="bulkForm" data-disco="<?= V::e($nombre) ?>" data-servicio="<?= V::e($c['SERVICIO']) ?>">
             </td>
 <?php endif; ?>
             <td><span class="badge"><?= V::e(ucfirst((string) $c['SERVICIO'])) ?></span></td>
             <td>
                 <span class="small muted"><?= $tipoLabel ?></span>
                 <strong><?= V::e($nombre) ?></strong><?= $anio ? ' <span class="small muted">(' . V::e($anio) . ')</span>' : '' ?>
-                <div class="small muted"><?= V::e($c['ENT_BANDA'] ?? '') ?></div>
+                <div class="small muted"><?= V::e($c['ENT_BANDA'] ?? '') ?><?= $c['ENT_BANDA_LOCALIDAD'] ? ' — ' . V::e($c['ENT_BANDA_LOCALIDAD']) : '' ?></div>
             </td>
             <td class="small">
 <?php if ($c['TITULO_ENC']): ?>
@@ -135,7 +136,6 @@ $puedeRechazarMultiple = $filters['estado'] === 'pendiente' && $result['data'];
         </tr>
 <?php endforeach; ?>
     </tbody></table></div>
-    </form>
     <?= H::pagination($page, $result['totalRows'], $limit, '/dashboard/enlaces', $filters) ?>
 <?php else: ?>
     <p class="muted">No hay candidatos con estos filtros.</p>

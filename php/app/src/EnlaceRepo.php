@@ -79,6 +79,7 @@ final class EnlaceRepo
                     c.ANIO_ENC, c.SCORE, c.CONFIANZA, c.ESTADO,
                     COALESCE(d.NOMBRE_CD, bb.NOMBRE_BREVE, mm.TITULO)   AS ENT_NOMBRE,
                     COALESCE(b.NOMBRE_BREVE, bb.NOMBRE_BREVE, bm.NOMBRE_BREVE) AS ENT_BANDA,
+                    COALESCE(b.LOCALIDAD, bb.LOCALIDAD, bm.LOCALIDAD)   AS ENT_BANDA_LOCALIDAD,
                     COALESCE(d.FECHA_CD, mm.FECHA)                      AS ENT_ANIO
              $from
              WHERE $where
