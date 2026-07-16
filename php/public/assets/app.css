@@ -170,7 +170,7 @@ dl.desc dd { margin: 0; font-size: 0.89rem; }
 .cnt { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
 
 /* Cabecera de sección con regla de tinta */
-.shead { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin: 1.7rem 0 0.4rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--ink); }
+.shead { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; padding-bottom: 0.3rem; border-bottom: 2px solid var(--ink); }
 .shead h2, .shead h3 { font-family: var(--serif); font-size: 1.08rem; font-weight: 600; margin: 0; }
 .shead .n { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); }
 .shead .filter { margin-left: auto; }
