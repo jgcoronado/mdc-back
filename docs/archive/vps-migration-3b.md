@@ -1,5 +1,11 @@
 # Migración VPS — Fase 3b: apagar Express, activar Next.js standalone
 
+> **📦 Archivado 2026-07-16**: documento histórico. Describe una fase intermedia
+> del extinto stack Next.js/VPS/Docker, ya completamente sustituido por PHP 8.4 +
+> SQLite en HelioHost (cutover 2026-07-04). Ver [../context.md](../context.md)
+> para el stack actual y [../cutover-fase5.md](../cutover-fase5.md) para el
+> runbook del cutover a PHP.
+
 > Fecha estimada: junio 2026  
 > Tiempo estimado: ~20 min (más build Docker)
 

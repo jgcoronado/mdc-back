@@ -1,66 +1,80 @@
 # Contexto del proyecto — marchasdecristo.com
 
-> Última actualización: 2026-06-05 (Bloque 4 completado — panel admin completo, FECHA normalizada)
+> Última actualización: 2026-07-16 (C8 — documentación alineada al stack PHP real)
 > Documento de entrada para nuevas sesiones.
 > Documentos complementarios en esta misma carpeta:
 > - [architecture.md](architecture.md) — diagrama, flujos y decisiones arquitectónicas.
 > - [technical-debt.md](technical-debt.md) — deuda pendiente.
-> - [roadmap.md](roadmap.md) — plan de acción priorizado.
+> - [roadmap.md](roadmap.md) — plan de acción vigente (apunta a `consejo-de-sabios-2026-07.md`).
 > - [db-analysis.md](db-analysis.md) — auditoría de la base de datos.
+> - [admin-panel.md](admin-panel.md) — panel de administración.
+> - [consejo-de-sabios-2026-07.md](consejo-de-sabios-2026-07.md) — evaluación integral (DAFOs, plan de acción, catálogo de automatizaciones).
 
 ---
 
 ## 1. Visión general
 
-**Marchas de Cristo** ([marchasdecristo.com](https://marchasdecristo.com)) es una base de datos de **música procesional** española. Permite consultar cuatro entidades relacionadas:
+**Marchas de Cristo** ([marchasdecristo.com](https://marchasdecristo.com)) es una base de datos de **música procesional** española. Permite consultar cuatro entidades relacionadas más dedicatorias/advocaciones:
 
-| Entidad | Volumen | Descripción |
-|---------|---------|-------------|
-| Marchas | 4 212 | Marchas procesionales (título, fecha, dedicatoria, banda de estreno, autores) |
-| Autores | 827 | Compositores |
-| Bandas | 268 | Formaciones musicales |
-| Discos | 431 | Grabaciones (CDs) que contienen marchas |
+| Entidad | Volumen aprox. | Descripción |
+|---------|-----------------|-------------|
+| Marchas | ~4 200 | Marchas procesionales (título, fecha, dedicatoria, banda de estreno, autores, estilo CCTT/AM) |
+| Autores | ~830 | Compositores |
+| Bandas | ~270 | Formaciones musicales (con linaje/relaciones entre bandas) |
+| Discos | ~430 | Grabaciones (CDs) que contienen marchas |
+| Dedicatorias | — | Hubs de advocación con alias unificados |
 
-Relaciones principales:
-- `marcha_autor` (4 724 filas) — marcha N:N autor.
-- `disco_marcha` (4 478 filas) — disco N:N marcha (con número de pista).
-- `marcha.BANDA_ESTRENO` → `banda.ID_BANDA`.
-- `disco.BANDADISCO` → `banda.ID_BANDA`.
+Relaciones principales: `marcha_autor` (N:N marcha↔autor), `disco_marcha` (N:N disco↔marcha, con pista), `marcha.BANDA_ESTRENO → banda.ID_BANDA`, `disco.BANDADISCO → banda.ID_BANDA`, `banda_relacion` (linaje entre bandas), `marcha.ID_DEDICATORIA → dedicatoria`.
 
-**Audiencia**: aficionados a la música cofrade, picos en Cuaresma/Semana Santa.  
+**Audiencia**: aficionados a la música cofrade, picos de tráfico en Cuaresma/Semana Santa.
 **Mantenedor único**: Javier Guerra ([@JaviWarSVQ](https://x.com/JaviWarSVQ)).
+
+**Estado**: sitio migrado y **en producción** en `https://marchasdecristo.com` sobre el stack descrito abajo desde el cutover del 2026-07-04 (ver [pendientes-post-cutover.md](pendientes-post-cutover.md)). El stack Next.js/VPS/MySQL descrito en versiones anteriores de este documento es **historia**, no el sistema actual — ver §7.
 
 ---
 
 ## 2. Stack tecnológico (estado actual)
 
-### Aplicación — Next.js 15 (único servicio)
-- **Next.js 15** (App Router) + **React 19** + **TypeScript** + **Tailwind 4** + **DaisyUI 5**.
-- **Server Components** para todas las páginas públicas — lectura directa a SQLite, sin HTTP round-trip.
-- **Route Handlers** (`app/api/`) para la API REST: login, autocomplete, admin (addMarcha, editMarcha, addAutor, editAutor, editMarchaAutores, searchMarchas, searchAutores).
-- **ISR**: detalles cada hora, estadísticas cada 30 min, búsquedas sin caché.
-- **Standalone output** para imagen Docker minimalista.
-- **Admin**: Client Components protegidos por `middleware.ts` (verifica cookie HMAC inline). Ver [admin-panel.md](admin-panel.md) para análisis completo.
+### Aplicación — PHP 8.4 plano, sin build step
 
-### Base de datos — SQLite embebido
-- **SQLite** vía **better-sqlite3** (síncrono, sin pool).
-- Singleton lazy en `lib/db.ts` — no abre la BD en `next build`.
-- Volumen Docker `mdc-back_mdc-sqlite-data` montado en `/app/data/mdc.db`.
-- FTS5 (`marcha_fts`, `autor_fts`) para búsqueda full-text.
-- **Sin ORM** — SQL crudo en `lib/api.ts` y Route Handlers.
+- **PHP 8.4**, sin Composer ni `vendor/` — namespace `App\*` con autoload manual en `bootstrap.php` (mapa clase → fichero, sin PSR-4 automático).
+- **Front controller** (`public/index.php`) + **`App\Router`** minimalista: rutas registradas en `app/routes.php` con patrones `{param}` nombrados.
+- **Plantillas PHP nativas** (`App\View`): cada vista se renderiza a un buffer y se inyecta como `$content` en `templates/layout.php`. Sin motor de plantillas externo.
+- **Sin SSR/hidratación/JS framework**: HTML servido directo por PHP; JS del lado cliente es vanilla (`public/assets/admin.js`, `catalog.js`, `banda-relaciones.js`) solo para el panel admin y mejoras progresivas del catálogo público.
+- **Deploy**: FTP manual a HelioHost (hosting compartido, panel Plesk). No hay build ni contenedor — los ficheros PHP se suben tal cual.
 
-### Auth/sesiones
-- **HMAC-SHA256 propio** implementado en `lib/auth-session.ts` (sin dependencias externas).
-- Cookies **HttpOnly + Secure + SameSite=lax**.
-- Passwords: **PBKDF2-SHA512 / 210 000 iteraciones** (`pbkdf2$sha512$iters$salt$derived`).
-- Rate limiting de login: `Map` en memoria (6 intentos / 15 min, ventana y bloqueo de 15 min).
+### Base de datos — SQLite embebido (PDO)
+
+- **SQLite** vía **PDO** (`App\Db`, singleton lazy con prepared statements).
+- Fichero `.db` **fuera del webroot** (`private/mdc.db` en producción, `php/data/mdc.db` en local) — nunca dentro de `public_html`.
+- FTS5 (`marcha_fts`, `autor_fts`, …) para búsqueda full-text.
+- **Producción es de solo lectura por diseño**: `Db::assertWritable()` lanza `ReadOnlyModeException` si `config['env'] !== 'local'`. El panel admin en HelioHost puede leer y navegar, pero cualquier escritura real (alta/edición) solo funciona en local — ver §5 "Flujo de datos: propuestas y sync".
+
+### Auth / sesiones (`App\Auth`)
+
+- Sesión firmada **HMAC-SHA256** propia (mismo formato que el Next.js original — compatibilidad de hashes conservada intencionadamente durante la migración, aunque ya no hay sistema Next.js corriendo en paralelo).
+- Passwords: **PBKDF2-SHA512 / 210 000 iteraciones**, con auto-upgrade transparente desde MD5 legado en el primer login.
+- **Rate limiting persistido a fichero** (no hay memoria compartida entre peticiones PHP-FPM/CGI de HelioHost): 6 intentos / 15 min, bloqueo 15 min.
+- CSRF: token derivado de la sesión, validado en los formularios del panel.
+- Roles (`App\Roles`): `admin` (acceso total) y `editor` (alta/edición de marchas, bandas y autores **vía propuestas**, sin acceso a ingesta, enlaces, dedicatorias, estilos, linaje ni gestión de usuarios).
+
+### SEO
+
+- URLs **slug-id** (`/marcha/consuelo-gitano-330`) con redirect **308** a la canónica si el slug no coincide o falta.
+- JSON-LD (`App\Seo`) en todas las fichas de detalle y en los hubs de catálogo.
+- `sitemap.xml` dinámico con `<lastmod>` real (derivado del último sync/edición) y `robots.txt`.
+- **Ping IndexNow** tras cada sync a producción (`scripts/sync_db_to_prod.php`), más verificación de clave servida en `/{indexnow_key}.txt` (ruta condicional en `routes.php`, solo si `config['indexnow_key']` está definida).
+- **Hubs indexables** de catálogo: `/marcha/ano/{yyyy}`, `/marcha/estilo/{slug}`, `/marcha/provincia/{slug}` — con `noindex` automático si el hub tiene menos de `Repo::HUB_MIN_MARCHAS` (2) resultados, para no publicar páginas finas.
+- `og:image` de marca + Twitter Card (`summary_large_image`) en `layout.php`, con fallback genérico si la página no define uno propio.
 
 ### Infraestructura
-- **VPS**: Ubuntu 22.04, 1 vCPU, 1 GB RAM, 15 GB disco.
-- **Nginx** como reverse proxy con TLS (Let's Encrypt). Config en `/etc/nginx/sites-enabled/default`.
-- **Docker Compose** en `/var/www/mdc-back/` con un único servicio: `mdc-nextjs` → `127.0.0.1:3000`.
-- **Portadas** (`/cover/*.png`): volumen host `/var/www/mdc-assets/cover/` montado como `:ro`. Nginx las sirve directamente.
-- **Backup**: cron diario a las 3:00 AM copia `mdc.db` a `/var/backups/`, retención 14 días.
+
+- **HelioHost** (hosting compartido) con panel **Plesk**, dominio `marchasdecristo.com`.
+- Webroot del dominio (`public_html`-equivalente) recibe el contenido de `php/public/`; `app/` y `private/` (con el `.db`) quedan **fuera** del webroot, como hermanos.
+- Apache sirve los estáticos (caché 30 días vía `.htaccess`); Plesk tiene desactivado "Serve static files directly by nginx".
+- **Sin Docker, sin CI/CD de deploy** (el deploy de código y de BD son procesos manuales por FTP — ver §5).
+- **Backups**: `app/tools/backup.php` (VACUUM INTO + retención `backup_keep_days`, 60 días por defecto) vía cron de Plesk.
+- **CI de verificación** (no de deploy): GitHub Actions en cada push/PR — lint (`php -l`) + smoke tests contra una BD fixture con el servidor embebido de PHP. Ver [technical-debt.md](technical-debt.md) y `.github/workflows/ci.yml`.
 
 ---
 
@@ -68,158 +82,139 @@ Relaciones principales:
 
 ```
 mdc-back/
-├── .env.example                # Plantilla de variables de entorno (sin secretos)
-├── .gitignore
-├── docker-compose.yml          # Un solo servicio: nextjs
-├── nginx.conf.example          # Config nginx actual (todo → :3000 excepto /cover/)
-├── README.md
+├── .github/workflows/ci.yml       # Lint + fixture + smoke tests en cada push/PR
+├── docs/                          # Esta carpeta
+├── scripts/
+│   ├── sync_db_to_prod.php        # Sube el .db local → HelioHost por FTP (con guardarraíles, ver arquitectura §3.6)
+│   └── sync_propuestas_from_prod.php  # Baja las propuestas de editores desde producción
 │
-├── db/
-│   └── schema.sql              # Esquema de referencia: tablas, FTS5, índices
-│
-├── scripts/                    # Utilidades de migración y verificación
-│   ├── migrate-mysql-to-sqlite.mjs
-│   ├── snapshot-endpoints.mjs
-│   ├── diff-snapshots.mjs
-│   ├── run-migration-on-vps.sh
-│   ├── verify-utf8.sh
-│   ├── clean-orphans.sql           # Eliminó 43 huérfanos (Bloque 2)
-│   ├── add-fk-constraints.sql      # FK ON DELETE CASCADE + tabla admin_log (Bloque 2)
-│   └── normalize-fecha.sql         # Migró FECHA=0 → NULL (Bloque 4, 245 filas)
-│
-├── nextjs/                     # Toda la aplicación
-│   ├── Dockerfile              # Multi-stage: builder (compila better-sqlite3) + runtime Alpine
-│   ├── package.json            # next, react, better-sqlite3, daisyui, tailwind
-│   ├── next.config.ts          # standalone, serverExternalPackages: ['better-sqlite3']
-│   ├── middleware.ts           # Auth guard: protege /dashboard/* verificando cookie HMAC
-│   ├── tsconfig.json
-│   ├── public/
-│   │   └── banner_mdc.png
-│   ├── app/
-│   │   ├── layout.tsx          # Nav + footer con conteos de BD
-│   │   ├── page.tsx            # Home
-│   │   ├── globals.css
-│   │   ├── robots.ts
-│   │   ├── sitemap.ts          # Sitemap generado desde BD, ISR 1h
-│   │   ├── marcha/
-│   │   │   ├── page.tsx                # Formulario búsqueda
-│   │   │   ├── search/page.tsx         # Resultados (SSR, sin caché)
-│   │   │   └── [slugAndId]/page.tsx    # Detalle (ISR 1h)
-│   │   ├── autor/              (misma estructura)
-│   │   ├── banda/              (misma estructura)
-│   │   ├── disco/              (misma estructura)
-│   │   ├── estadisticas/page.tsx       # ISR 30 min
-│   │   ├── login/page.tsx      # Client Component
-│   │   ├── dashboard/          # Admin — Client Components
-│   │   │   ├── page.tsx                # Buscador FTS de marchas/autores + nav por ID
-│   │   │   ├── marcha/[id]/page.tsx    # Edición de marcha + AutocompleteMulti de autores
-│   │   │   ├── marcha/add/page.tsx     # Alta de marcha con nav post-creación
-│   │   │   ├── autor/[id]/page.tsx     # Edición de autor
-│   │   │   └── autor/add/page.tsx      # Alta de autor con nav post-creación
-│   │   └── api/
-│   │       ├── login/route.ts          # POST login (rate limit + PBKDF2 + MD5 upgrade)
-│   │       ├── login/verify/route.ts   # GET verify sesión
-│   │       ├── login/logout/route.ts   # POST logout
-│   │       ├── autor/[id]/route.ts     # GET autor por ID (auth)
-│   │       ├── autor/fastSearch/route.ts
-│   │       ├── banda/fastSearch/route.ts
-│   │       ├── marcha/[id]/route.ts    # GET marcha por ID (auth)
-│   │       └── admin/
-│   │           ├── editMarcha/route.ts         # POST (auth + allowlist + validación FECHA + revalidatePath)
-│   │           ├── addMarcha/route.ts           # POST (auth + transacción + validación FECHA)
-│   │           ├── editAutor/route.ts           # POST (auth + allowlist + revalidatePath)
-│   │           ├── addAutor/route.ts            # POST (auth + NOMBRE_ART)
-│   │           ├── editMarchaAutores/route.ts   # POST (auth + transacción DELETE+INSERT)
-│   │           ├── searchMarchas/route.ts       # GET (auth + FTS, máx. 15)
-│   │           └── searchAutores/route.ts       # GET (auth + FTS, máx. 15)
-│   ├── components/
-│   │   ├── CdList.tsx
-│   │   └── Timeline.tsx
-│   ├── hooks/
-│   │   └── useAutocompleteSelect.ts
-│   └── lib/
-│       ├── db.ts               # Singleton SQLite lazy (no abre BD en build)
-│       ├── api.ts              # fetchMarcha, fetchAutor, etc. — lectura directa SQLite
-│       ├── auth-session.ts     # signSession, verifySession (HMAC-SHA256)
-│       ├── adminApi.ts         # buildMarchaUpdatePayload, tipos admin
-│       └── slugify.ts          # slugify, buildDetailPath, extractId
-│
-└── docs/
-    ├── context.md              # Este documento
-    ├── architecture.md
-    ├── technical-debt.md
-    ├── roadmap.md
-    ├── db-analysis.md
-    ├── redesign-options.md
-    └── vps-migration-3b.md     # Guía de despliegue Fase 3b (ejecutada 2026-06-05)
+└── php/
+    ├── README.md                  # Guía de desarrollo local y deploy (más detallada que este documento)
+    ├── public/                    → contenido de public_html/ en HelioHost
+    │   ├── index.php                front controller
+    │   ├── .htaccess                mod_rewrite: todo → index.php (estáticos reales tal cual)
+    │   └── assets/                  app.css, admin.js, catalog.js, banda-relaciones.js, og-image.png, favicon.svg
+    ├── app/                        → FUERA de public_html (hermano, p.ej. /home/USER/app)
+    │   ├── bootstrap.php             autoload + config + maintenance check + dispatch
+    │   ├── config.php                defaults (sin secretos)
+    │   ├── config.local.example.php  plantilla de config.local.php (no versionado, tiene los secretos)
+    │   ├── routes.php                todas las rutas (públicas, admin, API interna, SEO)
+    │   ├── src/
+    │   │   ├── Router.php            router mínimo con parámetros nombrados
+    │   │   ├── Db.php                PDO/SQLite singleton + ReadOnlyModeException
+    │   │   ├── Repo.php              lecturas públicas (marchas, autores, bandas, discos, hubs, home)
+    │   │   ├── Pages.php             controladores de páginas públicas
+    │   │   ├── Seo.php                JSON-LD (schema.org)
+    │   │   ├── Slug.php              slugify + construcción/parseo de slug-id
+    │   │   ├── Html.php               componentes de presentación reutilizables (paginación, streaming, portadas)
+    │   │   ├── Http.php               helpers HTTP (redirect, cache-control, 404, maintenance 503)
+    │   │   ├── View.php               renderizado de plantillas
+    │   │   ├── Auth.php               sesión HMAC, PBKDF2/MD5, rate limit a fichero, CSRF
+    │   │   ├── Admin.php              controladores del panel (PRG)
+    │   │   ├── AdminRepo.php          escrituras admin (allowlists, transacciones, audit log)
+    │   │   ├── Roles.php              capacidades admin/editor
+    │   │   ├── PropuestaRepo.php      propuestas de editor en JSON de fichero (no en BD)
+    │   │   ├── IngestaRepo.php        lecturas de candidatos de ingesta (YouTube)
+    │   │   ├── EnlaceRepo.php         lecturas de candidatos de streaming (Spotify/Apple/Deezer)
+    │   │   ├── UserRepo.php           gestión de usuarios del panel
+    │   │   ├── Similarity.php         similitud de texto (dedup, ingesta)
+    │   │   └── Media.php              extracción de ID de YouTube
+    │   ├── templates/                 layout.php + vistas públicas + admin/
+    │   └── tools/                     scripts de mantenimiento/backfill (ver tabla abajo)
+    ├── data/                       → FUERA de public_html en local (hermano de public/ y app/)
+    │   └── mdc.db                    BD de desarrollo (no versionada)
+    └── tools/                      # Utilidades de desarrollo/CI (no de producción)
+        ├── ci_fixture.php            genera una BD SQLite determinista para CI
+        ├── ci_smoke.php               33 aserciones de humo contra el servidor embebido
+        ├── parity_compare.php         (histórico) comparaba Repo.php vs. api.ts durante la migración
+        └── parity_expected.cjs        (histórico) generador del JSON esperado desde better-sqlite3
 ```
+
+### `php/app/tools/` — scripts operativos (ejecución manual, fuera del ciclo de request)
+
+| Script | Qué hace |
+|---|---|
+| `backup.php` | Copia consistente del `.db` (`VACUUM INTO`) + purga por retención. Vía cron de Plesk. |
+| `completar_provincia.php` | Backfill de `PROVINCIA` en marchas/bandas a partir de `LOCALIDAD`. |
+| `export_marchas.php` | Exporta el catálogo a un formato plano (soporte a tareas puntuales). |
+| `import_candidatos.php` / `load_canales.php` / `migrate_ingest.php` / `reevaluar_ingesta.php` | Pipeline de ingesta de candidatos de marcha desde YouTube (alimentan `/dashboard/ingesta`). |
+| `migrate_banda_relacion.php` | Migración puntual del linaje de bandas. |
+| `migrate_marcha_estilo.php` | Migración puntual de clasificación de estilo (CCTT/AM). |
+| `migrate_roles.php` | Migración puntual de roles de usuario. |
+| `seed_dedicatorias.php` | Siembra inicial de dedicatorias/alias para los hubs N-01/N-02. |
+| `fill_estilo_por_banda.php` | Backfill de `ESTILO` en marchas sin clasificar, por el estilo mayoritario de su banda de estreno. Re-ejecutable, con backup previo. |
+| `fill_enlaces_streaming.php` | Cruza el catálogo de Spotify de cada banda (álbumes → discos, pistas → marchas) por similitud difusa; inserta enlaces verificados o candidatos a curar en `/dashboard/enlaces`. |
 
 ---
 
-## 4. Variables de entorno (`.env` en VPS)
+## 4. Configuración (`app/config.local.php`, no versionado)
 
-```env
-SECRET_KEY='...'                # HMAC key — 48+ bytes random, rotar si se compromete
-AUTH_COOKIE_NAME=mdc_session
-LOGIN_TTL_MS=28800000           # 8 horas
-COOKIE_SECURE=true
+Plantilla en `app/config.local.example.php`. Claves relevantes (con sus defaults en `app/config.php`):
 
-LOGIN_MAX_ATTEMPTS=6
-LOGIN_WINDOW_MS=900000          # 15 min
-LOGIN_LOCK_MS=900000            # 15 min
-PASSWORD_PBKDF2_ITERATIONS=210000
+```php
+'debug'            => false,
+'env'              => 'production',   // SOLO 'local' habilita escrituras — ver Db::assertWritable()
+'site_url'         => 'https://marchasdecristo.com',
+'force_canonical_host' => false,      // true en producción → 301 de staging/www a site_url
+'db_path'          => ...,            // ruta al .db, fuera del webroot
+'secret_key'       => '',             // firma HMAC de sesión — generar por host, no compartir con el histórico Next.js
+'auth_cookie_name' => 'mdc_session',
+'login_ttl_ms'     => 8h,
+'cookie_secure'    => false,          // true en producción
+'login_max_attempts' / 'login_window_ms' / 'login_lock_ms',
+'password_pbkdf2_iterations' => 210000,
+'backup_keep_days' => 60,
+'goatcounter_code' => null,           // analítica opcional (GoatCounter), null = desactivada
+'indexnow_key'     => null,           // debe coincidir entre el host admin (envía el ping) y producción (sirve /{clave}.txt)
 ```
 
-`DB_PATH=/app/data/mdc.db` y `NODE_ENV=production` se inyectan desde `docker-compose.yml`.
+`DATA_DIR`/`APP_DIR` se definen en `bootstrap.php` a partir de `dirname(__DIR__)`, así que `app/` y `data/`(o `private/` en el host) deben ser siempre hermanos del document root.
 
 ---
 
-## 5. Patrones y convenciones
+## 5. Flujo de datos: propuestas y sync (patrón central del proyecto)
 
-### Buenos patrones a mantener
-- **Server Components leen SQLite directamente** — sin HTTP round-trip, sin over-fetching.
-- **Allowlist explícita** de campos editables (`EDITABLE_MARCHA_FIELDS`) — previene mass-assignment.
-- **Prepared statements** siempre (`dbAll(sql, params)`, `dbRun(sql, params)`).
-- **Slug + ID en URLs** (`/marcha/consuelo-gitano-330`) — SEO-friendly, robusto frente a renombres.
-- **ISR diferenciado**: detalles 1h, estadísticas 30min, búsquedas sin caché.
-- **Helpers de auth puros** (`signSession`/`verifySession`) — sin estado, fáciles de testear.
-- **Cookies HttpOnly + Secure + SameSite=lax**.
-- **Timing-safe compare** en verificación de passwords y tokens.
+Producción es **de solo lectura** para la base de datos (`Db::assertWritable()`). El ciclo editorial real es:
+
+1. **Editores** trabajan contra producción, pero sus altas/ediciones no tocan el `.db`: `AdminRepo`/`Roles` las desvía a **`PropuestaRepo`**, que las serializa como JSON en `private/propuestas/pendientes/<id>.json` (fichero, no fila de BD).
+2. El **admin** baja esas propuestas a local con `scripts/sync_propuestas_from_prod.php` (FTP), las revisa en `/dashboard/propuestas` y, al aceptarlas, se aplican sobre el `.db` **local** reutilizando `AdminRepo` (donde `env=local` sí permite escribir).
+3. Cuando hay cambios acumulados en local (propuestas aplicadas, altas manuales, backfills de `app/tools/`), el admin sincroniza con **`scripts/sync_db_to_prod.php`**, que:
+   - Verifica que no queden propuestas pendientes sin bajar de producción (guardarraíl no bloqueante: avisa si el listado FTP falla, p.ej. la primera vez que el directorio no existe).
+   - Activa un **modo mantenimiento** (fichero sentinela `.maintenance` junto al `.db`, comprobado en `bootstrap.php` antes de enrutar cualquier petición — sirve un 503 con `Retry-After`) durante el reemplazo del `.db` en el host.
+   - Sube el `.db` por FTP y verifica su integridad por **checksum SHA-256** re-descargando el fichero subido; si no coincide, hace **rollback automático** (renombra de vuelta el `.db` anterior en el FTP).
+   - Desactiva el modo mantenimiento (con `register_shutdown_function` como red de seguridad si el script termina de forma anómala).
+   - Hace **ping a IndexNow** con las URLs del sitemap (opcional, con `--skip-indexnow`).
+   - Flags disponibles: `--skip-verify`, `--skip-indexnow`, `--force`.
+
+Este patrón evita que el admin pise nunca una propuesta de editor no revisada, y evita que producción quede nunca con un `.db` a medio subir.
+
+---
+
+## 6. Patrones y convenciones vigentes
+
+- **Fail-safe de solo lectura por entorno** (`env=local`) en vez de por flag de "modo mantenimiento" manual — imposible olvidarse de desactivarlo en producción.
+- **Allowlist explícita** de campos editables en `AdminRepo` — previene mass-assignment.
+- **Prepared statements** siempre vía `App\Db`.
+- **Slug + ID en URLs**, con 308 a la canónica — SEO-friendly, robusto frente a renombres.
+- **Propuestas como ficheros JSON**, no filas de BD — el editor nunca tiene una vía de escritura directa a producción, ni siquiera indirecta a través de una tabla.
+- **Modo mantenimiento por sentinela de fichero**, comprobado antes que ninguna otra cosa en `bootstrap.php`.
+- **Sync con checksum + rollback automático** — la operación más peligrosa del sistema (reemplazar el `.db` de producción) es la más verificada.
+- **CSRF derivado de la sesión**, sin tabla ni almacenamiento adicional.
 - **Auto-upgrade** de contraseñas MD5 → PBKDF2 en primer login.
-- **Rate limiting** de login en memoria (aceptable para un solo proceso).
-- **Portadas como volumen** — se añaden sin rebuild de imagen.
-- **`serverExternalPackages: ['better-sqlite3']`** — evita bundling de módulo nativo.
+- **Rate limiting a fichero** (no en memoria — PHP en HelioHost no garantiza proceso persistente entre requests).
+- **Hubs con `noindex` condicional** (`HUB_MIN_MARCHAS`) — evita publicar páginas finas que dañarían el SEO en vez de ayudarlo.
+- **CI de verificación en cada push** (lint + smoke tests con fixture determinista) — ver [technical-debt.md](technical-debt.md) para lo que **no** cubre todavía.
 
-### Antipatrones pendientes (ver technical-debt.md)
-- Sin tests automatizados.
-- Sin CI/CD — despliegue manual.
-- Sin observabilidad (solo `docker logs`).
-- ~~BD sin FK constraints~~ ✅ Corregido 2026-06-05 (Bloque 2, `marcha_autor`/`disco_marcha`).
-- ~~`addMarcha` sin transacción~~ ✅ Corregido 2026-06-05 (Bloque 1).
-- ~~Panel admin incompleto~~ ✅ Completado 2026-06-05 (Bloques 3+4): editAutor, editMarchaAutores, buscador FTS, nav post-creación.
-- Tablas muertas en BD: `videos` (357 filas) y `users` (0 filas) — baja prioridad.
+Antipatrones/deuda activa: ver [technical-debt.md](technical-debt.md).
 
 ---
 
-## 6. Estado actual (junio 2026)
+## 7. Nota histórica — stack anterior (Next.js/VPS/MySQL)
 
-| Aspecto | Estado |
-|---------|--------|
-| Stack | Next.js 15 + SQLite — un solo contenedor Docker |
-| Express | ✅ Eliminado (Fase 3b desplegada 2026-06-05) |
-| Vue SPA | ✅ Eliminada (código muerto borrado 2026-06-05) |
-| Seguridad básica | ✅ COOKIE_SECURE, SECRET_KEY rotada, usuarios MD5 reseteados |
-| Backups | ✅ Cron diario en VPS |
-| Tests | ❌ Ninguno |
-| CI/CD | ❌ Despliegue manual |
-| Observabilidad | ❌ Solo docker logs |
-| BD — índices | ✅ Creados en schema.sql (Fase 3b) |
-| BD — FK constraints | ✅ marcha_autor y disco_marcha con REFERENCES + ON DELETE CASCADE (Bloque 2) |
-| BD — huérfanos | ✅ Eliminados 2026-06-05 (Bloque 2) |
-| BD — serialización autores | ✅ json_group_array en lugar de GROUP_CONCAT (Bloque 2) |
-| BD — FECHA=0 normalizada | ✅ 245 filas → NULL, normalizeFecha simplificada (Bloque 4) |
-| Panel admin — cobertura básica | ✅ Marcha (add/edit), Autor (add) |
-| Panel admin — cobertura completa | ✅ editAutor, editMarchaAutores, buscador FTS, nav post-creación (Bloques 3+4) |
-| Panel admin — audit log | ✅ admin_log + logAdmin en addMarcha/editMarcha/addAutor/editAutor/editMarchaAutores |
-| Panel admin — validación FECHA | ✅ Rechaza FECHA que no sea año de 4 dígitos (Bloque 4) |
-| revalidatePath | ✅ editMarcha invalida /marcha, editAutor invalida /autor (Bloque 4) |
+Antes del cutover a PHP (2026-07-04), el proyecto corrió sobre **Next.js 15 + React 19 + better-sqlite3 (y antes, MySQL) en un VPS con Docker Compose + Nginx**. Ese stack está **completamente desmantelado** (o pendiente de desmantelar el VPS como rollback temporal — ver [pendientes-post-cutover.md](pendientes-post-cutover.md), tarea 5). No queda código Next.js en este repositorio salvo en el historial de git.
+
+Documentos que describían ese stack en detalle y que se conservan como **archivo histórico** (no vigentes, no describen el sistema actual):
+- [archive/redesign-options.md](archive/redesign-options.md) — evaluación de alternativas tecnológicas que llevó a la decisión de migrar a PHP.
+- [archive/vps-migration-3b.md](archive/vps-migration-3b.md) — guía de la migración de Express → Next.js Route Handlers en el VPS (fase intermedia, previa al cutover a PHP).
+
+Para la migración a PHP en sí, ver `php/README.md` (fases 0-5, todas completadas salvo el cierre operativo de [pendientes-post-cutover.md](pendientes-post-cutover.md)) y [cutover-fase5.md](cutover-fase5.md) (runbook ejecutado).

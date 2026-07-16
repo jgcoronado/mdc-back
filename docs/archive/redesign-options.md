@@ -1,5 +1,11 @@
 # Opciones de rediseño profundo
 
+> **📦 Archivado 2026-07-16**: documento histórico. La decisión que aquí se evaluó
+> (migrar de Node/VPS a un stack más simple) ya se tomó y ejecutó: el proyecto
+> corre en PHP 8.4 + SQLite sobre HelioHost desde el cutover del 2026-07-04. Ver
+> [../context.md](../context.md) para el stack actual. Se conserva por el
+> razonamiento de la decisión, no como referencia de arquitectura vigente.
+
 > Generado: 2026-06-01
 > Pregunta de partida: ¿conviene cambiar arquitectura, lenguaje, base de datos u hosting para optimizar el funcionamiento?
 > Contexto fijado por el mantenedor: tráfico **bajo**, VPS **no se amplía**, app es **side-project** con un solo mantenedor.

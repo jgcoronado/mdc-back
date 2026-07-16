@@ -1,176 +1,214 @@
 # Arquitectura — marchasdecristo.com
 
-> Última actualización: 2026-06-05
+> Última actualización: 2026-07-16 (C8 — reescrito para el stack PHP real; el histórico Next.js/VPS vive solo en `docs/archive/` y en git log)
 
 ## 1. Diagrama de componentes
 
 ```
-                        Internet (HTTPS :443)
-                                │
-                                ▼
-              ┌──────────────────────────────────────┐
-              │       Nginx (host, :443/:80)         │
-              │    TLS termination + reverse proxy   │
-              └──┬───────────────────────────────────┘
-                 │                         │
-     /cover/*   │          todo lo demás  │
-      (directo) │                         ▼
-                │         ┌───────────────────────────┐
-                │         │        mdc-nextjs         │
-                │         │      (Next.js 15)         │
-                │         │       :3000               │
-                │         │   React 19 SSR/ISR        │
-                │         │   Route Handlers (API)    │
-                │         │   Admin (Client Components│
-                │         │   + middleware auth)      │
-                │         └────────────┬──────────────┘
-                │                      │
-                │          better-sqlite3 (síncrono)
-                │                      ▼
-  ┌─────────────┘          ┌───────────────────────┐
-  │                        │   mdc-sqlite-data     │
-  │  /var/www/             │   (Docker volume)     │
-  │  mdc-assets/cover/     │   /app/data/mdc.db    │
-  │  (volumen host, :ro)   └───────────────────────┘
-  └────────────────────────
+                          Internet (HTTPS :443)
+                                  │
+                                  ▼
+              ┌──────────────────────────────────────────┐
+              │     Apache (HelioHost, Plesk)             │
+              │  TLS · .htaccess (mod_rewrite + caché     │
+              │  estáticos 30d) · sirve public_html/      │
+              └──┬─────────────────────────────────────┬──┘
+                 │                                      │
+     estático real (css/js/img)          todo lo demás → index.php
+     (servido directo, sin PHP)                         │
+                 │                                      ▼
+                 │                     ┌───────────────────────────────┐
+                 │                     │   public/index.php            │
+                 │                     │   (front controller)          │
+                 │                     └───────────────┬───────────────┘
+                 │                                      │  require
+                 │                                      ▼
+                 │                     ┌───────────────────────────────┐
+                 │                     │   app/bootstrap.php           │
+                 │                     │   1. autoload App\*           │
+                 │                     │   2. config.php + local       │
+                 │                     │   3. check .maintenance ──────┼──► 503 + Retry-After (si activo)
+                 │                     │   4. require routes.php       │
+                 │                     │   5. Router::dispatch()       │
+                 │                     └───────────────┬───────────────┘
+                 │                                      │
+                 │                     ┌────────────────┴────────────────┐
+                 │                     ▼                                 ▼
+                 │        Pages / Admin (controladores)       Repo / AdminRepo / *Repo
+                 │        renderizan vía View → layout.php     (capa de datos, PDO)
+                 │                     │                                 │
+                 │                     ▼                                 ▼
+                 │              HTML + JSON-LD                 ┌──────────────────┐
+                 │                                              │  private/mdc.db  │
+                 │                                              │  (SQLite, fuera  │
+                 │                                              │  del webroot)    │
+                 │                                              └──────────────────┘
+                 ▼
+            Cliente (navegador / bot de indexación)
 ```
 
-**Un solo contenedor Node.js** sirve páginas públicas, admin y API. No hay servicios de BD separados en el compose.
+**Un único proceso PHP por petición**, sin servicios separados: páginas públicas, panel admin y "API" interna (autocompletados, fastSearch) se sirven todos desde el mismo front controller. No hay contenedor, no hay build, no hay proceso persistente — cada request es un arranque de PHP nuevo (modelo estándar de hosting compartido con Apache/PHP-FPM o CGI).
+
+Fuera del ciclo de request, dos procesos **manuales** (ejecutados desde el equipo del mantenedor, no desde el servidor) cierran el ciclo de datos:
+
+```
+   equipo local                                    HelioHost (producción)
+  ┌──────────────┐   sync_propuestas_from_prod.php  ┌──────────────────────┐
+  │ mdc.db local │ ◄──────────── FTP (descarga) ──── │ private/propuestas/  │
+  │ (env=local,  │                                   │ pendientes/*.json    │
+  │  escribible) │                                   │                       │
+  │              │   sync_db_to_prod.php             │                       │
+  │              │ ── FTP (sube .db + checksum) ───► │ private/mdc.db        │
+  └──────────────┘   [.maintenance activo durante    │ (env=production,      │
+                       el swap; rollback si el        │  solo lectura)        │
+                       checksum no coincide]          └──────────────────────┘
+```
 
 ---
 
 ## 2. Flujos de petición
 
 ### 2.1 Visita pública a `/marcha/consuelo-gitano-330`
-1. **Cliente** → Nginx (`/marcha/...`).
-2. **Nginx** → `127.0.0.1:3000` (Next.js).
-3. **Next.js** (`app/marcha/[slugAndId]/page.tsx`, Server Component):
-   - Extrae `id=330` del slug.
-   - Comprueba caché ISR (`revalidate: 3600`).
-   - Si miss: llama a `fetchMarcha(330)` en `lib/api.ts`.
-4. **`lib/api.ts`** ejecuta `dbAll(sql, [id])` directamente contra SQLite (sin HTTP).
-5. **SQLite** devuelve filas → tipado en TypeScript → HTML renderizado con metadatos SEO.
-6. **Nginx** → cliente.
-7. Si URL no canónica (slug distinto o solo ID), Next.js responde **308** a la canónica.
+1. **Cliente** → Apache → `index.php` (no coincide con ningún fichero estático real).
+2. `bootstrap.php`: autoload, config, comprobación de `.maintenance` (si existe, corta aquí con 503), `require routes.php`, `Router::dispatch()`.
+3. `Router` matchea `/marcha/{slugAndId}` → `Pages::marchaDetail(['slugAndId' => 'consuelo-gitano-330'])`.
+4. `Pages::marchaDetail` extrae `id=330` (vía `App\Slug`), llama a `Repo::fetchMarcha(330)`.
+5. `Repo::fetchMarcha` ejecuta SQL preparado contra SQLite vía `App\Db` (PDO, singleton lazy).
+6. Si el slug de la URL no coincide con el slug canónico actual del título → `Http::redirect(canónica, 308)` antes de renderizar nada.
+7. `Pages` construye `$meta` (title, description, JSON-LD vía `Seo::marcha()`, og:image) y llama a `View::render('marcha_detail', $data, $meta)`.
+8. `View` captura la plantilla en un buffer, lo inyecta como `$content` en `templates/layout.php` (que añade `<head>` con meta/OG/JSON-LD, nav, footer).
+9. Apache devuelve el HTML con las cabeceras de caché que fije `Http::cachePublic()` (1h para detalles).
 
-### 2.2 Búsqueda pública `/marcha/search?titulo=cristo`
-- Server Component sin caché (`revalidate: 0`).
-- `lib/api.ts` ejecuta query FTS5 (`MATCH ? ORDER BY rank`) directamente.
+### 2.2 Búsqueda pública `/marcha?titulo=cristo`
+- `Pages::marchaList` → `Repo` ejecuta FTS5 (`marcha_fts MATCH ?`) sin caché (`Http::noStore()` — los resultados de búsqueda no se cachean).
 
-### 2.3 Imagen de portada `/cover/153.png`
-- **Nginx** sirve desde `/var/www/mdc-assets/cover/153.png` con `Cache-Control: public, immutable; expires 30d`.
-- No pasa por Node ni Next.js.
+### 2.3 Hub indexable `/marcha/estilo/cctt`
+- Ruta registrada **antes** que el catch-all `/marcha/{slugAndId}` en `routes.php` (dos segmentos, no colisiona).
+- `Pages::marchaEstiloHub` → `Repo::marchasDeEstilo()` + `Repo::hubEstilos()` (para el selector de otros hubs).
+- Si el resultado tiene menos de `Repo::HUB_MIN_MARCHAS` (2) filas → `noindex` en el `<meta>` (evita indexar páginas finas), pero la página se sirve igualmente (no es un 404).
+- JSON-LD `CollectionPage` vía `Seo::marchaHub()`.
 
 ### 2.4 Login admin
-1. **Cliente** → Nginx → `/login` → **Next.js** (Client Component).
-2. Usuario envía credenciales → `POST /api/login` (Route Handler).
-3. Route Handler: verifica rate limit (Map en memoria), busca usuario en SQLite, verifica password (PBKDF2 o MD5 legacy con auto-upgrade).
-4. Si OK: `signSession` (HMAC-SHA256) → cookie `mdc_session` HttpOnly + Secure → `{ login: true }`.
-5. Next.js redirige a `/dashboard`.
-6. El `middleware.ts` protege `/dashboard/*`: en cada petición verifica la cookie HMAC inline (`runtime = 'nodejs'`). Si falla → redirect a `/login`.
+1. **Cliente** → `/login` → `Admin::loginForm` (GET) / `Admin::loginPost` (POST).
+2. `Admin::loginPost`: rate limit (`Auth`, persistido a fichero — sin memoria compartida entre peticiones en hosting compartido), busca usuario en SQLite, verifica password (PBKDF2 o MD5 legado con auto-upgrade).
+3. Si OK: `Auth::signSession` (HMAC-SHA256) → cookie `mdc_session` HttpOnly (+ Secure si `cookie_secure`) → redirect 302 a `/dashboard` (patrón **PRG**: Post/Redirect/Get, sin reenvíos de formulario).
+4. Cada ruta `/dashboard/*` empieza verificando `Auth::currentSession()` — sin middleware de framework, es una comprobación inline al principio del controlador.
 
-### 2.5 Edición de marcha (admin)
-1. **Cliente** → Nginx → `/dashboard/marcha/:id` → **Next.js** (Client Component).
-2. On mount: `GET /api/marcha/:id` → Server Component data fetch vía `lib/api.ts`.
-3. Usuario modifica → `buildMarchaUpdatePayload(old, new)` produce solo los campos que cambiaron.
-4. `POST /api/admin/editMarcha` (Route Handler):
-   - Verifica sesión (`verifySession` sobre cookie).
-   - Filtra campos contra `EDITABLE_MARCHA_FIELDS` (allowlist).
-   - `dbRun(UPDATE marcha SET ... WHERE id = ?, params)`.
-5. Responde `{ code: 'UPDATED' | 'NOT_FOUND' | 'INVALID_PAYLOAD' }`.
+### 2.5 Edición de marcha (admin, en local)
+1. `Admin::marchaEditForm` (GET) muestra el formulario con los valores actuales.
+2. `Admin::marchaEditPost` (POST): valida CSRF, llama a `AdminRepo::updateMarcha($id, $payload)`.
+3. `AdminRepo` filtra el payload contra una allowlist de campos editables, arma el `UPDATE` con prepared statement, escribe en `admin_log` (audit log).
+4. **Antes de cualquier escritura real**, `Db::assertWritable()` comprueba `config['env'] === 'local'`. Si el host es producción, lanza `ReadOnlyModeException`, que `Router::dispatch()` captura y muestra `templates/readonly.php` en vez de un error crudo.
+5. PRG: redirect a la misma edición con un flash de éxito.
 
-### 2.6 Sitemap dinámico
-- `app/sitemap.ts` (Server Component, `revalidate: 3600`).
-- Lee marchas, autores, bandas y discos directamente de SQLite.
-- Next.js genera el XML y lo cachea 1 hora.
+### 2.6 Edición de marcha (editor, en producción) — propuesta, no escritura directa
+1. Igual que 2.5 hasta el POST, pero `Roles::can($user, 'marcha.edit.direct')` es `false` para `editor`.
+2. `Admin` desvía a `PropuestaRepo::crear(...)`, que serializa el cambio propuesto como JSON en `private/propuestas/pendientes/<id>.json`. **No toca el `.db`.**
+3. El admin la revisa después en local — ver §2.7 y `docs/context.md` §5.
+
+### 2.7 Sync local → producción (`scripts/sync_db_to_prod.php`)
+1. Comprueba backup reciente del `.db` local (guardarraíl preexistente, no se toca).
+2. Lista `private/propuestas/pendientes/` en producción por FTP (`ftpListOptional` — no aborta si el directorio aún no existe, solo avisa) para asegurarse de que no hay propuestas nuevas sin bajar.
+3. Sube el fichero **`.maintenance`** por FTP → a partir de aquí, cualquier request a producción recibe 503 (`Http::maintenance()`, `bootstrap.php` lo comprueba antes de enrutar).
+4. Sube el `.db` nuevo por FTP.
+5. Re-descarga el `.db` subido y compara su **SHA-256** contra el local. Si no coincide: `DELE` + `RNFR`/`RNTO` para restaurar el `.db` anterior (rollback automático) y aborta con error.
+6. Borra `.maintenance` por FTP (`register_shutdown_function` como red de seguridad si el script muere a mitad).
+7. Hace ping a **IndexNow** con las URLs del sitemap (a menos que `--skip-indexnow`).
+8. Flags: `--skip-verify` (omite el paso 5), `--force` (omite el paso 2), `--skip-indexnow` (omite el paso 7).
+
+### 2.8 Sitemap dinámico
+- `Pages::sitemap` → `Repo` recorre marchas/autores/bandas/discos/hubs y genera el XML al vuelo (`Http::cachePublic(3600)`), con `<lastmod>` real por entidad.
 
 ---
 
 ## 3. Decisiones arquitectónicas (ADRs)
 
-### ADR-001 · Un solo contenedor: Next.js sirve todo ✅ Vigente
-- **Contexto**: Fase 3b (junio 2026) migró la API de Express a Route Handlers. Express fue apagado.
-- **Decisión**: `mdc-nextjs` es el único proceso Node. Los Server Components leen SQLite directamente (sin HTTP round-trip). Los Route Handlers exponen la API REST para el admin y los autocompletes.
-- **Tradeoffs**: Menor complejidad operativa (1 contenedor, 1 imagen, 1 log). A cambio: todo el código vive en Next.js; si se necesita escalar la API independientemente, hay que extraerla.
-- **Anterior**: ADR-001 original documentaba dos contenedores (Express + Next.js). Superado.
+### ADR-001 · PHP plano sin framework, un solo front controller ✅ Vigente
+- **Contexto**: HelioHost es hosting compartido (sin Docker, sin acceso root, deploy solo por FTP). Componer una app Node/Docker allí no es viable con el plan actual; sí lo es un `.php` plano detrás de Apache.
+- **Decisión**: `public/index.php` como único punto de entrada, router propio (`App\Router`) con parámetros nombrados, sin Composer/`vendor/`.
+- **Tradeoffs**: cero dependencias que actualizar, deploy = copiar ficheros. A cambio: sin autoload PSR-4 estándar, sin gestor de paquetes para librerías de terceros (aceptable dado el tamaño del proyecto).
+- **Reemplaza**: ADR-001 original (Next.js como único contenedor). Superado por el cutover del 2026-07-04.
 
-### ADR-002 · SQLite embebido (antes: MySQL en contenedor) ✅ Vigente
-- **Contexto**: MySQL migrado de HelioHost a Docker (junio 2026), luego a SQLite embebido en la misma sesión.
-- **Decisión**: `better-sqlite3` (síncrono) montado en volumen Docker. Sin servidor de BD separado.
-- **Tradeoffs**: Consumo de RAM ~150 MB menos. Backups = copiar un archivo. Sin concurrencia de escritura en múltiples procesos (aceptable: un solo worker). Sin separación readonly/write (los Route Handlers admin usan el mismo singleton).
-- **`serverExternalPackages: ['better-sqlite3']`** en `next.config.ts` evita que webpack intente bundlear el módulo nativo.
+### ADR-002 · SQLite embebido vía PDO (antes: better-sqlite3/MySQL) ✅ Vigente
+- **Decisión**: `App\Db`, singleton lazy con PDO/SQLite, prepared statements en toda consulta. `.db` fuera del webroot.
+- **Tradeoffs**: sin servidor de BD separado, backup = copiar un fichero (`VACUUM INTO`). Sin concurrencia de escritura entre procesos (aceptable: un solo escritor, el admin en local).
+- **Diferencia con el port original**: la serialización de autores no usa `json_group_array` (el SQLite 3.34 de HelioHost puede no traer JSON1) — se agrupan en PHP (`Repo::autoresFor()`).
 
-### ADR-003 · Sesiones firmadas HMAC-SHA256 propias (sin JWT) ✅ Vigente
-- **Decisión**: `signSession`/`verifySession` en `lib/auth-session.ts` con `node:crypto`. Sin dependencias externas.
-- **Tradeoffs**: Cero deps, control total. A cambio: hay que mantener el código.
-- **Implementación**: timing-safe compare, validación de longitud y expiración.
+### ADR-003 · Producción de solo lectura por entorno (`env=local`) ✅ Vigente
+- **Contexto**: con un único mantenedor y deploy manual, escribir por accidente en el `.db` de producción (o dejar un "modo mantenimiento" olvidado activado) es el riesgo operativo más alto.
+- **Decisión**: `Db::assertWritable()` comprueba `config['env'] === 'local'` antes de cualquier escritura. El default de `config.php` es `'production'` — cualquier host mal configurado (staging, un despliegue nuevo sin `config.local.php`) cae en modo lectura por defecto, no al revés.
+- **Tradeoffs**: el admin solo puede escribir de verdad trabajando en local; en producción ve `readonly.php` si algo intenta escribir. A cambio: imposible corromper producción desde un fallo de configuración.
 
-### ADR-004 · Allowlist de campos editables ✅ Vigente
-- **Decisión**: `EDITABLE_MARCHA_FIELDS` en `editMarcha/route.ts`. Cada clave del payload se valida antes de construir el SQL dinámico.
-- **Previene**: SQL injection por campo y mass-assignment. Modelo a replicar para futuros endpoints de edición.
+### ADR-004 · Propuestas de editor como ficheros JSON, no filas de BD ✅ Vigente
+- **Contexto**: los editores trabajan contra producción (solo lectura), pero necesitan poder proponer cambios sin que eso implique una vía de escritura a la BD real.
+- **Decisión**: `PropuestaRepo` serializa cada propuesta como `<id>.json` en `private/propuestas/{pendientes,aplicadas,rechazadas}/`. El admin las baja por FTP, las revisa en `/dashboard/propuestas` y, si las acepta, se aplican sobre el `.db` local reutilizando `AdminRepo`.
+- **Tradeoffs**: el ciclo propuesta → aplicación tiene latencia (depende de que el admin sincronice). A cambio: cero superficie de escritura remota, sin necesidad de una tabla de "cambios pendientes" con su propia lógica de concurrencia.
 
-### ADR-005 · URLs `slug-id` con redirect desde id legado ✅ Vigente
-- **Decisión**: URLs `/marcha/<slug>-<id>`. Si llega `/<id>` sin slug o con slug incorrecto, `redirect()` a la canónica.
-- **Tradeoffs**: Un redirect extra si el título cambia. A cambio: SEO estable y enlaces históricos funcionan.
+### ADR-005 · Modo mantenimiento por fichero sentinela ✅ Vigente
+- **Decisión**: `bootstrap.php` comprueba `is_file(dirname($db_path) . '/.maintenance')` como primer paso, antes de cargar rutas. Si existe, `Http::maintenance()` responde 503 + `Retry-After` + `noindex`.
+- **Uso**: activado/desactivado por `sync_db_to_prod.php` (sube/borra el fichero por FTP) durante el swap del `.db`, con `register_shutdown_function` como red de seguridad si el script termina de forma anómala.
+- **Tradeoffs**: ningún estado en BD ni caché que pueda quedar inconsistente — es un `is_file()`. A cambio: si el borrado del fichero por FTP falla silenciosamente, hay que poder detectarlo manualmente (no hay alerta automática todavía — ver `technical-debt.md`).
 
-### ADR-006 · Portadas fuera del contenedor ✅ Vigente
-- **Decisión**: Volumen `host:/var/www/mdc-assets/cover:ro` → `container:/app/public/cover`. Nginx sirve directamente.
-- **Tradeoffs**: Hay que recordar montar el volumen en cada VPS. A cambio: añadir portadas sin rebuild.
+### ADR-006 · Sync con verificación por checksum y rollback automático ✅ Vigente
+- **Decisión**: tras subir el `.db` a producción, `sync_db_to_prod.php` lo re-descarga y compara SHA-256 contra el local. Si difiere, restaura automáticamente el `.db` anterior por FTP (`DELE` + `RNFR`/`RNTO`).
+- **Tradeoffs**: doble transferencia FTP (sube + re-descarga) en cada sync — coste aceptable frente al riesgo de un `.db` corrupto o truncado sirviendo en producción sin que nadie lo note.
 
-### ADR-007 · ISR diferenciado ✅ Vigente
-- **Decisión**: `revalidate: 3600` para detalles, `revalidate: 1800` para estadísticas, `revalidate: 0` para búsquedas, `revalidate: 3600` para sitemap.
-- **Tradeoffs**: Una edición admin tarda hasta 1h en propagarse. Fix opcional: `revalidatePath('/marcha/...')` en los Route Handlers admin tras un UPDATE.
+### ADR-007 · Sesiones firmadas HMAC-SHA256 propias (sin JWT) ✅ Vigente
+- **Decisión**: `Auth::signSession`/`verifySession` con las funciones nativas de hash de PHP. Sin dependencias externas.
+- **Tradeoffs**: cero deps, control total; hay que mantener el código a mano.
 
-### ADR-008 · Middleware de auth inline (`runtime = 'nodejs'`) ✅ Vigente
-- **Contexto**: El middleware de Next.js corre por defecto en Edge Runtime, que no tiene `node:crypto`.
-- **Decisión**: `export const runtime = 'nodejs'` en `middleware.ts`. Verifica la cookie HMAC directamente sin llamar a ningún endpoint.
-- **Tradeoffs**: El middleware no corre en Edge (no hay cold start ultra-rápido). A cambio: lógica de auth centralizada y sin dependencias externas.
+### ADR-008 · URLs `slug-id` con redirect 308 desde slug/id no canónico ✅ Vigente
+- **Decisión**: `/marcha/<slug>-<id>`. Si llega un slug distinto al actual (o falta), `Http::redirect(canónica, 308)`.
+- **Tradeoffs**: un redirect extra si el título cambia. A cambio: SEO estable y enlaces históricos siguen funcionando. 308 (no 301) porque preserva el método HTTP.
+
+### ADR-009 · Hubs de catálogo con `noindex` condicional (`HUB_MIN_MARCHAS`) ✅ Vigente
+- **Decisión**: `/marcha/ano/{yyyy}`, `/marcha/estilo/{slug}`, `/marcha/provincia/{slug}` siempre responden 200 y son navegables, pero llevan `noindex` si tienen menos de `Repo::HUB_MIN_MARCHAS` (2) resultados.
+- **Tradeoffs**: hay hubs "huérfanos" navegables pero no indexados — aceptable, evita que Google penalice por páginas finas masivas (miles de combinaciones año/estilo/provincia con 0-1 resultado).
+
+### ADR-010 · CI de verificación (lint + smoke), sin CI de deploy ✅ Vigente
+- **Contexto**: no hay forma de desplegar automáticamente a HelioHost (solo FTP manual), pero sí se puede verificar automáticamente cada push.
+- **Decisión**: GitHub Actions ejecuta `php -l` sobre todo el código + levanta el servidor embebido de PHP contra una BD fixture determinista (`php/tools/ci_fixture.php`) y corre `php/tools/ci_smoke.php` (aserciones sobre home, listados, detalles, hubs, redirects, 404, JSON-LD, sitemap y `lastmod`).
+- **Tradeoffs**: no protege producción en tiempo real (nadie bloquea un FTP manual si CI está roja) — depende de que el mantenedor mire el estado antes de sincronizar. Documentado como deuda operativa, no arquitectónica.
 
 ---
 
 ## 4. Patrones del código
 
-### Server Components (páginas públicas)
-- **Lectura directa a SQLite** — `lib/api.ts` exporta funciones síncronas que usan `dbAll`.
-- **`generateMetadata`** dinámico por detalle (título + descripción).
-- **`fetchEntity(id) → notFound()`** como patrón estándar de manejo de 404.
-- **`buildDetailPath` + `extractId`** centralizados en `lib/slugify.ts`.
-- **Redirect a canónica** con `redirect()` dentro del Server Component.
+### Controladores (`Pages`, `Admin`)
+- **Un método estático por ruta**, recibe el array de parámetros capturado por el `Router`.
+- **`fetchEntity(id) → Http::notFound()`** como patrón estándar de 404.
+- **PRG** (Post/Redirect/Get) en todos los formularios admin — sin reenvío accidental.
+- **Redirect a canónica** antes de renderizar, no después.
 
-### Route Handlers (API)
-- **Auth guard reutilizable**: `verifySession(cookie)` al inicio de cada handler admin.
-- **Allowlist + normalización** en endpoints de escritura.
-- **Respuestas tipadas**: `{ code: string }` para admin, `{ rowsReturned, data }` para búsquedas.
-- **Rate limiting stateful en memoria** solo en `/api/login` — aceptable con un proceso.
+### Capa de datos (`Repo`, `AdminRepo`, `*Repo`)
+- **Solo lectura vs. solo escritura, separadas por clase**: `Repo`/`IngestaRepo`/`EnlaceRepo` son de lectura pública o de panel; `AdminRepo` concentra las escrituras reales con allowlist + transacción + audit log.
+- **Prepared statements** en cada query, sin excepción.
+- **Sin ORM** — SQL explícito, mantenido fiel a la paridad con el sistema Next.js original donde aplicaba (ya no es una restricción activa, pero explica por qué algunas queries se ven "traducidas" en vez de reescritas desde cero).
 
-### Client Components (admin)
-- Sin estado global. Cada página fetcha sus datos on mount.
-- **`useAutocompleteSelect`** hook para los campos con autocompletado de autores/bandas.
-- **`buildMarchaUpdatePayload`** — produce el delta (solo campos modificados) antes de enviar.
+### Vistas (`View`, `templates/`)
+- **Buffer + inyección en layout** — sin motor de plantillas, PHP nativo con `<?= ?>` escapado por convención (`H::e()`/`htmlspecialchars` en los puntos de salida).
+- **`$meta`** uniforme (`title`, `description`, `noindex`, `og`, `jsonld`) construido por el controlador, consumido por `layout.php`.
+- **Componentes reutilizables en `Html.php`** (paginación, botonera de streaming, imagen de portada) en vez de duplicar HTML entre plantillas.
 
 ---
 
 ## 5. Buenas prácticas vigentes
 
-1. **Lectura directa a BD desde Server Components** — sin N+1, sin over-fetching.
-2. **Allowlist explícita** de columnas editables/insertables.
-3. **Prepared statements** en todas las queries (`dbAll(sql, params)`, `dbRun(sql, params)`).
-4. **Timing-safe compare** en verificación de passwords y tokens.
-5. **Auto-upgrade transparente** MD5 → PBKDF2 en primer login.
-6. **Cookies HttpOnly + Secure + SameSite=lax**.
-7. **Cabeceras `X-Forwarded-*`** correctamente propagadas por Nginx.
-8. **ISR + Cache-Control** diferenciados por tipo de contenido.
-9. **Standalone build de Next.js** → imagen Docker mínima.
-10. **`generateMetadata` con `metadataBase`** → URLs absolutas correctas.
-11. **Volumen separado para assets mutables** (portadas).
-12. **Multi-stage Docker build** (builder con python3/g++ para compilar better-sqlite3 → runtime Alpine sin herramientas de build).
-13. **Singleton SQLite lazy** — no abre la BD en `next build`, solo en runtime.
+1. Fail-safe de solo lectura por entorno, no por flag manual.
+2. Allowlist explícita de columnas editables/insertables en `AdminRepo`.
+3. Prepared statements en todas las queries.
+4. Propuestas de editor como ficheros, no como vía de escritura a BD.
+5. Modo mantenimiento por sentinela de fichero, verificado antes que ninguna otra cosa.
+6. Sync con checksum + rollback automático.
+7. CSRF derivado de la sesión, sin almacenamiento adicional.
+8. Auto-upgrade transparente MD5 → PBKDF2 en primer login.
+9. Rate limiting a fichero (correcto para hosting compartido sin memoria persistente).
+10. Cache-Control diferenciado por tipo de contenido (detalle 1h, home/estadísticas 30min, búsquedas `no-store`, sitemap 1h, estáticos 30d).
+11. `noindex` condicional en hubs finos — protege la calidad media indexada, no solo la cantidad.
+12. CI de lint + smoke tests en cada push (red de seguridad del activo SEO — 33 aserciones sobre rutas doradas).
 
 ---
 
 ## 6. Deuda técnica pendiente
 
-Detallada en [technical-debt.md](technical-debt.md). Resumen:
-
-- Sin tests, sin CI/CD, sin observabilidad (Fase 5).
-- BD sin foreign keys, índices incompletos, motores mixtos (Fase 4, solo aplica si se vuelve a MySQL; en SQLite ya está resuelto parcialmente por FTS5 y los índices del schema.sql).
+Detallada y priorizada en [technical-debt.md](technical-debt.md). El resumen ejecutivo vive ahí; este documento no la duplica para no desincronizarse.

@@ -2,28 +2,39 @@
 
 Esta carpeta contiene la documentación viva del proyecto, escrita para que cualquier sesión nueva (humano o asistente) pueda entender la aplicación sin tener que leer el código entero.
 
+El proyecto corre en **PHP 8.4 + SQLite sobre HelioHost** desde el cutover del
+2026-07-04. Si vienes de una sesión antigua o del historial de git y ves
+referencias a Next.js/VPS/MySQL, eso es el stack **anterior**, desmantelado —
+ver [context.md](context.md) §7 y [archive/](archive/).
+
 ## Índice
 
-1. **[context.md](context.md)** — Punto de entrada. Visión general, stack, estructura de carpetas, convenciones, estado actual.
-2. **[architecture.md](architecture.md)** — Diagrama de componentes, flujos de petición, ADRs (decisiones arquitectónicas registradas), patrones y antipatrones detectados.
-3. **[technical-debt.md](technical-debt.md)** — Bugs activos, vulnerabilidades, código muerto y deuda priorizada.
-4. **[redesign-options.md](redesign-options.md)** — Reflexión sobre alternativas de fondo: lenguaje, framework, BD, hosting, arquitectura. Con veredictos.
-5. **[roadmap.md](roadmap.md)** — Plan secuenciado en 6 fases para resolver la deuda y materializar las decisiones tomadas.
+1. **[context.md](context.md)** — Punto de entrada. Visión general, stack real (PHP/SQLite/HelioHost), estructura de carpetas, configuración, flujo de propuestas y sync, convenciones.
+2. **[architecture.md](architecture.md)** — Diagrama de componentes, flujos de petición, ADRs (decisiones arquitectónicas registradas), patrones vigentes.
+3. **[technical-debt.md](technical-debt.md)** — Deuda técnica real y priorizada del stack actual.
+4. **[roadmap.md](roadmap.md)** — Estado de ejecución del plan de acción vigente (apunta a `consejo-de-sabios-2026-07.md`).
+5. **[consejo-de-sabios-2026-07.md](consejo-de-sabios-2026-07.md)** — Evaluación integral del proyecto (DAFO de UX/UI/QA/desarrollo/producto, veredicto de síntesis, plan de acción corto/medio/largo plazo con coste/repercusión, catálogo de automatizaciones). Documento de referencia para el roadmap.
 6. **[db-analysis.md](db-analysis.md)** — Auditoría del esquema SQLite (actualizado 2026-06-05; el análisis MySQL original es histórico).
-7. **[admin-panel.md](admin-panel.md)** — Estado del panel de administración: URL, acceso, funcionalidades existentes, problemas de seguridad y funciones faltantes.
+7. **[admin-panel.md](admin-panel.md)** — Estado del panel de administración: URL, acceso, funcionalidades, implementación PHP actual.
+8. **[pendientes-post-cutover.md](pendientes-post-cutover.md)** — Checklist operativo pendiente tras el cutover a PHP (verificación en producción, cron de backup, Search Console, desmantelar el VPS).
+9. **[cutover-fase5.md](cutover-fase5.md)** — Runbook ejecutado del cutover DNS a PHP.
+10. **[plan-music-apps.md](plan-music-apps.md)** / **[youtube-canales-bandas.md](youtube-canales-bandas.md)** — Notas de trabajo sobre ingesta de audio (YouTube) y enlaces de streaming.
+11. **[archive/](archive/)** — Documentos históricos del stack Next.js/VPS/MySQL, ya desmantelado. Conservados por su razonamiento, no como referencia vigente: [redesign-options.md](archive/redesign-options.md), [vps-migration-3b.md](archive/vps-migration-3b.md).
+
+Además, `../php/README.md` documenta el desarrollo local y el deploy por FTP con más detalle operativo del día a día que `context.md`.
 
 ## Cómo mantener estos docs
 
 - Si cambias arquitectura → actualiza `architecture.md` (sección de ADRs si es una decisión nueva).
-- Si encuentras un bug → añádelo a `technical-debt.md`.
-- Si completas una fase del roadmap → marca la fase como hecha en `roadmap.md`.
+- Si encuentras un bug, riesgo u obsolescencia → añádelo a `technical-debt.md`.
+- Si avanzas una tarea del plan del consejo (C/M/L) → actualiza su estado en `roadmap.md`. No reescribas `consejo-de-sabios-2026-07.md`: es una fotografía puntual, no un tracker.
 - Si añades o cambias funcionalidad del panel admin → actualiza `admin-panel.md`.
 - Si cambias el schema de BD → actualiza `db-analysis.md`.
-- El resto (context.md, redesign-options.md) cambia menos.
+- El resto (`context.md`, `archive/`) cambia menos.
 
 ## Convenciones de los docs
 
 - Idioma: español (consistente con el código y los commits).
 - Citas a archivos: con formato `[ruta:linea](../ruta#Llinea)` para que sean clickables desde IDE.
 - Severidades: 🔴 Crítica, 🟠 Alta, 🟡 Media, 🟢 Baja.
-- Generación: cada doc lleva una línea `> Generado: YYYY-MM-DD` al inicio.
+- Generación: cada doc lleva una línea `> Última actualización: YYYY-MM-DD` (o `> Generado:`) al inicio.
