@@ -334,4 +334,90 @@ final class Api
             'licencia'   => self::licencia(),
         ]);
     }
+
+    // ── Búsqueda global unificada (M3) ───────────────────────────────────────
+
+    /**
+     * Proyecta el resultado crudo de Repo::buscarGlobal a una estructura de
+     * presentación uniforme, común a la página /buscar y al autocompletado
+     * (/api/buscar): cada item lleva tipo, título, un subtítulo corto y su ruta
+     * canónica RELATIVA (no absoluta: sirve igual para un enlace en la página y
+     * para un location.href del desplegable, ambos en el mismo host).
+     *
+     * @return array{q:string,total:int,grupos:array<string,array{etiqueta:string,items:list<array{tipo:string,titulo:string,sub:string,url:string}>}>}
+     */
+    public static function buscarItems(string $q, int $limit = 8): array
+    {
+        $r = Repo::buscarGlobal($q, $limit);
+
+        $marchas = array_map(static function (array $m): array {
+            $anio = self::anio($m['FECHA'] ?? null);
+            $autor = $m['AUTOR'][0]['nombre'] ?? null;
+            $sub = trim(($anio !== null ? (string) $anio : '') . ($autor ? ' · ' . $autor : ''), ' ·');
+            return [
+                'tipo' => 'marcha',
+                'titulo' => (string) $m['TITULO'],
+                'sub' => $sub,
+                'url' => Slug::buildDetailPath('marcha', (int) $m['ID_MARCHA'], (string) $m['TITULO']),
+            ];
+        }, $r['marchas']);
+
+        $autores = array_map(static function (array $a): array {
+            $n = (int) ($a['N_MARCHAS'] ?? 0);
+            return [
+                'tipo' => 'compositor',
+                'titulo' => (string) $a['NOMBRE_COMPLETO'],
+                'sub' => $n === 1 ? '1 marcha' : $n . ' marchas',
+                'url' => Slug::buildDetailPath('autor', (int) $a['ID_AUTOR'], (string) $a['NOMBRE_COMPLETO']),
+            ];
+        }, $r['autores']);
+
+        $bandas = array_map(static function (array $b): array {
+            $nombre = self::str($b['NOMBRE_COMPLETO'] ?? null) ?? (string) ($b['NOMBRE_BREVE'] ?? '');
+            return [
+                'tipo' => 'banda',
+                'titulo' => (string) ($b['NOMBRE_BREVE'] ?? $nombre),
+                'sub' => self::str($b['LOCALIDAD'] ?? null) ?? '',
+                'url' => Slug::buildDetailPath('banda', (int) $b['ID_BANDA'], $nombre),
+            ];
+        }, $r['bandas']);
+
+        $discos = array_map(static function (array $d): array {
+            $anio = self::anio($d['FECHA_CD'] ?? null);
+            $banda = self::str($d['BANDA_BREVE'] ?? null);
+            $sub = trim(($banda ?? '') . ($anio !== null ? ' · ' . $anio : ''), ' ·');
+            return [
+                'tipo' => 'disco',
+                'titulo' => (string) $d['NOMBRE_CD'],
+                'sub' => $sub,
+                'url' => Slug::buildDetailPath('disco', (int) $d['ID_DISCO'], (string) $d['NOMBRE_CD']),
+            ];
+        }, $r['discos']);
+
+        return [
+            'q' => trim($q),
+            'total' => (int) $r['total'],
+            'grupos' => [
+                'marchas'     => ['etiqueta' => 'Marchas', 'items' => $marchas],
+                'compositores' => ['etiqueta' => 'Compositores', 'items' => $autores],
+                'bandas'      => ['etiqueta' => 'Bandas', 'items' => $bandas],
+                'discos'      => ['etiqueta' => 'Discos', 'items' => $discos],
+            ],
+        ];
+    }
+
+    /** Autocompletado público: JSON agrupado, cacheable, sin sesión. */
+    public static function buscar(): void
+    {
+        $q = trim((string) ($_GET['q'] ?? ''));
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Access-Control-Allow-Origin: *');
+        // Resultados solo cambian al sincronizar el .db → cacheable un rato.
+        Http::cachePublic(300);
+        // Desplegable: pocos por tipo para no abrumar ni transferir de más.
+        echo (string) json_encode(
+            self::buscarItems($q, 6),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+    }
 }

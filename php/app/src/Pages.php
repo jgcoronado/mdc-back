@@ -621,6 +621,28 @@ final class Pages
         ]);
     }
 
+    // ── Búsqueda global unificada (M3) ────────────────────────────────────────
+    public static function buscar(): void
+    {
+        // Página de utilidad, no de contenido: noindex (como el explorador) y
+        // sin caché (depende de la query). El desplegable en vivo va por
+        // /api/buscar; esta página es el destino sin-JS del formulario y el
+        // "ver todo" con más resultados por tipo.
+        Http::noStore();
+        $q = trim((string) ($_GET['q'] ?? ''));
+        // Se pasan las claves del resultado como variables separadas ($q,
+        // $total, $grupos): View::capture usa extract(EXTR_SKIP) y un
+        // 'data' => … colisionaría con su propio parámetro $data (se saltaría).
+        $res = Api::buscarItems($q, 20);
+
+        $titulo = $q !== '' ? '“' . $q . '” — Buscar' : 'Buscar';
+        View::render('buscar', $res, [
+            'title' => $titulo . ' — Marchas de Cristo',
+            'description' => 'Busca marchas procesionales, compositores, bandas y discos en el catálogo de Marchas de Cristo.',
+            'noindex' => true,
+        ]);
+    }
+
     // ── sitemap.xml ───────────────────────────────────────────────────────────
     public static function sitemap(): void
     {
@@ -717,6 +739,7 @@ final class Pages
         echo "Allow: /\n";
         echo "Disallow: /login\n";
         echo "Disallow: /dashboard\n";
+        echo "Disallow: /buscar\n"; // página de utilidad (noindex): no gastar crawl budget
         echo "\n";
         echo "Sitemap: $base/sitemap.xml\n";
     }

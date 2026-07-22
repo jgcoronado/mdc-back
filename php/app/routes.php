@@ -53,6 +53,10 @@ $router->get('/disco/{slugAndId}', [Pages::class, 'discoDetail']);
 // ── Estadísticas ──────────────────────────────────────────────────────────────
 $router->get('/estadisticas', [Pages::class, 'estadisticas']);
 
+// ── Búsqueda global unificada (M3): página + autocompletado público ──────────
+$router->get('/buscar', [Pages::class, 'buscar']);
+$router->get('/api/buscar', [Api::class, 'buscar']);
+
 // ── SEO ────────────────────────────────────────────────────────────────────────
 $router->get('/sitemap.xml', [Pages::class, 'sitemap']);
 $router->get('/robots.txt', [Pages::class, 'robots']);

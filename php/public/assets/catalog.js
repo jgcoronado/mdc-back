@@ -69,6 +69,115 @@
     Array.prototype.forEach.call(document.querySelectorAll('input[data-filter]'), initFilter);
     Array.prototype.forEach.call(document.querySelectorAll('.ytembed[data-ytid]'), initYtFacade);
 
+    // Autocompletado global (M3): desplegable en vivo contra /api/buscar.
+    // Mejora progresiva — sin JS, el formulario envía a /buscar igualmente.
+    function initAutocomplete(input) {
+        var panel = document.getElementById('site-ac');
+        if (!panel) return;
+        var items = [];   // [{ url, el }]
+        var active = -1;
+        var timer = null;
+        var lastQ = '';
+
+        function close() {
+            panel.hidden = true;
+            panel.innerHTML = '';
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+            items = []; active = -1;
+        }
+
+        function setActive(i) {
+            if (active >= 0 && items[active]) items[active].el.classList.remove('on');
+            active = i;
+            if (active >= 0 && items[active]) {
+                items[active].el.classList.add('on');
+                input.setAttribute('aria-activedescendant', items[active].el.id);
+                items[active].el.scrollIntoView({ block: 'nearest' });
+            } else {
+                input.removeAttribute('aria-activedescendant');
+            }
+        }
+
+        function render(data) {
+            panel.innerHTML = '';
+            items = []; active = -1;
+            var grupos = (data && data.grupos) || {};
+            var n = 0;
+            Object.keys(grupos).forEach(function (key) {
+                var g = grupos[key];
+                if (!g.items || !g.items.length) return;
+                var head = document.createElement('div');
+                head.className = 'ac-group';
+                head.textContent = g.etiqueta;
+                panel.appendChild(head);
+                g.items.forEach(function (it) {
+                    var a = document.createElement('a');
+                    a.className = 'ac-item';
+                    a.id = 'ac-opt-' + (n++);
+                    a.href = it.url;
+                    a.setAttribute('role', 'option');
+                    var t = document.createElement('span');
+                    t.className = 'ac-title';
+                    t.textContent = it.titulo;
+                    a.appendChild(t);
+                    if (it.sub) {
+                        var s = document.createElement('span');
+                        s.className = 'ac-sub';
+                        s.textContent = it.sub;
+                        a.appendChild(s);
+                    }
+                    // mousedown (antes del blur del input) para no perder el clic.
+                    a.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        window.location.href = it.url;
+                    });
+                    panel.appendChild(a);
+                    items.push({ url: it.url, el: a });
+                });
+            });
+            if (!items.length) {
+                var empty = document.createElement('div');
+                empty.className = 'ac-empty';
+                empty.textContent = 'Sin coincidencias';
+                panel.appendChild(empty);
+            }
+            panel.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+        }
+
+        function fetchNow(query) {
+            fetch('/api/buscar?q=' + encodeURIComponent(query), { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data || input.value.trim() !== query) return; // respuesta obsoleta
+                    render(data);
+                })
+                .catch(function () { /* silencio: el submit a /buscar sigue funcionando */ });
+        }
+
+        input.addEventListener('input', function () {
+            var query = input.value.trim();
+            if (query === lastQ) return;
+            lastQ = query;
+            if (timer) clearTimeout(timer);
+            if (query.length < 2) { close(); return; }
+            timer = setTimeout(function () { fetchNow(query); }, 150);
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (panel.hidden) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1 >= items.length ? 0 : active + 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1 < 0 ? items.length - 1 : active - 1); }
+            else if (e.key === 'Enter') {
+                if (active >= 0 && items[active]) { e.preventDefault(); window.location.href = items[active].url; }
+                // sin opción activa → el formulario envía a /buscar
+            } else if (e.key === 'Escape') { close(); }
+        });
+
+        input.addEventListener('blur', function () { setTimeout(close, 120); });
+    }
+
     // "/" salta al buscador del catálogo (salvo que ya se esté escribiendo).
     var q = document.getElementById('site-q');
     if (q) {
@@ -79,5 +188,6 @@
                 q.focus();
             }
         });
+        initAutocomplete(q);
     }
 })();

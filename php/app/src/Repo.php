@@ -926,6 +926,113 @@ final class Repo
         return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
     }
 
+    // ── Búsqueda global unificada (M3) ───────────────────────────────────────
+
+    /**
+     * Consulta FTS5 de PREFIJO: cada token pasa a "token"* para que "amarg"
+     * encuentre "amargura". Espacio entre términos = AND implícito en FTS5.
+     * Solo letras/números (se descartan signos) → sintaxis FTS siempre válida.
+     */
+    private static function buildFtsPrefixQuery(string $raw): ?string
+    {
+        $cleaned = trim((string) preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $raw));
+        if ($cleaned === '') {
+            return null;
+        }
+        $tokens = preg_split('/\s+/', $cleaned) ?: [];
+        return implode(' ', array_map(static fn(string $t): string => '"' . $t . '"*', $tokens));
+    }
+
+    /**
+     * Búsqueda unificada sobre las cuatro entidades para una sola caja: la usan
+     * la página /buscar y el autocompletado público (/api/buscar). Devuelve como
+     * mucho $limit resultados por tipo, cada uno con lo justo para pintar una
+     * fila (id, etiqueta, subtítulo) y su URL canónica.
+     *
+     * Matching por tipo — decisión deliberada, no uniforme:
+     *   · marchas y compositores: FTS5 de PREFIJO (marcha_fts / autor_fts ya
+     *     existen; son las tablas grandes → índice invertido, no full-scan).
+     *   · bandas y discos: LIKE por subcadena con NOACC (no tienen tabla FTS y
+     *     son diminutas — 270 y 430 filas; el escaneo es instantáneo y permite
+     *     coincidencia a mitad de palabra, como el resto de predictivos del
+     *     panel, ver autorCandidatosPorTexto).
+     * El issue del consejo sugería "prefijos FTS5"; se honra donde hay FTS y se
+     * cae a LIKE donde no lo hay, sin bloquear la función por ello.
+     *
+     * @return array{marchas:list<array>,autores:list<array>,bandas:list<array>,discos:list<array>,total:int}
+     */
+    public static function buscarGlobal(string $q, int $limit = 8): array
+    {
+        $out = ['marchas' => [], 'autores' => [], 'bandas' => [], 'discos' => [], 'total' => 0];
+        if (mb_strlen(trim($q)) < 2) {
+            return $out;
+        }
+
+        // ── Marchas y compositores: FTS5 de prefijo ──────────────────────────
+        $fts = self::buildFtsPrefixQuery($q);
+        if ($fts !== null) {
+            $marchas = Db::all(
+                "SELECT m.ID_MARCHA, m.TITULO, m.FECHA, m.PROVINCIA
+                 FROM marcha m
+                 WHERE m.ID_MARCHA IN (SELECT rowid FROM marcha_fts WHERE marcha_fts MATCH ?)
+                   AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+                 ORDER BY m.TITULO ASC LIMIT ?",
+                [$fts, $limit]
+            );
+            foreach ($marchas as &$r) {
+                self::normalizeFecha($r);
+            }
+            unset($r);
+            self::attachAutores($marchas);
+            $out['marchas'] = $marchas;
+
+            $out['autores'] = Db::all(
+                "SELECT a.ID_AUTOR, (a.NOMBRE || ' ' || a.APELLIDOS) AS NOMBRE_COMPLETO,
+                        (SELECT COUNT(*) FROM marcha_autor ma WHERE ma.ID_AUTOR = a.ID_AUTOR) AS N_MARCHAS
+                 FROM autor a
+                 WHERE a.ID_AUTOR IN (SELECT rowid FROM autor_fts WHERE autor_fts MATCH ?)
+                 ORDER BY a.APELLIDOS ASC LIMIT ?",
+                [$fts, $limit]
+            );
+        }
+
+        // ── Bandas y discos: LIKE por subcadena (AND de tokens) ──────────────
+        $tokens = preg_split('/\s+/u', trim(Db::noAcc($q)), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($tokens !== []) {
+            $condsBanda = [];
+            $valsBanda = [];
+            foreach ($tokens as $t) {
+                $condsBanda[] = '(NOACC(b.NOMBRE_BREVE) LIKE ? OR NOACC(b.NOMBRE_COMPLETO) LIKE ? OR NOACC(b.LOCALIDAD) LIKE ?)';
+                $needle = '%' . $t . '%';
+                array_push($valsBanda, $needle, $needle, $needle);
+            }
+            $out['bandas'] = Db::all(
+                "SELECT b.ID_BANDA, b.NOMBRE_BREVE, b.NOMBRE_COMPLETO, b.LOCALIDAD
+                 FROM banda b WHERE " . implode(' AND ', $condsBanda) . "
+                 ORDER BY b.NOMBRE_BREVE ASC LIMIT ?",
+                [...$valsBanda, $limit]
+            );
+
+            $condsDisco = [];
+            $valsDisco = [];
+            foreach ($tokens as $t) {
+                $condsDisco[] = 'NOACC(d.NOMBRE_CD) LIKE ?';
+                $valsDisco[] = '%' . $t . '%';
+            }
+            $out['discos'] = Db::all(
+                "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.NOMBRE_BREVE AS BANDA_BREVE
+                 FROM disco d LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
+                 WHERE " . implode(' AND ', $condsDisco) . "
+                 ORDER BY d.NOMBRE_CD ASC LIMIT ?",
+                [...$valsDisco, $limit]
+            );
+        }
+
+        $out['total'] = count($out['marchas']) + count($out['autores'])
+            + count($out['bandas']) + count($out['discos']);
+        return $out;
+    }
+
     // ── Últimas incorporaciones ──────────────────────────────────────────────
 
     public static function fetchUltimas(): array

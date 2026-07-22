@@ -47,16 +47,13 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
 $reqPath = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $current = '/' . (explode('/', trim($reqPath, '/'))[0] ?? '');
 
-// Buscador de cabecera: solo en las secciones con búsqueda de texto propia
-// (Dedicatorias filtra por localidad/provincia y Estadísticas no tiene
-// buscador, así que ahí el cuadro no se muestra).
-$searchBySection = [
-    '/marcha' => ['action' => '/marcha', 'param' => 'titulo', 'label' => 'marchas'],
-    '/autor' => ['action' => '/autor', 'param' => 'nombre', 'label' => 'compositores'],
-    '/banda' => ['action' => '/banda', 'param' => 'titulo', 'label' => 'bandas'],
-    '/disco' => ['action' => '/disco', 'param' => 'nombre', 'label' => 'discos'],
-];
-$search = $searchBySection[$current] ?? null;
+// Buscador global de cabecera (M3): una sola caja en TODAS las páginas que
+// busca a la vez en las cuatro entidades (destino /buscar), con desplegable de
+// autocompletado en vivo (catalog.js → /api/buscar). Los listados conservan su
+// "Búsqueda avanzada" con facetas para filtrar dentro de un tipo. No se muestra
+// dentro del panel de administración.
+$showSearch = !str_starts_with($reqPath, '/dashboard') && !str_starts_with($reqPath, '/login');
+$searchValue = $current === '/buscar' ? (string) ($_GET['q'] ?? '') : '';
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -124,12 +121,17 @@ $search = $searchBySection[$current] ?? null;
                 </ul>
             </details>
         </nav>
-<?php if ($search !== null): ?>
+<?php if ($showSearch): ?>
         <div class="site-search-row">
-            <form class="site-search" action="<?= $e($search['action']) ?>" method="get" role="search">
+            <form class="site-search" action="/buscar" method="get" role="search" autocomplete="off">
                 <span aria-hidden="true">⌕</span>
-                <input id="site-q" type="search" name="<?= $e($search['param']) ?>" placeholder="<?= $e('Buscar en ' . $search['label'] . '…') ?>" aria-label="<?= $e('Buscar en ' . $search['label']) ?>">
+                <input id="site-q" type="search" name="q" value="<?= $e($searchValue) ?>"
+                       placeholder="Buscar marchas, compositores, bandas, discos…"
+                       aria-label="Buscar en el catálogo"
+                       role="combobox" aria-expanded="false" aria-controls="site-ac"
+                       aria-autocomplete="list" autocomplete="off">
                 <span class="kbd">/</span>
+                <div id="site-ac" class="ac-panel" role="listbox" aria-label="Sugerencias" hidden></div>
             </form>
         </div>
 <?php endif; ?>

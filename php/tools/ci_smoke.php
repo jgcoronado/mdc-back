@@ -367,6 +367,43 @@ $tests = [
         assertContains('/llms.txt', 'CC BY 4.0', $base);
         assertContains('/llms.txt', '/api/marcha/{id}.json', $base);
     },
+
+    // ── Búsqueda global unificada (M3) ──────────────────────────────────────
+    'buscar sin query 200 + noindex' => static function () use ($base): void {
+        assertStatus('/buscar', 200, $base);
+        assertNoIndex('/buscar', $base);
+    },
+    'buscar encuentra la marcha (título)' => static fn() => assertContains('/buscar?q=consuelo', 'Consuelo Gitano', $base),
+    'buscar agrupa por entidad (compositor)' => static fn() => assertContains('/buscar?q=garcia', 'García Pérez', $base),
+    'buscar sin resultados 200' => static fn() => assertStatus('/buscar?q=zzzznoexiste', 200, $base),
+    'robots.txt bloquea /buscar' => static fn() => assertContains('/robots.txt', 'Disallow: /buscar', $base),
+    'api/buscar JSON agrupado + prefijo' => static function () use ($base): void {
+        $r = assertStatus('/api/buscar?q=cons', 200, $base);
+        if (!str_contains($r['headers']['content-type'] ?? '', 'application/json')) {
+            throw new RuntimeException('/api/buscar → Content-Type no es application/json');
+        }
+        $d = json_decode($r['body'], true);
+        if (!is_array($d) || !isset($d['grupos']['marchas'])) {
+            throw new RuntimeException('/api/buscar → estructura de grupos inesperada');
+        }
+        // Prefijo "cons" debe encontrar "Consuelo Gitano" (FTS5 prefix).
+        $titulos = array_column($d['grupos']['marchas']['items'] ?? [], 'titulo');
+        if (!in_array('Consuelo Gitano', $titulos, true)) {
+            throw new RuntimeException('/api/buscar?q=cons → no encontró "Consuelo Gitano" por prefijo');
+        }
+        // Cada item debe traer una url canónica que resuelva en 200 directo.
+        $url = $d['grupos']['marchas']['items'][0]['url'] ?? '';
+        if ($url === '' || httpGet($base . $url)['status'] !== 200) {
+            throw new RuntimeException("/api/buscar → url de item '$url' no resuelve en 200");
+        }
+    },
+    'api/buscar query corta → vacío' => static function () use ($base): void {
+        $r = assertStatus('/api/buscar?q=c', 200, $base);
+        $d = json_decode($r['body'], true);
+        if (!is_array($d) || (int) ($d['total'] ?? -1) !== 0) {
+            throw new RuntimeException('/api/buscar?q=c → debería devolver total 0 (query < 2 chars)');
+        }
+    },
 ];
 
 $failed = [];
