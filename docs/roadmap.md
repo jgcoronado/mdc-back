@@ -45,7 +45,7 @@ plazo del consejo de sabios está cerrado.
 |---|-------|-------|-------------|------|--------|-------|
 | M1 | API JSON de solo lectura + `llms.txt` + feed de novedades + página «Datos» | 10 h | Alta | 🔍 | ✅ Completado — licencia CC BY 4.0; de paso corrigió otro caso de URL de banda no canónica (308) en la ficha de disco | [#15](https://github.com/jgcoronado/mdc-back/issues/15) |
 | M2 | Campaña de cobertura de audio (ingesta + curación) | 15 h+ | Alta | 🎺 | ⏳ Pendiente — trabajo mayoritariamente manual del admin, no solo código | [#16](https://github.com/jgcoronado/mdc-back/issues/16) |
-| M3 | Búsqueda global unificada + autocompletado público | 10 h | Media-alta | 🎺 | ⏳ Pendiente | [#17](https://github.com/jgcoronado/mdc-back/issues/17) |
+| M3 | Búsqueda global unificada + autocompletado público | 10 h | Media-alta | 🎺 | ✅ Completado — una caja global (cabecera) + `/buscar` + endpoint `/api/buscar` con desplegable accesible; FTS5 prefijo (marcha/autor) + LIKE (banda/disco) | [#17](https://github.com/jgcoronado/mdc-back/issues/17) |
 | M4 | `og:image` dinámica por entidad | 8 h | Media | 🔍 | ⏳ Pendiente | [#18](https://github.com/jgcoronado/mdc-back/issues/18) |
 | M5 | Deploy FTP automatizado desde CI en `main` verde | 5 h | Media-alta | ⚙️ | ✅ Completado con alcance ampliado: entorno de **preproducción** (subdominio, Basic Auth, noindex) + pipeline main→PRE automático→PRO manual. Ver [entornos.md](entornos.md). Requiere la puesta en marcha única en Plesk/GitHub descrita ahí | [#19](https://github.com/jgcoronado/mdc-back/issues/19) |
 | M6 | Accesibilidad + hoja de impresión de fichas | 6 h | Media | 🎺 | ⏳ Pendiente | [#20](https://github.com/jgcoronado/mdc-back/issues/20) |
