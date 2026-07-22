@@ -77,7 +77,9 @@ final class Router
 
         http_response_code(404);
         if ($this->notFoundHandler !== null) {
-            ($this->notFoundHandler)();
+            // Se pasa la ruta ya normalizada para que el fallback pueda intentar
+            // resolver URLs heredadas (ver App\Legacy) antes de rendir el 404.
+            ($this->notFoundHandler)($path);
         } else {
             echo '404 Not Found';
         }

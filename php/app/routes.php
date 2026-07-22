@@ -7,6 +7,7 @@ use App\Api;
 use App\Auth;
 use App\Db;
 use App\Http;
+use App\Legacy;
 use App\Pages;
 
 /** @var App\Router $router */
@@ -193,5 +194,14 @@ $router->post('/dashboard/enlaces/rechazar-multiple', [Admin::class, 'enlaceRech
 $router->post('/dashboard/enlaces/{id}/aprobar', [Admin::class, 'enlaceAprobar']);
 $router->post('/dashboard/enlaces/{id}/rechazar', [Admin::class, 'enlaceRechazar']);
 
-// ── 404 ──────────────────────────────────────────────────────────────────────
-$router->notFound([Http::class, 'notFound']);
+// ── 404 (con puente de URLs heredadas .html → ficha nueva, 301) ──────────────
+// Antes de rendir el 404 se intenta traducir la URL del sitio MySQL original
+// (…-marcha-730.html) a su canónica nueva y redirigir 301, para no perder la
+// indexación histórica de Google. Ver App\Legacy.
+$router->notFound(static function (string $path = '/'): void {
+    $target = Legacy::resolve($path);
+    if ($target !== null) {
+        Http::redirect($target, 301);
+    }
+    Http::notFound();
+});
