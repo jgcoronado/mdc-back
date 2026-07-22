@@ -40,9 +40,32 @@ jobs:
   verify:
     uses: ./.github/workflows/ci.yml
 
+  # Sonda de configuración: los secrets no pueden usarse en un `if` de job, así
+  # que aquí (donde sí son accesibles vía env) se convierten en outputs que sí
+  # se pueden condicionar. Sirve para OMITIR (no fallar) los deploys cuando su
+  # entorno no está montado: sin secrets FTP no hay deploy posible, y sin
+  # PRE_BASIC_AUTH el entorno PRE no existe todavía. Así un push a main no deja
+  # runs en rojo por un PRE que aún no se usa. Ver docs/entornos.md.
+  check-config:
+    runs-on: ubuntu-latest
+    outputs:
+      ftp: ${{ steps.probe.outputs.ftp }}
+      pre: ${{ steps.probe.outputs.pre }}
+    steps:
+      - id: probe
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          PRE_BASIC_AUTH: ${{ secrets.PRE_BASIC_AUTH }}
+        run: |
+          [ -n "$FTP_HOST" ] && echo "ftp=true" >> "$GITHUB_OUTPUT" || echo "ftp=false" >> "$GITHUB_OUTPUT"
+          [ -n "$PRE_BASIC_AUTH" ] && echo "pre=true" >> "$GITHUB_OUTPUT" || echo "pre=false" >> "$GITHUB_OUTPUT"
+          if [ -z "$PRE_BASIC_AUTH" ]; then
+            echo "::notice::Entorno PRE no configurado (falta el secret PRE_BASIC_AUTH) — deploy-pre se omite. Ver docs/entornos.md."
+          fi
+
   deploy-pre:
-    needs: verify
-    if: github.event_name == 'push' || github.event.inputs.target == 'pre'
+    needs: [verify, check-config]
+    if: (github.event_name == 'push' || github.event.inputs.target == 'pre') && needs.check-config.outputs.pre == 'true'
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ vars.PRE_BASE_URL || 'https://marchasdecristo.jaguerra27.helioho.st' }}
@@ -81,8 +104,8 @@ jobs:
         run: php php/tools/smoke_remote.php "$BASE_URL" --pre --auth "${{ secrets.PRE_BASIC_AUTH }}"
 
   deploy-pro:
-    needs: verify
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pro'
+    needs: [verify, check-config]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pro' && needs.check-config.outputs.ftp == 'true'
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ vars.PRO_BASE_URL || 'https://marchasdecristo.com' }}
