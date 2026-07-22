@@ -3,3 +3,6 @@
 
 # Salida generada por la herramienta de paridad (Fase 1)
 /tools/parity_expected.json
+
+# Caché de og:image dinámicas (M4): se genera en dirname(db_path)/og-cache
+og-cache/

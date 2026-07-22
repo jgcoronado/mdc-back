@@ -8,6 +8,7 @@ use App\Auth;
 use App\Db;
 use App\Http;
 use App\Legacy;
+use App\Og;
 use App\Pages;
 
 /** @var App\Router $router */
@@ -73,6 +74,9 @@ $router->get('/api/marcha/{id}.json', [Api::class, 'marcha']);
 $router->get('/api/autor/{id}.json', [Api::class, 'autor']);
 $router->get('/api/banda/{id}.json', [Api::class, 'banda']);
 $router->get('/api/disco/{id}.json', [Api::class, 'disco']);
+
+// og:image dinámica por entidad (M4): tarjeta social generada con GD y cacheada.
+$router->get('/og/{tipo}/{id}.png', [Og::class, 'render']);
 
 // Verificación de IndexNow (C2): solo se registra si hay clave configurada.
 // $config ya está en el scope de bootstrap.php cuando se hace require de este

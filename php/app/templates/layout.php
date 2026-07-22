@@ -18,13 +18,15 @@ $jsonld = $meta['jsonld'] ?? [];
 
 // og:* / twitter:*: base de marca en TODAS las páginas (antes solo existían en
 // las fichas de detalle, que pasan $meta['og']); esos valores, si están,
-// sustituyen a los genéricos. og:image es siempre la imagen de marca — la
-// versión por entidad queda para más adelante (M4).
+// sustituyen a los genéricos. og:image es la imagen de marca por defecto; las
+// fichas de detalle pasan $meta['og']['image'] con su tarjeta dinámica (M4).
 $og = array_merge(
     ['type' => 'website', 'title' => $title, 'description' => $description, 'url' => $canonical],
     $meta['og'] ?? []
 );
-$ogImage = rtrim((string) ($GLOBALS['config']['site_url'] ?? 'https://marchasdecristo.com'), '/') . '/assets/og-image.png';
+$siteBase = rtrim((string) ($GLOBALS['config']['site_url'] ?? 'https://marchasdecristo.com'), '/');
+$ogImage = !empty($og['image']) ? $og['image'] : $siteBase . '/assets/og-image.png';
+$ogImageAlt = $og['imageAlt'] ?? 'Marchas de Cristo — base de datos de música procesional';
 
 $siteName = 'Marchas de Cristo';
 $nav = [
@@ -82,6 +84,7 @@ $searchValue = $current === '/buscar' ? (string) ($_GET['q'] ?? '') : '';
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="<?= $e($ogImageAlt) ?>">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@JaviWarSVQ">
     <meta name="twitter:title" content="<?= $e($og['title']) ?>">
@@ -89,6 +92,7 @@ $searchValue = $current === '/buscar' ? (string) ($_GET['q'] ?? '') : '';
     <meta name="twitter:description" content="<?= $e($og['description']) ?>">
 <?php endif; ?>
     <meta name="twitter:image" content="<?= $e($ogImage) ?>">
+    <meta name="twitter:image:alt" content="<?= $e($ogImageAlt) ?>">
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/app.css">
     <link rel="alternate" type="application/rss+xml" title="Marchas de Cristo — últimas incorporaciones" href="/feed.xml">

@@ -429,7 +429,8 @@ final class Pages
             'canonical' => $url,
             'description' => 'Marcha procesional "' . $m['TITULO'] . '" compuesta por ' . $autores . '.'
                 . (!empty($m['DEDICATORIA']) ? ' Dedicada a ' . $m['DEDICATORIA'] . '.' : ''),
-            'og' => ['type' => 'music.song', 'title' => $m['TITULO'], 'description' => 'Marcha procesional compuesta por ' . $autores, 'url' => $url],
+            'og' => ['type' => 'music.song', 'title' => $m['TITULO'], 'description' => 'Marcha procesional compuesta por ' . $autores, 'url' => $url,
+                     'image' => $base . '/og/marcha/' . $m['ID_MARCHA'] . '.png', 'imageAlt' => 'Marcha procesional «' . $m['TITULO'] . '»'],
             'jsonld' => [
                 Seo::marcha($m, $url),
                 Seo::breadcrumbs([
@@ -461,7 +462,8 @@ final class Pages
             'canonical' => $url,
             'description' => 'Compositor de música procesional. Ha compuesto ' . $a['marchasLength'] . ' marchas.'
                 . (!empty($a['LUGAR_NAC']) ? ' Natural de ' . $a['LUGAR_NAC'] . '.' : ''),
-            'og' => ['type' => 'profile', 'title' => $fullName, 'description' => 'Compositor de ' . $a['marchasLength'] . ' marchas de música procesional', 'url' => $url],
+            'og' => ['type' => 'profile', 'title' => $fullName, 'description' => 'Compositor de ' . $a['marchasLength'] . ' marchas de música procesional', 'url' => $url,
+                     'image' => $base . '/og/autor/' . $a['ID_AUTOR'] . '.png', 'imageAlt' => 'Compositor ' . $fullName],
             'jsonld' => [
                 Seo::autor($a, $url),
                 Seo::breadcrumbs([
@@ -493,7 +495,8 @@ final class Pages
             'title' => $b['NOMBRE_BREVE'] . ' — Marchas de Cristo',
             'canonical' => $url,
             'description' => $b['NOMBRE_COMPLETO'] . ', banda de ' . $b['LOCALIDAD'] . '. Ha grabado ' . $b['discosLength'] . ' discos y estrenado ' . $b['marchasLength'] . ' marchas.',
-            'og' => ['type' => 'music.playlist', 'title' => $b['NOMBRE_BREVE'], 'description' => 'Banda de música procesional de ' . $b['LOCALIDAD'], 'url' => $url],
+            'og' => ['type' => 'music.playlist', 'title' => $b['NOMBRE_BREVE'], 'description' => 'Banda de música procesional de ' . $b['LOCALIDAD'], 'url' => $url,
+                     'image' => $base . '/og/banda/' . $b['ID_BANDA'] . '.png', 'imageAlt' => 'Banda ' . $b['NOMBRE_BREVE']],
             'jsonld' => [
                 Seo::banda($b, $url),
                 Seo::breadcrumbs([
@@ -525,7 +528,8 @@ final class Pages
             'title' => $d['NOMBRE_CD'] . ' — Marchas de Cristo',
             'canonical' => $url,
             'description' => 'Disco de música procesional "' . $d['NOMBRE_CD'] . '" de ' . $d['BANDA'] . '. Contiene ' . $d['marchasLength'] . ' marchas.',
-            'og' => ['type' => 'music.album', 'title' => $d['NOMBRE_CD'], 'description' => 'Álbum de música procesional de ' . $d['BANDA'], 'url' => $url],
+            'og' => ['type' => 'music.album', 'title' => $d['NOMBRE_CD'], 'description' => 'Álbum de música procesional de ' . $d['BANDA'], 'url' => $url,
+                     'image' => $base . '/og/disco/' . $d['ID_DISCO'] . '.png', 'imageAlt' => 'Disco «' . $d['NOMBRE_CD'] . '»'],
             'jsonld' => [
                 Seo::disco($d, $url),
                 Seo::breadcrumbs([

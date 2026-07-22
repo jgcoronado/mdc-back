@@ -1033,6 +1033,66 @@ final class Repo
         return $out;
     }
 
+    // ── Datos mínimos para la og:image dinámica (M4) ─────────────────────────
+
+    /**
+     * Título, subtítulo y sobretítulo (tipo) para pintar la tarjeta social de
+     * una entidad. Consultas ligeras (una por entidad), no las fetch* completas.
+     *
+     * @return array{overline:string,titulo:string,sub:string}|null  null si no existe
+     */
+    public static function ogDatos(string $tipo, int $id): ?array
+    {
+        switch ($tipo) {
+            case 'marcha':
+                $r = Db::one(
+                    "SELECT m.TITULO, m.FECHA,
+                            (SELECT a.NOMBRE || ' ' || a.APELLIDOS
+                             FROM marcha_autor ma INNER JOIN autor a ON a.ID_AUTOR = ma.ID_AUTOR
+                             WHERE ma.ID_MARCHA = m.ID_MARCHA ORDER BY a.APELLIDOS LIMIT 1) AS COMPOSITOR
+                     FROM marcha m
+                     WHERE m.ID_MARCHA = ?
+                       AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)",
+                    [$id]
+                );
+                if ($r === null) return null;
+                $anio = (!empty($r['FECHA'])) ? (int) $r['FECHA'] : null;
+                $sub = trim(((string) ($r['COMPOSITOR'] ?? '')) . ($anio ? ' · ' . $anio : ''), ' ·');
+                return ['overline' => 'Marcha procesional', 'titulo' => (string) $r['TITULO'], 'sub' => $sub];
+
+            case 'autor':
+                $r = Db::one(
+                    "SELECT (NOMBRE || ' ' || APELLIDOS) AS NOMBRE,
+                            (SELECT COUNT(*) FROM marcha_autor WHERE ID_AUTOR = ?) AS N
+                     FROM autor WHERE ID_AUTOR = ?",
+                    [$id, $id]
+                );
+                if ($r === null) return null;
+                $n = (int) $r['N'];
+                return ['overline' => 'Compositor', 'titulo' => (string) $r['NOMBRE'],
+                        'sub' => $n === 1 ? '1 marcha' : $n . ' marchas'];
+
+            case 'banda':
+                $r = Db::one('SELECT NOMBRE_BREVE, NOMBRE_COMPLETO, LOCALIDAD FROM banda WHERE ID_BANDA = ?', [$id]);
+                if ($r === null) return null;
+                $titulo = (string) ($r['NOMBRE_BREVE'] ?: $r['NOMBRE_COMPLETO']);
+                return ['overline' => 'Banda', 'titulo' => $titulo, 'sub' => (string) ($r['LOCALIDAD'] ?? '')];
+
+            case 'disco':
+                $r = Db::one(
+                    "SELECT d.NOMBRE_CD, d.FECHA_CD, b.NOMBRE_BREVE AS BANDA
+                     FROM disco d LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
+                     WHERE d.ID_DISCO = ?",
+                    [$id]
+                );
+                if ($r === null) return null;
+                $anio = (!empty($r['FECHA_CD'])) ? (int) (float) $r['FECHA_CD'] : null;
+                $sub = trim(((string) ($r['BANDA'] ?? '')) . ($anio ? ' · ' . $anio : ''), ' ·');
+                return ['overline' => 'Disco', 'titulo' => (string) $r['NOMBRE_CD'], 'sub' => $sub];
+        }
+        return null;
+    }
+
     // ── Últimas incorporaciones ──────────────────────────────────────────────
 
     public static function fetchUltimas(): array

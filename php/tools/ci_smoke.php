@@ -404,6 +404,40 @@ $tests = [
             throw new RuntimeException('/api/buscar?q=c → debería devolver total 0 (query < 2 chars)');
         }
     },
+
+    // ── og:image dinámica por entidad (M4) ──────────────────────────────────
+    'og marcha .png generada' => static function () use ($base): void {
+        $r = httpGet($base . '/og/marcha/1.png');
+        if ($r['status'] !== 200) {
+            throw new RuntimeException('/og/marcha/1.png → esperado 200, obtenido ' . $r['status']
+                . ' (¿GD/FreeType no cargado en el runner?)');
+        }
+        if (!str_contains($r['headers']['content-type'] ?? '', 'image/png')) {
+            throw new RuntimeException('/og/marcha/1.png → Content-Type no es image/png');
+        }
+        if (substr($r['body'], 0, 8) !== "\x89PNG\r\n\x1a\n") {
+            throw new RuntimeException('/og/marcha/1.png → el cuerpo no es un PNG válido');
+        }
+    },
+    'og de las 4 entidades 200 PNG' => static function () use ($base): void {
+        foreach (['autor/1', 'banda/1', 'disco/1'] as $ruta) {
+            $r = httpGet($base . '/og/' . $ruta . '.png');
+            if ($r['status'] !== 200 || substr($r['body'], 0, 4) !== "\x89PNG") {
+                throw new RuntimeException("/og/$ruta.png → no devolvió un PNG 200 (status {$r['status']})");
+            }
+        }
+    },
+    'og entidad inexistente → 302 a imagen de marca' => static function () use ($base): void {
+        $r = httpGet($base . '/og/marcha/999999.png');
+        if ($r['status'] !== 302) {
+            throw new RuntimeException('/og/marcha/999999.png → esperado 302, obtenido ' . $r['status']);
+        }
+        if (!str_contains($r['headers']['location'] ?? '', '/assets/og-image.png')) {
+            throw new RuntimeException('/og/marcha/999999.png → no redirige a la imagen de marca');
+        }
+    },
+    'og tipo desconocido → 404' => static fn() => assertStatus('/og/nope/1.png', 404, $base),
+    'ficha de marcha referencia su og dinámica' => static fn() => assertContains('/marcha/consuelo-gitano-1', '/og/marcha/1.png', $base),
 ];
 
 $failed = [];
