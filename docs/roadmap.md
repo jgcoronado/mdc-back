@@ -11,17 +11,26 @@
 > de este fichero (`git log -p -- docs/roadmap.md`); no se reproduce aquí para
 > no confundirlo con el plan vigente.
 
-## El roadmap vigente es el plan de acción del consejo de sabios
+## Marco vigente (consolidado 2026-07-23)
 
-La hoja de ruta activa del proyecto es el plan de acción de
-**[consejo-de-sabios-2026-07.md](consejo-de-sabios-2026-07.md)** (§7 "Plan de
-acción" y §8 "Automatizaciones"), fruto de una evaluación integral (DAFO de
-UX/UI/QA/desarrollo/producto + veredicto de síntesis) centrada en dos focos:
-la experiencia de la marcha procesional y la optimización para SEO/robots IA.
+El proyecto tenía **dos planes solapados** redactados casi a la vez:
 
-Este documento no repite ese plan — lo enlaza y mantiene el **estado real de
-ejecución**, tarea a tarea, porque el informe del consejo es una fotografía
-del 2026-07-12 y no se reescribe con cada avance.
+- **Plan de palancas 2026-27** (2026-07-09): P-01…P-09 + transversales T-01…T-03
+  + 11 pantallas nuevas **N-01…N-11**, con calendario estacional hacia Semana
+  Santa 2027. Dossier: artefacto `1a31cc69`.
+- **Consejo de sabios** (2026-07-12): DAFO integral + plan C1–C8 / M1–M9 / L1–L6.
+  Dossier: [consejo-de-sabios-2026-07.md](consejo-de-sabios-2026-07.md).
+
+Solapan ~70%. **Decisión (2026-07-23): el marco forward es el plan de palancas
+(pantallas N-*)**, porque es más granular y tiene el ritmo estacional correcto;
+la lista M-x del consejo está mayormente **absorbida o completada**. Los dos
+únicos ítems del consejo que las palancas no cubrían —M6 (accesibilidad +
+impresión) y M7 (notificaciones editoriales)— se **pliegan** aquí como tareas
+de calidad. Este documento es el **tracker único**: enlaza ambos dossieres y
+mantiene el estado real verificado, no reescribe los informes.
+
+El detalle histórico del avance C1–C8 / M1–M9 (todos cerrados o absorbidos) se
+conserva en las tablas de más abajo y en `git log -p -- docs/roadmap.md`.
 
 ### Corto plazo (0–1 mes) — issues `consejo-sabios` + `corto-plazo`
 
@@ -39,7 +48,12 @@ del 2026-07-12 y no se reescribe con cada avance.
 **8 de 8 tareas de corto plazo completadas.** El plan de acción de corto
 plazo del consejo de sabios está cerrado.
 
-### Medio plazo (1–4 meses) — issues `consejo-sabios` + `medio-plazo`
+### Medio plazo del consejo (M1–M9) — fotografía histórica cerrada
+
+> Tabla congelada: 5 de 9 completadas. Los 4 pendientes se reencauzan en el
+> **Plan forward activo** más abajo — M2 al carril manual de audio, M6/M7 como
+> tareas de calidad, M9 dentro de las pantallas N-07/N-08/N-09. No se marca ni
+> se añade nada más en esta tabla.
 
 | # | Tarea | Coste | Repercusión | Foco | Estado | Issue |
 |---|-------|-------|-------------|------|--------|-------|
@@ -57,22 +71,72 @@ Detalle completo de cada tarea en `consejo-de-sabios-2026-07.md` §7 y en el
 cuerpo de cada issue. Regla de secuencia del consejo: "nada del largo plazo
 empieza sin el tablero de KPIs activo" — L1-L6 siguen sin issues por eso.
 
-### Largo plazo (4–12 meses) — no iniciado
+**Nota**: la numeración M-x queda **cerrada** como fotografía histórica. El
+tracker activo desde el 2026-07-23 es la sección siguiente (pantallas N-* del
+plan de palancas + M6/M7 plegados).
 
-L1–L6 en `consejo-de-sabios-2026-07.md` §7: dumps abiertos versionados (L1),
-hubs enriquecidos por advocación/hermandad (L2), biografías de compositores
-vía editores (L3), formulario público de propuesta de grabación (L4), PWA
-básica offline (L5), revisión del hosting si el tráfico lo justifica (L6).
+## Plan forward activo — pantallas N-* + calidad (tracker vivo)
+
+> Estado verificado contra `php/app/routes.php` el 2026-07-23. Detalle de cada
+> N-* en el dossier de palancas (artefacto `1a31cc69`, §08). Todos los cambios
+> de BD son **aditivos**, migrables in situ (patrón de `001`/`002`).
+
+### Ya en producción (base sobre la que se construye)
+- Hubs año/estilo/provincia (C1/P-05) · Dedicatorias **N-01/N-02** (índice +
+  hub + panel de curación) · Búsqueda global **N-11** (`/buscar` + `/api/buscar`)
+  · API+feeds+«Datos» (M1; el feed `/feed.xml` **es** el «novedades» de P-09) ·
+  og:image dinámica (M4) · Vídeo YouTube en ficha (P-02, `App\Media`) ·
+  GoatCounter opt-in (P-08) · Slugify unificado + CSP/HSTS (M8).
+
+### Cola de código (agosto–septiembre) — solo queries sobre datos existentes
+| # | Pantalla / tarea | Depende de | Estado |
+|---|------------------|-----------|--------|
+| N-07 | `/rankings` — parametrizar por año las queries `fetchMas*` existentes | — | ⏳ Siguiente |
+| N-09 | `/aniversarios/{año}` — 25/50/75/100 años, centenarios | — | ⏳ |
+| N-08 | Anuario `/marchas/{año}` (ampliar el hub `/marcha/ano/{año}` actual) | — | ⏳ |
+| N-10 | `/mapa` — coropleta SVG por provincia | **P-07 en prod** | ⏳ Bloqueada |
+| — | Ejecutar P-07 (`completar_provincia.php`) y `seed_dedicatorias.php` en **prod** | deploy hecho | ⏳ Pendiente in situ |
+
+Cubren también **M9** (estadísticas ampliadas como contenido indexable).
+
+### Entidades nuevas (septiembre–noviembre) — migraciones aditivas
+| # | Pantalla / tarea | Estado |
+|---|------------------|--------|
+| N-03 | Ficha de hermandad (Fase 2: hub ligero → entidad `hermandad` + `marcha_hermandad`) | ⏳ |
+| N-04/05 | Contratos banda↔hermandad↔año (tabla `contrato`; `/temporada/{año}`) | ⏳ |
+| N-06 | Ingesta semi-automática de anuncios de contrato (extender `tools/ingest`) | ⏳ |
+
+### Calidad (plegado del consejo)
+| # | Tarea | Depende de | Estado |
+|---|-------|-----------|--------|
+| M6 | Accesibilidad (foco, skip-link, `aria-sort`, contraste) + hoja de impresión | rediseño frontend | ⏳ |
+| M7 | Notificaciones editoriales (email al aceptar/rechazar + digest semanal) | validar email/cron en HelioHost | ⏳ |
+| T-03 | Vigilancia: cron backup (pendiente post-cutover), uptime (✅), link-checker mensual | — | Parcial |
+
+### Carril manual en paralelo (lo conduce el admin, no es código)
+- **P-01 / M2** — curación de candidatos de ingesta (meta <300 antes de octubre)
+  y campaña de cobertura de audio; requiere la **lista de canales** de YouTube
+  (rama `feat/ingest-youtube`) y curar los **264 candidatos de streaming**
+  pendientes (rama `feature/music-apps`).
+- **T-02** — pipeline de ingesta mensual semi-automático (piezas existen, falta
+  orquestación).
+
+### Largo plazo (4–12 meses) — no iniciado
+L1–L6 del consejo: dumps abiertos versionados (L1), hubs enriquecidos por
+advocación/hermandad con playlist (L2), biografías de compositores vía editores
+(L3), formulario público «propón una grabación» (L4), PWA básica offline (L5),
+revisión del hosting si el tráfico lo justifica (L6). Regla del consejo: nada
+del largo plazo empieza sin el tablero de KPIs activo.
 
 ---
 
 ## Cómo mantener este roadmap
 
-- Cuando se cierre una tarea C/M/L: marcarla aquí como ✅ con el enlace al
-  issue, **no** reescribir el informe del consejo (ese es un documento de
-  evaluación puntual, no un tracker).
-- Al empezar el medio o el largo plazo: crear los issues correspondientes con
-  las labels `consejo-sabios` + `medio-plazo`/`largo-plazo`, y añadir sus
-  filas a este documento igual que las de corto plazo.
+- El tracker vivo es la sección **«Plan forward activo»** (pantallas N-* + M6/M7).
+  Al cerrar una N-*/tarea: marcarla ✅ aquí y actualizar el dossier de palancas
+  (artefacto `1a31cc69`, misma URL) — **no** reescribir los informes de origen
+  (consejo/palancas son evaluaciones puntuales, no trackers).
+- Las tablas C1–C8 / M1–M9 quedan como **fotografía histórica cerrada**; no se
+  añaden filas nuevas ahí.
 - Si surge una decisión arquitectónica nueva → `architecture.md` (ADRs), no aquí.
 - Si se descubre deuda técnica nueva → `technical-debt.md`, no aquí.
