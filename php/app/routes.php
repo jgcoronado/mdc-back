@@ -62,6 +62,9 @@ $router->get('/rankings/{anio}', [Pages::class, 'rankingsAnioHub']);
 $router->get('/aniversarios', [Pages::class, 'aniversariosIndex']);
 $router->get('/aniversarios/{anio}', [Pages::class, 'aniversariosAnioHub']);
 
+// ── Mapa (N-10): coropleta SVG por provincia ──────────────────────────────────
+$router->get('/mapa', [Pages::class, 'mapa']);
+
 // ── Búsqueda global unificada (M3): página + autocompletado público ──────────
 $router->get('/buscar', [Pages::class, 'buscar']);
 $router->get('/api/buscar', [Api::class, 'buscar']);

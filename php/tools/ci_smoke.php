@@ -355,6 +355,27 @@ $tests = [
         }
     },
 
+    // ── Mapa (N-10): coropleta SVG por provincia ────────────────────────────
+    'mapa 200 + JSON-LD breadcrumbs' => static fn() => assertJsonLd('/mapa', $base, 'BreadcrumbList'),
+    'mapa: provincia con datos es un enlace con recuento' => static function () use ($base): void {
+        $r = assertStatus('/mapa', 200, $base);
+        if (!str_contains($r['body'], '<a href="/marcha/provincia/sevilla"><g id="ES-SE" class="prov prov-1"><title>Sevilla: 4 marchas</title>')) {
+            throw new RuntimeException('/mapa → Sevilla (ES-SE) no aparece como región enlazada con su recuento');
+        }
+        if (!str_contains($r['body'], '<td><a href="/marcha/provincia/sevilla">Sevilla</a></td>')) {
+            throw new RuntimeException('/mapa → falta la fila de Sevilla en la tabla accesible');
+        }
+    },
+    'mapa: provincia sin datos no es un enlace' => static function () use ($base): void {
+        $r = assertStatus('/mapa', 200, $base);
+        if (!str_contains($r['body'], '<g id="ES-M" class="prov prov-0">')) {
+            throw new RuntimeException('/mapa → Madrid (ES-M, sin marchas) debería quedar sin enlazar (nivel 0)');
+        }
+        if (str_contains($r['body'], '<a href="/marcha/provincia/madrid">')) {
+            throw new RuntimeException('/mapa → Madrid no debería tener enlace de provincia (0 marchas en la fixture)');
+        }
+    },
+
     // ── Hubs de catálogo indexables (C1) ────────────────────────────────────
     'hub año con sustancia 200 + indexable' => static fn() => assertNotNoIndex('/marcha/ano/1995', $base),
     'hub año thin → noindex' => static fn() => assertNoIndex('/marcha/ano/1990', $base),

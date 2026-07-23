@@ -818,6 +818,35 @@ final class Pages
         ]);
     }
 
+    // ── Mapa (N-10) ──────────────────────────────────────────────────────────
+    public static function mapa(): void
+    {
+        $porProvincia = Repo::hubProvincias();
+        $svgMapa = Mapa::render($porProvincia);
+
+        $base = self::base();
+        $canonical = $base . '/mapa';
+        $desc = 'Mapa de España con el número de marchas procesionales del catálogo por provincia: pulsa una provincia para ver su catálogo completo.';
+
+        Http::cachePublic(3600);
+        View::render('mapa', [
+            'svgMapa' => $svgMapa,
+            // Ya viene ordenado N DESC (Repo::hubProvincias): la misma lista
+            // alimenta la tabla accesible bajo el mapa (sin JS ni SVG).
+            'porProvincia' => $porProvincia,
+        ], [
+            'title' => 'Mapa de provincias — Marchas de Cristo',
+            'description' => $desc,
+            'canonical' => $canonical,
+            'jsonld' => [
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Mapa', 'url' => $canonical],
+                ]),
+            ],
+        ]);
+    }
+
     // ── Búsqueda global unificada (M3) ────────────────────────────────────────
     public static function buscar(): void
     {
@@ -866,6 +895,7 @@ final class Pages
             // cualquier año lo es — así que solo se anuncia el vigente; los
             // años pasados siguen accesibles (y rastreables) vía prev/next.
             [$base . self::aniversariosAnioPath(gmdate('Y')), 'monthly', '0.6'],
+            [$base . '/mapa', 'monthly', '0.6'],
             [$base . '/datos', 'monthly', '0.5'],
         ];
 
@@ -1140,6 +1170,7 @@ final class Pages
             '- [Dedicatorias](' . $base . '/dedicatorias)',
             '- [Rankings](' . $base . '/rankings)',
             '- [Aniversarios](' . $base . '/aniversarios)',
+            '- [Mapa](' . $base . '/mapa)',
             '- [Mapa del sitio](' . $base . '/sitemap.xml)',
             '',
         ];

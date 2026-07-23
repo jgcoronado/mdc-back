@@ -36,6 +36,7 @@ $nav = [
     '/dedicatorias' => 'Dedicatorias',
     '/rankings' => 'Estadísticas',
     '/aniversarios' => 'Aniversarios',
+    '/mapa' => 'Mapa',
 ];
 
 try {

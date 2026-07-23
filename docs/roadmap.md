@@ -90,17 +90,22 @@ plan de palancas + M6/M7 plegados).
   `/rankings`** (rankings de siempre + drill-down `/rankings/{año}`; ver detalle
   abajo).
 
-### Cola de código (agosto–septiembre) — solo queries sobre datos existentes
+### Cola de código (agosto–septiembre) — solo queries sobre datos existentes — ✅ CERRADA 2026-07-23
 | # | Pantalla / tarea | Depende de | Estado |
 |---|------------------|-----------|--------|
 | N-07 | `/rankings` — parametrizar por año las queries `fetchMas*` existentes | — | ✅ Completado 2026-07-23 — `/estadisticas` renombrado con 301 permanente; `/rankings/{año}` con umbral `HUB_MIN_MARCHAS` (thin → noindex, como los demás hubs), índice por décadas, cross-link con `/marcha/ano/{año}` |
 | N-09 | `/aniversarios/{año}` — 25/50/75/100 años, centenarios | — | ✅ Completado 2026-07-23 — tramos de 25 en 25 hasta 200 (centenarios destacados 🎉); `/aniversarios` redirige 302 al año en curso; `/aniversarios/{año}` fuera de [1900, actual+1] → 404 (evita espacio infinito de URLs); cross-link recíproco desde `/marcha/ano/{año}` cuando ese año cumple aniversario redondo hoy |
 | N-08 | Anuario `/marchas/{año}` (ampliar el hub `/marcha/ano/{año}` actual) | — | ✅ Completado 2026-07-23 — sin ruta nueva: panel «Resumen del año» en el hub existente (compositor con más marchas, banda con más estrenos, marcha más grabada), reutilizando las queries de N-07; se omite en años thin (< `HUB_MIN_MARCHAS`) |
-| N-10 | `/mapa` — coropleta SVG por provincia | ~~P-07 en prod~~ | ⏳ Siguiente — desbloqueada |
+| N-10 | `/mapa` — coropleta SVG por provincia | ~~P-07 en prod~~ | ✅ Completado 2026-07-23 — mapa base SVG (52 provincias, ISO 3166-2:ES) adaptado de [jboekesteijn/provinces-of-spain](https://github.com/jboekesteijn/provinces-of-spain) (CC BY-SA 4.0, atribución en `assets/mapa-provincias.README.md`); `App\Mapa` colorea 5 niveles de intensidad (cortes no lineales: 1-9/10-49/50-149/150-399/400+, ajustados a lo concentrado del catálogo en Andalucía) y enlaza cada provincia con marchas a su hub; tabla accesible bajo el mapa con los mismos datos, sin depender del SVG. Verificado en navegador real, claro y oscuro |
 | — | Ejecutar P-07 (`completar_provincia.php`) en **prod** | deploy hecho | ✅ Completado 2026-07-23 vía Plesk Scheduled Tasks ("Run a PHP script", requiere seleccionar PHP 8.4 explícitamente — el CLI por defecto del host es PHP 5.x y falla con `Unsupported declare 'strict_types'`). Resultado: 0 filas por actualizar (ya llegadas a prod en un sync anterior), 2 localidades sucias pendientes de curación manual («Hdad Cristo De Gracia», «El Sol») — no bloquean nada |
 | — | Ejecutar `seed_dedicatorias.php` en **prod** | deploy hecho | ⏳ Pendiente in situ (mismo mecanismo que P-07, recordar seleccionar PHP 8.4) |
 
 Cubren también **M9** (estadísticas ampliadas como contenido indexable).
+
+**Las 4 pantallas de esta cola están completadas.** Siguiente bloque del plan de
+palancas: entidades nuevas (N-03 hermandad → N-04/05 contratos → N-06 ingesta de
+contratos, septiembre-noviembre, migraciones aditivas) — ver el dossier del
+artefacto `1a31cc69`.
 
 ### Entidades nuevas (septiembre–noviembre) — migraciones aditivas
 | # | Pantalla / tarea | Estado |

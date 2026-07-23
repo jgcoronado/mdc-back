@@ -22,6 +22,8 @@
     --rec: #8a5a1f;  --rec-bg: #f6ecd9;
     --err: #8a1f1f;  --err-bg: #fdecec; --err-line: #f5c2c2;
     --juv: #5b3ea3;  --juv-bg: #f1ecfb;
+    /* Coropleta del mapa (N-10): rampa de --s2 a --acc, 4 pasos intermedios */
+    --map-1: #d8dbec; --map-2: #b0b8d8; --map-3: #8994c5; --map-4: #6171b1;
     /* Alias legacy (plantillas y JS existentes) */
     --surface: var(--s2);
     --surface2: var(--acc-tint);
@@ -54,6 +56,7 @@
         --rec: #d7a866;  --rec-bg: #2c2416;
         --err: #e09a9a;  --err-bg: #2e1717; --err-line: #4d2626;
         --juv: #b9a3e8;  --juv-bg: #241d33;
+        --map-1: #2e3550; --map-2: #465074; --map-3: #5e6a9c; --map-4: #7685c4;
     }
 }
 
@@ -526,4 +529,22 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
 .field-help { margin-top: 0.25rem; }
 /* Botón con apariencia de enlace (para «Quitar selección» inline) */
 .link-btn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: inherit; text-decoration: underline; }
+
+/* ── Mapa de provincias, coropleta (N-10) ────────────────────────────────── */
+.mapa-wrap { max-width: 30rem; margin: 0.4rem auto 0; }
+.mapa-svg { width: 100%; height: auto; display: block; }
+.mapa-svg text { fill: var(--muted-c); font-size: 6.5px; pointer-events: none; }
+.mapa-svg .prov { transition: opacity 0.15s ease; }
+.mapa-svg a.prov { cursor: pointer; }
+.mapa-svg a.prov:hover .prov, .mapa-svg a.prov:focus-visible .prov { opacity: 0.72; }
+.mapa-svg a.prov:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+.prov-0 { fill: var(--s2); background: var(--s2); }
+.prov-1 { fill: var(--map-1); background: var(--map-1); }
+.prov-2 { fill: var(--map-2); background: var(--map-2); }
+.prov-3 { fill: var(--map-3); background: var(--map-3); }
+.prov-4 { fill: var(--map-4); background: var(--map-4); }
+.prov-5 { fill: var(--acc); background: var(--acc); }
+.mapa-leyenda { display: flex; flex-wrap: wrap; gap: 0.9rem; list-style: none; margin: 0.8rem 0 0; padding: 0; font-size: 0.76rem; color: var(--muted-c); }
+.mapa-leyenda li { display: flex; align-items: center; gap: 0.35rem; }
+.prov-sw { width: 0.85rem; height: 0.85rem; border-radius: 2px; border: 1px solid var(--line); display: inline-block; }
 .link-btn:hover { color: var(--ink); }
