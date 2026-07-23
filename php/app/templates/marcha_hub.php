@@ -2,7 +2,8 @@
 /** Hub de catálogo indexable (C1): año / estilo / provincia.
  *  @var string $h1  @var string $intro  @var array $result  @var int $page
  *  @var string $basePath  canónica del hub sin ?page
- *  @var list<array{href:string,label:string,cnt:?int}> $vease */
+ *  @var list<array{href:string,label:string,cnt:?int}> $vease
+ *  @var ?array{autor:?array,estreno:?array,grabada:?array} $anuario  solo en el hub de año (N-08) */
 $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
 $total = (int) $result['totalRows'];
 ?>
@@ -16,6 +17,23 @@ $total = (int) $result['totalRows'];
     </div>
 
     <p class="welcome-text"><?= V::e($intro) ?></p>
+
+<?php if (!empty($anuario)): ?>
+    <div class="panel">
+        <h2 class="section-title">Resumen del año</h2>
+        <ul class="vease">
+<?php if ($anuario['autor']): $a = $anuario['autor']; ?>
+            <li>→ Compositor con más marchas: <a href="<?= V::e(S::buildDetailPath('autor', $a['ID_AUTOR'], (string) $a['AUTOR'])) ?>"><?= V::e($a['AUTOR']) ?></a> <span class="cnt">(<?= $num($a['MARCHAS']) ?>)</span></li>
+<?php endif; ?>
+<?php if ($anuario['estreno']): $e = $anuario['estreno']; ?>
+            <li>→ Banda con más estrenos: <a href="<?= V::e(S::buildDetailPath('banda', $e['ID_BANDA'], (string) $e['BANDA'])) ?>"><?= V::e($e['BANDA']) ?></a> <span class="cnt">(<?= $num($e['MARCHAS']) ?>)</span></li>
+<?php endif; ?>
+<?php if ($anuario['grabada']): $g = $anuario['grabada']; ?>
+            <li>→ Marcha más grabada: <a href="<?= V::e(S::buildDetailPath('marcha', $g['ID_MARCHA'], (string) $g['TITULO'])) ?>"><?= V::e($g['TITULO']) ?></a> <span class="cnt">(<?= $num($g['GRABACIONES']) ?> <?= (int) $g['GRABACIONES'] === 1 ? 'grabación' : 'grabaciones' ?>)</span></li>
+<?php endif; ?>
+        </ul>
+    </div>
+<?php endif; ?>
 
     <section>
         <div class="scrollx tableList">

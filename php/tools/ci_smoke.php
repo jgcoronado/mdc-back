@@ -339,6 +339,22 @@ $tests = [
     'aniversarios 2010 (sin coincidencias) 404' => static fn() => assertStatus('/aniversarios/2010', 404, $base),
     'aniversarios año fuera de rango (1500) 404' => static fn() => assertStatus('/aniversarios/1500', 404, $base),
 
+    // ── Anuario (N-08): resumen editorial dentro del hub de año existente ──
+    'hub año con sustancia muestra resumen del año' => static function () use ($base): void {
+        $r = assertStatus('/marcha/ano/1995', 200, $base);
+        foreach (['Resumen del año', 'José García Pérez', 'Las Cigarreras'] as $needle) {
+            if (!str_contains($r['body'], $needle)) {
+                throw new RuntimeException("/marcha/ano/1995 → falta '$needle' en el resumen del año (N-08)");
+            }
+        }
+    },
+    'hub año thin no muestra resumen del año' => static function () use ($base): void {
+        $r = assertStatus('/marcha/ano/1990', 200, $base);
+        if (str_contains($r['body'], 'Resumen del año')) {
+            throw new RuntimeException('/marcha/ano/1990 → año thin no debería mostrar el resumen (N-08)');
+        }
+    },
+
     // ── Hubs de catálogo indexables (C1) ────────────────────────────────────
     'hub año con sustancia 200 + indexable' => static fn() => assertNotNoIndex('/marcha/ano/1995', $base),
     'hub año thin → noindex' => static fn() => assertNoIndex('/marcha/ano/1990', $base),

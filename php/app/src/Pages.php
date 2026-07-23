@@ -290,6 +290,21 @@ final class Pages
         $desc = $n === 1
             ? "La marcha procesional compuesta en $anio, con su compositor, banda de estreno y grabaciones."
             : "Catálogo de las $n marchas procesionales compuestas en $anio, con sus compositores, bandas de estreno y grabaciones.";
+
+        // Anuario (N-08): resumen editorial del año, reutilizando las mismas
+        // queries que alimentan /rankings/{año} — solo el primer puesto de
+        // cada una, a modo de titular. Se omite en años thin: con 1-2
+        // marchas el "compositor con más obras" es solo el autor de la única
+        // fila que ya se ve en la tabla, no aporta nada nuevo.
+        $anuario = null;
+        if ($n >= Repo::HUB_MIN_MARCHAS) {
+            $anuario = [
+                'autor' => Repo::fetchMasAutorAnio($anio)[0] ?? null,
+                'estreno' => Repo::fetchMasEstrenoAnio($anio)[0] ?? null,
+                'grabada' => (Repo::fetchMasGrabadaAnio($anio)[0] ?? null),
+            ];
+        }
+
         self::renderMarchaHub([
             'path' => self::anioHubPath($anio),
             'h1' => "Marchas procesionales de $anio",
@@ -299,6 +314,7 @@ final class Pages
             'result' => $result,
             'page' => $page,
             'vease' => $vease,
+            'anuario' => $anuario,
         ]);
     }
 
@@ -383,7 +399,8 @@ final class Pages
      * JSON-LD CollectionPage + breadcrumbs.
      *
      * @param array{path:string,h1:string,crumb:string,title:string,description:string,
-     *              result:array,page:int,vease:list<array{href:string,label:string,cnt:?int}>} $o
+     *              result:array,page:int,vease:list<array{href:string,label:string,cnt:?int}>,
+     *              anuario?:?array{autor:?array,estreno:?array,grabada:?array}} $o
      */
     private static function renderMarchaHub(array $o): void
     {
@@ -408,6 +425,7 @@ final class Pages
             'page' => $page,
             'basePath' => $o['path'],
             'vease' => $o['vease'],
+            'anuario' => $o['anuario'] ?? null,
         ], [
             'title' => $o['title'],
             'description' => $o['description'],
