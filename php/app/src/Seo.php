@@ -30,6 +30,24 @@ final class Seo
         return preg_match('/^\d{4}/', $str) ? $str : null;
     }
 
+    // yt-dlp solo da la fecha (upload_date = YYYYMMDD → 'Y-m-d'), sin hora ni
+    // zona horaria. Google exige un dateTime completo con offset para
+    // VideoObject.uploadDate; un 'Y-m-d' a secas lo marca como "no válido"
+    // en Search Console (no crítico, pero evitable). Como no conocemos la
+    // hora real de publicación, fijamos medianoche en la zona del sitio.
+    private static function isoDateTime(mixed $dateStr): ?string
+    {
+        if (empty($dateStr)) return null;
+        $str = (string) $dateStr;
+        try {
+            $dt = new \DateTime($str, new \DateTimeZone('Europe/Madrid'));
+        } catch (\Exception) {
+            return null;
+        }
+        $dt->setTime(0, 0, 0);
+        return $dt->format('c');
+    }
+
     public static function marcha(array $data, string $url): array
     {
         $base = self::base();
@@ -81,7 +99,7 @@ final class Seo
                 'description' => 'Interpretación en vídeo de la marcha procesional «' . $data['TITULO'] . '»'
                     . (!empty($data['BANDA_ESTRENO']) ? ' por ' . $data['BANDA'] : '') . '.',
                 'thumbnailUrl' => Media::youtubeThumb($ytid),
-                'uploadDate' => (string) $data['VIDEO_UPLOAD'],
+                'uploadDate' => self::isoDateTime($data['VIDEO_UPLOAD']),
                 'contentUrl' => $data['AUDIO'],
                 'embedUrl' => Media::youtubeEmbed($ytid),
             ];
