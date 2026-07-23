@@ -307,7 +307,15 @@ $tests = [
     'dedicatoria ficha 200 + JSON-LD CollectionPage' => static fn() => assertJsonLd('/dedicatoria/hdad-de-los-gitanos-sevilla-1', $base, 'CollectionPage'),
     'dedicatoria inexistente 404' => static fn() => assertStatus('/dedicatoria/nada-999999', 404, $base),
 
-    'estadisticas 200' => static fn() => assertStatus('/estadisticas', 200, $base),
+    'estadisticas → 301 rankings' => static fn() => assertRedirect('/estadisticas', '/rankings', $base),
+
+    // ── Rankings (N-07): de siempre + drill-down por año ────────────────────
+    'rankings 200' => static fn() => assertStatus('/rankings', 200, $base),
+    'rankings año con sustancia 200 + indexable' => static fn() => assertNotNoIndex('/rankings/1995', $base),
+    'rankings año con sustancia JSON-LD CollectionPage' => static fn() => assertJsonLd('/rankings/1995', $base, 'CollectionPage'),
+    'rankings año thin → noindex' => static fn() => assertNoIndex('/rankings/1990', $base),
+    'rankings año inexistente 404' => static fn() => assertStatus('/rankings/1800', 404, $base),
+    'hub año enlaza a rankings del año' => static fn() => assertContains('/marcha/ano/1995', 'href="/rankings/1995"', $base),
 
     // ── Hubs de catálogo indexables (C1) ────────────────────────────────────
     'hub año con sustancia 200 + indexable' => static fn() => assertNotNoIndex('/marcha/ano/1995', $base),

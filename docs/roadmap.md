@@ -86,13 +86,15 @@ plan de palancas + M6/M7 plegados).
   hub + panel de curación) · Búsqueda global **N-11** (`/buscar` + `/api/buscar`)
   · API+feeds+«Datos» (M1; el feed `/feed.xml` **es** el «novedades» de P-09) ·
   og:image dinámica (M4) · Vídeo YouTube en ficha (P-02, `App\Media`) ·
-  GoatCounter opt-in (P-08) · Slugify unificado + CSP/HSTS (M8).
+  GoatCounter opt-in (P-08) · Slugify unificado + CSP/HSTS (M8) · **N-07
+  `/rankings`** (rankings de siempre + drill-down `/rankings/{año}`; ver detalle
+  abajo).
 
 ### Cola de código (agosto–septiembre) — solo queries sobre datos existentes
 | # | Pantalla / tarea | Depende de | Estado |
 |---|------------------|-----------|--------|
-| N-07 | `/rankings` — parametrizar por año las queries `fetchMas*` existentes | — | ⏳ Siguiente |
-| N-09 | `/aniversarios/{año}` — 25/50/75/100 años, centenarios | — | ⏳ |
+| N-07 | `/rankings` — parametrizar por año las queries `fetchMas*` existentes | — | ✅ Completado 2026-07-23 — `/estadisticas` renombrado con 301 permanente; `/rankings/{año}` con umbral `HUB_MIN_MARCHAS` (thin → noindex, como los demás hubs), índice por décadas, cross-link con `/marcha/ano/{año}` |
+| N-09 | `/aniversarios/{año}` — 25/50/75/100 años, centenarios | — | ⏳ Siguiente |
 | N-08 | Anuario `/marchas/{año}` (ampliar el hub `/marcha/ano/{año}` actual) | — | ⏳ |
 | N-10 | `/mapa` — coropleta SVG por provincia | **P-07 en prod** | ⏳ Bloqueada |
 | — | Ejecutar P-07 (`completar_provincia.php`) y `seed_dedicatorias.php` en **prod** | deploy hecho | ⏳ Pendiente in situ |

@@ -212,6 +212,11 @@ final class Pages
         return '/marcha/ano/' . $anio;
     }
 
+    public static function rankingsAnioPath(string|int $anio): string
+    {
+        return '/rankings/' . $anio;
+    }
+
     public static function provinciaHubPath(string $provincia): string
     {
         return '/marcha/provincia/' . Slug::slugify($provincia);
@@ -267,6 +272,7 @@ final class Pages
         if ($next !== null) {
             $vease[] = ['href' => self::anioHubPath($next['K']), 'label' => 'Marchas de ' . $next['K'], 'cnt' => (int) $next['N']];
         }
+        $vease[] = ['href' => self::rankingsAnioPath($anio), 'label' => "Rankings de $anio", 'cnt' => null];
         $vease[] = ['href' => '/marcha?fechaDesde=' . $anio . '&fechaHasta=' . $anio, 'label' => 'Afinar la búsqueda en el explorador', 'cnt' => null];
 
         $desc = $n === 1
@@ -610,18 +616,107 @@ final class Pages
         ]);
     }
 
-    // ── Estadísticas ──────────────────────────────────────────────────────────
+    // ── Rankings (N-07) ──────────────────────────────────────────────────────
+    // /estadisticas se renombra a /rankings (301 permanente): mismo contenido,
+    // ahora con drill-down por año (rankingsAnioHub) bajo el mismo espacio de
+    // nombres.
     public static function estadisticas(): void
     {
+        Http::redirect('/rankings', 301);
+    }
+
+    public static function rankingsIndex(): void
+    {
+        $base = self::base();
+        $anios = array_reverse(Repo::hubAnios()); // más reciente primero
         Http::cachePublic(1800);
-        View::render('estadisticas', [
+        View::render('rankings_index', [
             'masAutor' => Repo::fetchMasAutor(),
             'masDedica' => Repo::fetchMasDedica(),
             'masEstreno' => Repo::fetchMasEstreno(),
             'masGrabada' => Repo::fetchMasGrabada(),
+            'anios' => $anios,
         ], [
-            'title' => 'Estadísticas de música procesional — Marchas de Cristo',
-            'description' => 'Los compositores con más marchas, bandas con más estrenos y marchas más grabadas.',
+            'title' => 'Rankings de música procesional — Marchas de Cristo',
+            'description' => 'Los compositores con más marchas, bandas con más estrenos y marchas más grabadas de siempre, y los récords de cada año.',
+            'canonical' => $base . '/rankings',
+            'jsonld' => [
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Rankings', 'url' => $base . '/rankings'],
+                ]),
+            ],
+        ]);
+    }
+
+    public static function rankingsAnioHub(array $p): void
+    {
+        $anio = (string) $p['anio'];
+        if (preg_match('/^\d{4}$/', $anio) !== 1) {
+            Http::notFound();
+        }
+
+        // Solo existen rankings para años con marchas reales (mismo universo
+        // que el hub de año, C1); reutiliza esa lista para el 404 y para
+        // tejer prev/next, en vez de otra consulta.
+        $n = null;
+        $prev = null;
+        $next = null;
+        foreach (Repo::hubAnios() as $a) {
+            if ((int) $a['K'] === (int) $anio) {
+                $n = (int) $a['N'];
+            } elseif ((int) $a['K'] < (int) $anio) {
+                $prev = $a;
+            } elseif ($next === null) {
+                $next = $a;
+            }
+        }
+        if ($n === null) {
+            Http::notFound();
+        }
+
+        $masAutor = Repo::fetchMasAutorAnio($anio);
+        $masEstreno = Repo::fetchMasEstrenoAnio($anio);
+        $masGrabada = Repo::fetchMasGrabadaAnio($anio);
+
+        $vease = [];
+        if ($prev !== null) {
+            $vease[] = ['href' => self::rankingsAnioPath($prev['K']), 'label' => 'Rankings de ' . $prev['K'], 'cnt' => null];
+        }
+        if ($next !== null) {
+            $vease[] = ['href' => self::rankingsAnioPath($next['K']), 'label' => 'Rankings de ' . $next['K'], 'cnt' => null];
+        }
+        $vease[] = ['href' => self::anioHubPath($anio), 'label' => "Catálogo completo de $anio", 'cnt' => $n];
+        $vease[] = ['href' => '/rankings', 'label' => 'Rankings de siempre', 'cnt' => null];
+
+        $base = self::base();
+        $canonical = $base . self::rankingsAnioPath($anio);
+        $h1 = "Récords de $anio";
+        $desc = "Compositores, bandas de estreno y marchas más grabadas de $anio: los récords de la temporada.";
+
+        Http::cachePublic(3600);
+        View::render('rankings_anio', [
+            'h1' => $h1,
+            'anio' => $anio,
+            'masAutor' => $masAutor,
+            'masEstreno' => $masEstreno,
+            'masGrabada' => $masGrabada,
+            'vease' => $vease,
+        ], [
+            'title' => "$h1 — Marchas de Cristo",
+            'description' => $desc,
+            'canonical' => $canonical,
+            // Mismo umbral que los hubs de catálogo (C1): un año con muy pocas
+            // marchas da rankings triviales (todo empatado a 1), thin content.
+            'noindex' => $n < Repo::HUB_MIN_MARCHAS,
+            'jsonld' => [
+                Seo::marchaHub($h1, $desc, $masGrabada, count($masGrabada), $canonical),
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Rankings', 'url' => $base . '/rankings'],
+                    ['name' => $anio, 'url' => $canonical],
+                ]),
+            ],
         ]);
     }
 
@@ -667,7 +762,7 @@ final class Pages
             [$base . '/banda', 'weekly', '0.8'],
             [$base . '/disco', 'weekly', '0.8'],
             [$base . '/dedicatorias', 'weekly', '0.8'],
-            [$base . '/estadisticas', 'weekly', '0.7'],
+            [$base . '/rankings', 'weekly', '0.7'],
             [$base . '/datos', 'monthly', '0.5'],
         ];
 
@@ -676,6 +771,8 @@ final class Pages
             foreach (Repo::hubAnios() as $r) {
                 if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
                     $urls[] = [$base . self::anioHubPath($r['K']), 'monthly', '0.7'];
+                    // Rankings por año (N-07): mismo umbral de sustancia que el hub.
+                    $urls[] = [$base . self::rankingsAnioPath($r['K']), 'monthly', '0.6'];
                 }
             }
             foreach (Repo::hubEstilos() as $r) {
@@ -938,7 +1035,7 @@ final class Pages
             '- [Bandas](' . $base . '/banda)',
             '- [Discos](' . $base . '/disco)',
             '- [Dedicatorias](' . $base . '/dedicatorias)',
-            '- [Estadísticas](' . $base . '/estadisticas)',
+            '- [Rankings](' . $base . '/rankings)',
             '- [Mapa del sitio](' . $base . '/sitemap.xml)',
             '',
         ];

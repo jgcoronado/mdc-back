@@ -1360,4 +1360,48 @@ final class Repo
         self::attachAutores($rows);
         return $rows;
     }
+
+    // ── Rankings por año (N-07): mismas queries que fetchMas*, acotadas a un
+    // año concreto — no son "de siempre" sino el récord de esa temporada. ────
+    public static function fetchMasAutorAnio(string $anio): array
+    {
+        return Db::all(
+            "SELECT a.ID_AUTOR, COUNT(m.ID_MARCHA) AS MARCHAS,
+                    (a.NOMBRE || ' ' || a.APELLIDOS) AS AUTOR
+             FROM autor a
+             INNER JOIN marcha_autor am ON am.ID_AUTOR = a.ID_AUTOR
+             INNER JOIN marcha m ON m.ID_MARCHA = am.ID_MARCHA
+             WHERE m.FECHA = ?
+             GROUP BY a.ID_AUTOR, a.NOMBRE, a.APELLIDOS
+             ORDER BY MARCHAS DESC LIMIT 10",
+            [$anio]
+        );
+    }
+
+    public static function fetchMasEstrenoAnio(string $anio): array
+    {
+        return Db::all(
+            "SELECT b.ID_BANDA, COUNT(m.ID_MARCHA) AS MARCHAS,
+                    (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
+             FROM marcha m INNER JOIN banda b ON b.ID_BANDA = m.BANDA_ESTRENO
+             WHERE b.ID_BANDA != 0 AND m.FECHA = ?
+             GROUP BY b.ID_BANDA, b.NOMBRE_BREVE, b.LOCALIDAD
+             ORDER BY MARCHAS DESC LIMIT 20",
+            [$anio]
+        );
+    }
+
+    public static function fetchMasGrabadaAnio(string $anio): array
+    {
+        $rows = Db::all(
+            "SELECT COUNT(dm.IDMARCHA) AS GRABACIONES, m.ID_MARCHA, m.TITULO
+             FROM disco_marcha dm INNER JOIN marcha m ON m.ID_MARCHA = dm.IDMARCHA
+             WHERE m.FECHA = ? AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             GROUP BY dm.IDMARCHA, m.ID_MARCHA, m.TITULO
+             ORDER BY GRABACIONES DESC LIMIT 20",
+            [$anio]
+        );
+        self::attachAutores($rows);
+        return $rows;
+    }
 }

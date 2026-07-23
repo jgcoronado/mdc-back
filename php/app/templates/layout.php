@@ -34,7 +34,7 @@ $nav = [
     '/banda' => 'Bandas',
     '/disco' => 'Discos',
     '/dedicatorias' => 'Dedicatorias',
-    '/estadisticas' => 'Estadísticas',
+    '/rankings' => 'Estadísticas',
 ];
 
 try {

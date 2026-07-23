@@ -51,8 +51,12 @@ $router->get('/autor/{slugAndId}', [Pages::class, 'autorDetail']);
 $router->get('/banda/{slugAndId}', [Pages::class, 'bandaDetail']);
 $router->get('/disco/{slugAndId}', [Pages::class, 'discoDetail']);
 
-// ── Estadísticas ──────────────────────────────────────────────────────────────
+// ── Rankings (N-07): /estadisticas se renombró aquí, con 301 permanente ──────
 $router->get('/estadisticas', [Pages::class, 'estadisticas']);
+$router->get('/rankings', [Pages::class, 'rankingsIndex']);
+// Dos segmentos, así que se registra antes por claridad (mismo patrón que los
+// hubs de /marcha).
+$router->get('/rankings/{anio}', [Pages::class, 'rankingsAnioHub']);
 
 // ── Búsqueda global unificada (M3): página + autocompletado público ──────────
 $router->get('/buscar', [Pages::class, 'buscar']);
