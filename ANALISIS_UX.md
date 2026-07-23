@@ -59,7 +59,7 @@ enlaces con recuentos" es conceptualmente igual o mejor.
 - [ ] **Prioridad 0 — Infraestructura.** Resolver el 503 del CSS y las caídas del
       servidor en desarrollo local (workers del servidor embebido de PHP o servir
       detrás de Apache/Nginx + PHP-FPM). Verificar cabeceras MIME del CSS.
-- [ ] **Prioridad 1 — Ficha de marcha.** Compactar la rejilla de datos (menos espacio
+- [x] **Prioridad 1 — Ficha de marcha.** Compactar la rejilla de datos (menos espacio
       vertical, columnas más juntas), introducir pestañas/anclas "Datos / Escuchar /
       Grabaciones (n)", y limitar la altura del reproductor de vídeo para que no
       desplace el contenido.

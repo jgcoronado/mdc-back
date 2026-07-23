@@ -187,11 +187,17 @@ h1 { font-family: var(--serif); font-size: 1.55rem; letter-spacing: -0.01em; mar
 .asiento a:hover { text-decoration: underline; }
 
 /* Descripción etiqueta/valor con puntos de guía, como ficha de cartón */
-dl.desc { display: grid; grid-template-columns: 1fr; gap: 0 2.4rem; margin: 1.05rem 0 0; padding-top: 0.25rem; border-top: 3px double var(--line); }
-dl.desc .f { display: grid; grid-template-columns: 8.6rem 1fr; gap: 0.7rem; padding: 0.32rem 0; border-bottom: 1px dotted var(--line); align-items: baseline; }
+dl.desc { display: grid; grid-template-columns: 1fr; gap: 0 1.4rem; margin: 0.85rem 0 0; padding-top: 0.2rem; border-top: 3px double var(--line); }
+dl.desc .f { display: grid; grid-template-columns: 7.4rem 1fr; gap: 0.6rem; padding: 0.2rem 0; border-bottom: 1px dotted var(--line); align-items: baseline; }
 dl.desc dt { margin: 0; font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint); }
 dl.desc dd { margin: 0; font-size: 0.89rem; }
 .cnt { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
+
+/* Anclas de la ficha (Datos / Escuchar / Grabaciones): navegación rápida a
+   las secciones de la misma página — sin JS, son enlaces #ancla normales. */
+.rectabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.9rem 0 0; }
+.rectabs a { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; text-decoration: none; color: var(--muted-c); background: var(--s2); border: 1px solid var(--line); border-radius: 999px; padding: 0.28rem 0.75rem; }
+.rectabs a:hover { color: var(--acc); border-color: var(--acc); }
 
 /* Cabecera de sección con regla de tinta */
 .shead { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; padding-bottom: 0.3rem; border-bottom: 2px solid var(--ink); }
@@ -210,8 +216,10 @@ dl.desc dd { margin: 0; font-size: 0.89rem; }
 a.svc:hover { border-color: var(--acc); }
 .svc.off { color: var(--faint); }
 
-/* Vídeo embebido: fachada sin cookies (no carga YouTube hasta pulsar). */
-.ytembed { position: relative; aspect-ratio: 16 / 9; margin: 0 0 0.6rem; border-radius: var(--radius-sm); overflow: hidden; background: #000; border: 1px solid var(--line); }
+/* Vídeo embebido: fachada sin cookies (no carga YouTube hasta pulsar).
+   max-width limita la altura en pantallas anchas (16:9 a ancho completo del
+   .record llegaba a invadir la pantalla); se mantiene centrado. */
+.ytembed { position: relative; aspect-ratio: 16 / 9; max-width: 30rem; margin: 0 auto 0.6rem; border-radius: var(--radius-sm); overflow: hidden; background: #000; border: 1px solid var(--line); }
 .ytembed .ytfacade { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; background: #000; display: block; }
 .ytfacade-img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.92; transition: opacity 0.15s ease; }
 .ytfacade:hover .ytfacade-img, .ytfacade:focus-visible .ytfacade-img { opacity: 1; }
