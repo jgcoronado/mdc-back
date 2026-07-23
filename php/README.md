@@ -46,6 +46,16 @@ deben ser hermanos del document root** tanto en local (`php/`) como en el host
    ```bash
    php -S localhost:8000 -t php/public php/public/index.php
    ```
+   > ⚠️ Por defecto el servidor embebido atiende **una conexión a la vez**
+   > (`PHP_CLI_SERVER_WORKERS=1`): si el navegador pide el HTML y el CSS/JS a la
+   > vez, alguna petición se encola o falla (assets con **503** intermitente,
+   > páginas sin estilos). Para desarrollar con normalidad, arráncalo con varios
+   > workers:
+   > ```bash
+   > PHP_CLI_SERVER_WORKERS=4 php -S localhost:8000 -t php/public php/public/index.php
+   > ```
+   > Para pruebas de carga o UX realistas, sirve detrás de Apache/Nginx + PHP-FPM
+   > en vez del servidor embebido.
 4. Abre:
    - http://localhost:8000/        → home (conteos reales en el pie = BD OK)
    - http://localhost:8000/health  → diagnóstico app → PDO → SQLite → FTS5
