@@ -219,6 +219,7 @@ final class Repo
         if ($on('localidad')) { $conditions[] = 'NOACC(m.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
         if ($on('provincia')) { $conditions[] = 'NOACC(m.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
         if ($on('tipo')) { $conditions[] = 'm.TIPO = ?'; $values[] = $params['tipo']; }
+        if ($on('estilo')) { $conditions[] = 'm.ESTILO = ?'; $values[] = $params['estilo']; }
 
         $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
         return ["EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA) AND $where", $values];
@@ -259,9 +260,9 @@ final class Repo
     }
 
     /**
-     * Facetas del explorador de marchas: tipo, provincia y década, cada una
-     * contada sobre el resultado filtrado sin su propio criterio.
-     * @return array{tipo:list<array>,provincia:list<array>,decada:list<array>}
+     * Facetas del explorador de marchas: tipo, estilo, provincia y década, cada
+     * una contada sobre el resultado filtrado sin su propio criterio.
+     * @return array{tipo:list<array>,estilo:list<array>,provincia:list<array>,decada:list<array>}
      */
     public static function marchaFacets(string $query): array
     {
@@ -271,6 +272,11 @@ final class Repo
         $tipo = Db::all("SELECT m.TIPO AS K, COUNT(*) AS N FROM marcha m
                          WHERE $w AND m.TIPO IS NOT NULL AND m.TIPO != ''
                          GROUP BY m.TIPO ORDER BY N DESC LIMIT 6", $v);
+
+        [$w, $v] = self::marchaWhere($params, 'estilo');
+        $estilo = Db::all("SELECT m.ESTILO AS K, COUNT(*) AS N FROM marcha m
+                           WHERE $w AND m.ESTILO IS NOT NULL AND m.ESTILO != ''
+                           GROUP BY m.ESTILO ORDER BY N DESC LIMIT 6", $v);
 
         [$w, $v] = self::marchaWhere($params, 'provincia');
         $prov = Db::all("SELECT m.PROVINCIA AS K, COUNT(*) AS N FROM marcha m
@@ -282,7 +288,7 @@ final class Repo
                         WHERE $w AND m.FECHA > 1900
                         GROUP BY K ORDER BY K DESC LIMIT 8", $v);
 
-        return ['tipo' => $tipo, 'provincia' => $prov, 'decada' => $dec];
+        return ['tipo' => $tipo, 'estilo' => $estilo, 'provincia' => $prov, 'decada' => $dec];
     }
 
     // ── Hubs de catálogo: año / estilo / provincia (C1, indexables) ──────────

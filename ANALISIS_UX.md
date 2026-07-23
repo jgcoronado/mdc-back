@@ -66,9 +66,16 @@ enlaces con recuentos" es conceptualmente igual o mejor.
 - [x] **Prioridad 2 — Legibilidad global.** Revisar las etiquetas en versalitas
       monoespaciadas (COMPOSITOR, DEDICATORIA…) hacia un estilo más legible para
       público general, conservando la monoespaciada solo como acento.
-- [ ] **Prioridad 3 — Listados.** Añadir filtros facetados (autor, año, tipo, estilo,
+- [~] **Prioridad 3 — Listados.** Añadir filtros facetados (autor, año, tipo, estilo,
       dedicatoria, ubicación) y tablas con ordenación por columna, complementando la
       búsqueda global existente.
+      - El explorador de marchas ya tenía facetas de tipo, provincia y década, y
+        ordenación por título/año/grabaciones. **Añadido: faceta de Estilo**
+        (Cornetas y Tambores / Agrupación Musical).
+      - Pendiente por decidir: extender facetas a las vistas de bandas (provincia) y
+        discos (año/banda), y ordenación por columna en esos listados secundarios
+        (requiere orden en servidor por la paginación; el orden solo-cliente ordenaría
+        únicamente la página visible).
 - [ ] **Prioridad 4 — Datos.** Valorar campos adicionales que aporta
       patrimoniomusical (ubicación geográfica, distinción tipo/estilo, campo libre de
       "notas/observaciones").
