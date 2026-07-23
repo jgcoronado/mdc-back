@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
- * Smoke tests REMOTOS contra un entorno desplegado (PRE o PRO), con datos
+ * Smoke tests REMOTOS contra PRODUCCIÓN (marchasdecristo.com), con datos
  * reales — a diferencia de ci_smoke.php, que asume los IDs de la fixture de
  * ci_fixture.php y solo vale contra el servidor embebido de CI.
  *
@@ -15,33 +15,22 @@ declare(strict_types=1);
  *
  * Uso:
  *   php smoke_remote.php https://marchasdecristo.com
- *   php smoke_remote.php https://marchasdecristo.jaguerra27.helioho.st --pre --auth usuario:clave
- *
- *   --pre           el entorno es preproducción: exige noindex global, robots
- *                   en Disallow total, cinta visible y 'entorno: pre' en /health
- *                   (sin --pre exige exactamente lo contrario).
- *   --auth u:p      credenciales HTTP Basic (el PRE está protegido con ellas).
  */
 
 $base = null;
-$esPre = false;
-$auth = null;
 for ($i = 1; $i < $argc; $i++) {
     $a = $argv[$i];
-    if ($a === '--pre') $esPre = true;
-    elseif ($a === '--auth') $auth = (string) $argv[++$i];
-    elseif ($base === null && !str_starts_with($a, '--')) $base = rtrim($a, '/');
+    if ($base === null && !str_starts_with($a, '--')) $base = rtrim($a, '/');
     else { fwrite(STDERR, "Argumento no reconocido: $a\n"); exit(2); }
 }
 if ($base === null) {
-    fwrite(STDERR, "Uso: php smoke_remote.php <base_url> [--pre] [--auth usuario:clave]\n");
+    fwrite(STDERR, "Uso: php smoke_remote.php <base_url>\n");
     exit(2);
 }
 
 /** @return array{status:int,headers:array<string,string>,body:string} */
-function httpGet(string $url, bool $sinAuth = false): array
+function httpGet(string $url): array
 {
-    global $auth;
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -50,9 +39,6 @@ function httpGet(string $url, bool $sinAuth = false): array
         CURLOPT_CONNECTTIMEOUT => 15,
         CURLOPT_TIMEOUT => 30,
     ]);
-    if ($auth !== null && !$sinAuth) {
-        curl_setopt($ch, CURLOPT_USERPWD, $auth);
-    }
     $raw = curl_exec($ch);
     if ($raw === false) {
         throw new RuntimeException("curl error en $url: " . curl_error($ch));
@@ -85,14 +71,10 @@ function get200(string $path, string $base): array
 // ── Suite ────────────────────────────────────────────────────────────────
 $tests = [];
 
-$tests['health: db ok + entorno correcto'] = static function () use ($base, $esPre): void {
+$tests['health: db ok'] = static function () use ($base): void {
     $r = get200('/health', $base);
     if (!str_contains($r['body'], 'db: ok')) {
         throw new RuntimeException('/health → no contiene "db: ok"');
-    }
-    $esperado = 'entorno: ' . ($esPre ? 'pre' : 'prod');
-    if (!str_contains($r['body'], $esperado)) {
-        throw new RuntimeException("/health → no contiene '$esperado' (¿desplegado al host equivocado, o config.local.php sin 'preproduccion' correcto?)");
     }
 };
 
@@ -105,56 +87,18 @@ $tests['home: 200 + og/twitter'] = static function () use ($base): void {
     }
 };
 
-if ($esPre) {
-    if ($auth !== null) {
-        // Guarda contra un deploy que borre la protección (p. ej. si Plesk
-        // hubiera escrito el Basic Auth en el .htaccess del docroot y el
-        // mirror lo sobrescribe): sin credenciales, PRE debe rechazar.
-        $tests['pre: Basic Auth activo (401 sin credenciales)'] = static function () use ($base): void {
-            $s = httpGet($base . '/', true)['status'];
-            if ($s !== 401 && $s !== 403) {
-                throw new RuntimeException("home PRE sin credenciales → esperado 401/403, obtenido $s — ¡el Basic Auth ha desaparecido!");
-            }
-        };
+$tests['home indexable (sin noindex)'] = static function () use ($base): void {
+    $r = get200('/', $base);
+    if (str_contains($r['body'], 'name="robots" content="noindex"')) {
+        throw new RuntimeException('home → lleva noindex inesperado');
     }
-    $tests['pre: noindex + X-Robots-Tag + cinta visible'] = static function () use ($base): void {
-        $r = get200('/', $base);
-        if (!str_contains($r['body'], 'name="robots" content="noindex"')) {
-            throw new RuntimeException('home PRE → falta <meta name="robots" content="noindex">');
-        }
-        if (!str_contains($r['body'], 'pre-ribbon')) {
-            throw new RuntimeException('home PRE → falta la cinta de preproducción');
-        }
-        if (!str_contains(strtolower($r['headers']['x-robots-tag'] ?? ''), 'noindex')) {
-            throw new RuntimeException('home PRE → falta la cabecera X-Robots-Tag: noindex');
-        }
-    };
-    $tests['pre: robots.txt en Disallow total'] = static function () use ($base): void {
-        $r = get200('/robots.txt', $base);
-        if (!str_contains($r['body'], "Disallow: /")) {
-            throw new RuntimeException('robots.txt PRE → falta "Disallow: /"');
-        }
-        if (str_contains($r['body'], 'Sitemap:')) {
-            throw new RuntimeException('robots.txt PRE → no debería anunciar el sitemap');
-        }
-    };
-} else {
-    $tests['prod: home indexable (sin noindex)'] = static function () use ($base): void {
-        $r = get200('/', $base);
-        if (str_contains($r['body'], 'name="robots" content="noindex"')) {
-            throw new RuntimeException('home PROD → lleva noindex (¿config de PRE en el host de PRO?)');
-        }
-        if (str_contains($r['body'], 'pre-ribbon')) {
-            throw new RuntimeException('home PROD → muestra la cinta de preproducción');
-        }
-    };
-    $tests['prod: robots.txt con Sitemap'] = static function () use ($base): void {
-        $r = get200('/robots.txt', $base);
-        if (!str_contains($r['body'], 'Sitemap:')) {
-            throw new RuntimeException('robots.txt PROD → falta la línea Sitemap:');
-        }
-    };
-}
+};
+$tests['robots.txt con Sitemap'] = static function () use ($base): void {
+    $r = get200('/robots.txt', $base);
+    if (!str_contains($r['body'], 'Sitemap:')) {
+        throw new RuntimeException('robots.txt → falta la línea Sitemap:');
+    }
+};
 
 $tests['sitemap: bien formado + muestra de fichas en 200 con JSON-LD'] = static function () use ($base): void {
     $r = get200('/sitemap.xml', $base);
@@ -221,7 +165,7 @@ $tests['404 correcto'] = static function () use ($base): void {
 };
 
 // ── Runner ───────────────────────────────────────────────────────────────
-echo 'Smoke remoto contra ' . $base . ($esPre ? ' [PRE]' : ' [PROD]') . "\n";
+echo 'Smoke remoto contra ' . $base . " [PROD]\n";
 $failed = [];
 foreach ($tests as $name => $test) {
     try {

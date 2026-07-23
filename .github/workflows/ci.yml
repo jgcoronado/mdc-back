@@ -1,8 +1,8 @@
 name: CI
 
 # En ramas y PRs corre directamente. En main NO corre por push: deploy.yml lo
-# invoca como workflow reutilizable (job "verify") antes de desplegar a PRE,
-# así cada push a main tiene UNA sola ejecución de CI, ligada a su despliegue.
+# invoca como workflow reutilizable (job "verify"), así cada push a main tiene
+# UNA sola ejecución de CI, ligada a su pipeline de deploy.
 on:
   push:
     branches-ignore: [main]

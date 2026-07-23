@@ -34,15 +34,15 @@ además de deuda).
   necesario para que el monitor externo cubra caídas de datos y no solo de
   proceso PHP.
 
-### ~~1.2 CI verifica, pero no despliega ni alerta si producción diverge~~ ✅ Resuelto (M5, 2026-07-16)
-- Pipeline en `.github/workflows/deploy.yml`: cada push a `main` con CI verde
-  despliega automáticamente el código a **preproducción** (subdominio con
-  Basic Auth + noindex) y ejecuta un smoke remoto con datos reales
-  (`php/tools/smoke_remote.php`); la promoción a **producción** es un botón
-  manual en Actions, con modo mantenimiento durante el mirror y smoke remoto
-  posterior. Ver [entornos.md](entornos.md). El **sync de BD** sigue siendo
-  manual **a propósito** (`sync_db_to_prod.php [--env pre]`) — datos y código
-  separados, la maestra es la local.
+### ~~1.2 CI verifica, pero no despliega ni alerta si producción diverge~~ ✅ Resuelto (M5, 2026-07-16; entorno PRE retirado 2026-07-23)
+- Pipeline en `.github/workflows/deploy.yml`: cada push a `main` corre CI
+  (`verify`); el despliegue de código a **producción** es un botón manual en
+  Actions (*Run workflow*), con modo mantenimiento durante el mirror FTP y un
+  smoke remoto con datos reales posterior (`php/tools/smoke_remote.php`). La
+  validación previa se hace en **local** (no hay entorno de preproducción; se
+  descartó porque HelioHost no permite mover el document root del subdominio
+  desde el panel). El **sync de BD** sigue siendo manual **a propósito**
+  (`sync_db_to_prod.php`) — datos y código separados, la maestra es la local.
 
 ---
 

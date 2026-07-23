@@ -57,9 +57,11 @@
 - [ ] Subir de nuevo el **TTL** del DNS a su valor normal.
 
 ### 6. Opcionales / limpieza
-- [x] ~~Eliminar el subdominio vacío `marchasdecristo.jaguerra27.helioho.st`~~ —
-      **reaprovechado como entorno de PREPRODUCCIÓN** (2026-07-16). Ver
-      [entornos.md](entornos.md) para su configuración y el pipeline de despliegue.
+- [ ] Eliminar el subdominio vacío `marchasdecristo.jaguerra27.helioho.st`. Se
+      intentó reaprovechar como entorno de PREPRODUCCIÓN (2026-07-16) pero se
+      **descartó el 2026-07-23** (HelioHost no permite mover su document root
+      desde el panel). Vuelve a quedar libre para borrar. Ver
+      [entornos.md](entornos.md).
 - [ ] Revisar logs del host y espacio en disco (crecimiento de `private/backups/`).
 - [ ] Borrar el `.sql.zip` viejo del *home* si sigue ahí.
 

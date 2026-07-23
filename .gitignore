@@ -1,7 +1,6 @@
 # Environment — never commit real secrets
 /.env
 /.env.ftp
-/.env.ftp.pre
 
 # Runtime data
 /data

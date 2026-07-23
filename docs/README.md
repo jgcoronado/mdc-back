@@ -19,7 +19,7 @@ ver [context.md](context.md) §7 y [archive/](archive/).
 8. **[pendientes-post-cutover.md](pendientes-post-cutover.md)** — Checklist operativo pendiente tras el cutover a PHP (verificación en producción, cron de backup, Search Console, desmantelar el VPS).
 9. **[cutover-fase5.md](cutover-fase5.md)** — Runbook ejecutado del cutover DNS a PHP.
 10. **[monitoring.md](monitoring.md)** — Monitorización externa de uptime (UptimeRobot sobre `/health`): configuración, qué cubre y qué no, falsas alarmas esperadas, runbook.
-11. **[entornos.md](entornos.md)** — Entornos PRE (subdominio, noindex, Basic Auth) y PRO: mapa, pipeline de despliegue automático (CI → PRE → validación → PRO manual), puesta en marcha y limitaciones.
+11. **[entornos.md](entornos.md)** — Despliegue a producción: entornos local y PRO, pipeline (push a `main` → CI; deploy a PRO manual con mantenimiento + smoke remoto), puesta en marcha y limitaciones.
 12. **[plan-music-apps.md](plan-music-apps.md)** / **[youtube-canales-bandas.md](youtube-canales-bandas.md)** — Notas de trabajo sobre ingesta de audio (YouTube) y enlaces de streaming.
 13. **[archive/](archive/)** — Documentos históricos del stack Next.js/VPS/MySQL, ya desmantelado. Conservados por su razonamiento, no como referencia vigente: [redesign-options.md](archive/redesign-options.md), [vps-migration-3b.md](archive/vps-migration-3b.md).
 

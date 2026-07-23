@@ -26,16 +26,7 @@ declare(strict_types=1);
  *      config.local.example.php). Google deprecó su ping de sitemaps en
  *      2023; para Google el <lastmod> del propio sitemap.xml es la señal.
  *
- * Entornos (docs/entornos.md): por defecto sincroniza con PRODUCCIÓN leyendo
- * .env.ftp; con --env pre sincroniza con PREPRODUCCIÓN leyendo .env.ftp.pre
- * (mismas claves, FTP_REMOTE_DIR apuntando a pre/). En modo pre se omiten los
- * guardarraíles que solo tienen sentido en producción: el requisito de backup
- * reciente (la BD de PRE es una copia desechable de la maestra local), el
- * chequeo de propuestas de editores (en PRE no hay editores) y el ping a
- * IndexNow (PRE es noindex). El modo mantenimiento, el swap con copia previa
- * y la verificación por checksum se mantienen idénticos.
- *
- * Requiere .env.ftp (o .env.ftp.pre) en la raíz del repo (gitignored) con:
+ * Requiere .env.ftp en la raíz del repo (gitignored) con:
  *   FTP_HOST, FTP_PORT, FTP_USER, FTP_PASSWORD, FTP_REMOTE_DIR (puede ir vacío)
  *
  * Usa curl (no la extensión ftp de PHP, que no está disponible en todos los
@@ -59,14 +50,12 @@ declare(strict_types=1);
  *                                                         sin bajar en producción (úsalo solo si
  *                                                         ya sabes que no importan)
  *   php scripts/sync_db_to_prod.php --skip-indexnow     # no avisa a IndexNow tras sincronizar
- *   php scripts/sync_db_to_prod.php --env pre           # sincroniza con PREPRODUCCIÓN (.env.ftp.pre)
  */
 
 // ── args ─────────────────────────────────────────────────────────────────
 $args = [
     'dryRun' => false, 'maxDays' => 10, 'local' => __DIR__ . '/../php/data/mdc.db',
     'skipMove' => false, 'skipVerify' => false, 'force' => false, 'skipIndexNow' => false,
-    'env' => 'prod',
 ];
 for ($i = 1; $i < $argc; $i++) {
     $a = $argv[$i];
@@ -77,23 +66,12 @@ for ($i = 1; $i < $argc; $i++) {
     elseif ($a === '--skip-verify') $args['skipVerify'] = true;
     elseif ($a === '--force') $args['force'] = true;
     elseif ($a === '--skip-indexnow') $args['skipIndexNow'] = true;
-    elseif ($a === '--env') $args['env'] = (string) $argv[++$i];
     else { fwrite(STDERR, "Argumento no reconocido: $a\n"); exit(2); }
 }
-if (!in_array($args['env'], ['prod', 'pre'], true)) {
-    fwrite(STDERR, "--env solo admite 'prod' o 'pre' (recibido: {$args['env']}).\n");
-    exit(2);
-}
-$esPre = $args['env'] === 'pre';
-if ($esPre) {
-    $args['skipIndexNow'] = true; // PRE es noindex: jamás avisar a IndexNow
-    echo "Entorno: PREPRODUCCIÓN (.env.ftp.pre)\n";
-} else {
-    echo "Entorno: PRODUCCIÓN (.env.ftp)\n";
-}
+echo "Entorno: PRODUCCIÓN (.env.ftp)\n";
 
-// ── cargar .env.ftp / .env.ftp.pre ───────────────────────────────────────
-$envFileName = $esPre ? '.env.ftp.pre' : '.env.ftp';
+// ── cargar .env.ftp ──────────────────────────────────────────────────────
+$envFileName = '.env.ftp';
 $envFile = __DIR__ . '/../' . $envFileName;
 if (!is_file($envFile)) {
     fwrite(STDERR, "No existe $envFileName en la raíz del repo. Necesito FTP_HOST/FTP_PORT/FTP_USER/FTP_PASSWORD/FTP_REMOTE_DIR.\n");
@@ -304,82 +282,61 @@ function indexNowPing(string $host, string $key, string $keyLocation, array $url
 }
 
 // ── 1. Buscar el backup más reciente en private/backups/ ────────────────
-// Solo en producción: la BD de PRE es una copia desechable de la maestra
-// local — exigir un backup reciente ahí no protege nada y bloquearía el
-// primer despliegue (el directorio de backups ni siquiera existe aún).
 $baseUrl = ftpBaseUrl($host, $port);
-if ($esPre) {
-    echo "Entorno pre: se omite el requisito de backup reciente.\n";
-} else {
-    $backupsDir = $prefix . 'private/backups';
-    echo "Listando $backupsDir por FTP…\n";
-    $files = ftpList($baseUrl, $user, $pass, $backupsDir);
+$backupsDir = $prefix . 'private/backups';
+echo "Listando $backupsDir por FTP…\n";
+$files = ftpList($baseUrl, $user, $pass, $backupsDir);
 
-    $masReciente = null; // ['fecha' => DateTimeImmutable, 'nombre' => string]
-    foreach ($files as $f) {
-        if (preg_match('/^mdc-(\d{8})-(\d{6})\.db$/', $f, $m)) {
-            $fecha = DateTimeImmutable::createFromFormat('Ymd-His', $m[1] . '-' . $m[2]);
-            if ($fecha !== false && ($masReciente === null || $fecha > $masReciente['fecha'])) {
-                $masReciente = ['fecha' => $fecha, 'nombre' => $f];
-            }
+$masReciente = null; // ['fecha' => DateTimeImmutable, 'nombre' => string]
+foreach ($files as $f) {
+    if (preg_match('/^mdc-(\d{8})-(\d{6})\.db$/', $f, $m)) {
+        $fecha = DateTimeImmutable::createFromFormat('Ymd-His', $m[1] . '-' . $m[2]);
+        if ($fecha !== false && ($masReciente === null || $fecha > $masReciente['fecha'])) {
+            $masReciente = ['fecha' => $fecha, 'nombre' => $f];
         }
     }
-
-    if ($masReciente === null) {
-        fwrite(STDERR, "\n⛔ ABORTADO: no se encontró ningún backup (mdc-YYYYMMDD-HHMMSS.db) en $backupsDir.\n");
-        fwrite(STDERR, "   RECORDATORIO: lanza un backup manual antes de sincronizar (Scheduled Tasks → backup.php, o ejecútalo tú vía cron/Plesk) y vuelve a intentarlo.\n");
-        exit(1);
-    }
-
-    $dias = (new DateTimeImmutable())->diff($masReciente['fecha'])->days;
-    echo "Backup más reciente: {$masReciente['nombre']} ({$dias} día(s))\n";
-
-    if ($dias > $args['maxDays']) {
-        fwrite(STDERR, "\n⛔ ABORTADO: el backup más reciente tiene {$dias} días (máximo permitido: {$args['maxDays']}).\n");
-        fwrite(STDERR, "   RECORDATORIO: lanza un backup manual antes de sincronizar (Scheduled Tasks → backup.php, o ejecútalo tú vía cron/Plesk) y vuelve a intentarlo.\n");
-        exit(1);
-    }
-
-    echo "✓ Backup reciente (≤ {$args['maxDays']} días) — se puede sincronizar.\n";
 }
+
+if ($masReciente === null) {
+    fwrite(STDERR, "\n⛔ ABORTADO: no se encontró ningún backup (mdc-YYYYMMDD-HHMMSS.db) en $backupsDir.\n");
+    fwrite(STDERR, "   RECORDATORIO: lanza un backup manual antes de sincronizar (Scheduled Tasks → backup.php, o ejecútalo tú vía cron/Plesk) y vuelve a intentarlo.\n");
+    exit(1);
+}
+
+$dias = (new DateTimeImmutable())->diff($masReciente['fecha'])->days;
+echo "Backup más reciente: {$masReciente['nombre']} ({$dias} día(s))\n";
+
+if ($dias > $args['maxDays']) {
+    fwrite(STDERR, "\n⛔ ABORTADO: el backup más reciente tiene {$dias} días (máximo permitido: {$args['maxDays']}).\n");
+    fwrite(STDERR, "   RECORDATORIO: lanza un backup manual antes de sincronizar (Scheduled Tasks → backup.php, o ejecútalo tú vía cron/Plesk) y vuelve a intentarlo.\n");
+    exit(1);
+}
+
+echo "✓ Backup reciente (≤ {$args['maxDays']} días) — se puede sincronizar.\n";
 
 // ── 1b. Propuestas de editores pendientes en producción sin bajar ────────
 // Si las hay, subir el .db local las pisaría sin que el admin las haya visto
 // nunca (sync_propuestas_from_prod.php es el paso simétrico que hay que
-// correr antes). --force lo salta a propósito. En PRE no hay editores, así
-// que el chequeo no aplica.
-if ($esPre) {
-    echo "Entorno pre: se omite el chequeo de propuestas de editores.\n";
+// correr antes). --force lo salta a propósito.
+$pendientesDir = $prefix . 'private/propuestas/pendientes';
+echo "Comprobando propuestas pendientes en {$pendientesDir}…\n";
+$propuestas = array_filter(ftpListOptional($baseUrl, $user, $pass, $pendientesDir), static fn(string $f): bool => str_ends_with($f, '.json'));
+if ($propuestas !== [] && !$args['force']) {
+    fwrite(STDERR, "\n⛔ ABORTADO: hay " . count($propuestas) . " propuesta(s) pendiente(s) en producción sin bajar:\n");
+    foreach ($propuestas as $p) fwrite(STDERR, "   · $p\n");
+    fwrite(STDERR, "   Ejecuta primero: php scripts/sync_propuestas_from_prod.php\n");
+    fwrite(STDERR, "   (o repite con --force si ya sabes que no importan).\n");
+    exit(1);
+}
+if ($propuestas !== [] && $args['force']) {
+    echo '⚠ ' . count($propuestas) . " propuesta(s) pendiente(s) en producción — continuando por --force.\n";
 } else {
-    $pendientesDir = $prefix . 'private/propuestas/pendientes';
-    echo "Comprobando propuestas pendientes en {$pendientesDir}…\n";
-    $propuestas = array_filter(ftpListOptional($baseUrl, $user, $pass, $pendientesDir), static fn(string $f): bool => str_ends_with($f, '.json'));
-    if ($propuestas !== [] && !$args['force']) {
-        fwrite(STDERR, "\n⛔ ABORTADO: hay " . count($propuestas) . " propuesta(s) pendiente(s) en producción sin bajar:\n");
-        foreach ($propuestas as $p) fwrite(STDERR, "   · $p\n");
-        fwrite(STDERR, "   Ejecuta primero: php scripts/sync_propuestas_from_prod.php\n");
-        fwrite(STDERR, "   (o repite con --force si ya sabes que no importan).\n");
-        exit(1);
-    }
-    if ($propuestas !== [] && $args['force']) {
-        echo '⚠ ' . count($propuestas) . " propuesta(s) pendiente(s) en producción — continuando por --force.\n";
-    } else {
-        echo "✓ Sin propuestas pendientes sin bajar.\n";
-    }
+    echo "✓ Sin propuestas pendientes sin bajar.\n";
 }
 
 if ($args['dryRun']) {
     echo "--dry-run: no se sube nada.\n";
     exit(0);
-}
-
-// ── 1c-pre. Asegurar la estructura de directorios en PRE ─────────────────
-// En el primer despliegue a preproducción, pre/private/ y pre/private/backups/
-// aún no existen. MKD sobre un directorio ya existente falla sin consecuencias
-// (silencioso: es el caso normal en cada sync posterior).
-if ($esPre) {
-    ftpQuote($baseUrl, $user, $pass, ['MKD ' . rtrim($prefix . 'private', '/')], true);
-    ftpQuote($baseUrl, $user, $pass, ['MKD ' . $prefix . 'private/backups'], true);
 }
 
 // ── 1c. Modo mantenimiento durante la ventana de escritura ───────────────
@@ -425,13 +382,8 @@ if ($args['skipMove']) {
     $renombrado = ftpQuote($baseUrl, $user, $pass, [
         "RNFR $privateDir/mdc.db",
         "RNTO $privateDir/backups/$nombrePreSync",
-    ], $esPre);
-    if (!$renombrado && $esPre) {
-        // Primer despliegue a PRE: todavía no hay mdc.db que apartar. No es un
-        // error — se continúa sin copia previa (sin rollback automático).
-        echo "  (no había mdc.db previo en PRE — primer despliegue, se continúa sin copia previa)\n";
-        $args['skipMove'] = true; // así $intentarRollback sabe que no hay copia
-    } elseif (!$renombrado) {
+    ]);
+    if (!$renombrado) {
         fwrite(STDERR, "\n⛔ ABORTADO: no se pudo mover el .db actual a backups/ antes de sobrescribir. No se ha subido nada.\n");
         fwrite(STDERR, "   (Si ya hay un backup reciente, puedes reintentar con --skip-move para saltarte este paso.)\n");
         exit(1);
