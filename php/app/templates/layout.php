@@ -28,6 +28,12 @@ $ogImage = !empty($og['image']) ? $og['image'] : $siteBase . '/assets/og-image.p
 $ogImageAlt = $og['imageAlt'] ?? 'Marchas de Cristo — base de datos de música procesional';
 
 $siteName = 'Marchas de Cristo';
+// app.css/catalog.js se sirven con Cache-Control de 30 días (.htaccess) sin
+// nombre de fichero versionado; sin este parámetro, un cambio de CSS/JS no
+// llegaría a un navegador que ya los tuviera cacheados hasta que expirase esa
+// caché por su cuenta. filemtime cambia solo cuando el fichero cambia de
+// verdad, así que no invalida la caché en cada deploy si el asset no se tocó.
+$assetVer = static fn(string $rel): string => $rel . '?v=' . (@filemtime(PUBLIC_DIR . $rel) ?: '1');
 $nav = [
     '/marcha' => 'Marchas',
     '/autor' => 'Compositores',
@@ -95,7 +101,7 @@ $searchValue = $current === '/buscar' ? (string) ($_GET['q'] ?? '') : '';
     <meta name="twitter:image" content="<?= $e($ogImage) ?>">
     <meta name="twitter:image:alt" content="<?= $e($ogImageAlt) ?>">
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/assets/app.css">
+    <link rel="stylesheet" href="<?= $e($assetVer('/assets/app.css')) ?>">
     <link rel="alternate" type="application/rss+xml" title="Marchas de Cristo — últimas incorporaciones" href="/feed.xml">
     <link rel="alternate" type="application/feed+json" title="Marchas de Cristo — últimas incorporaciones" href="/feed.json">
 <?php foreach ($jsonld as $schema): ?>
@@ -151,7 +157,7 @@ $searchValue = $current === '/buscar' ? (string) ($_GET['q'] ?? '') : '';
             <span class="foot-sep">·</span> <a href="/datos">Datos y licencia (CC BY 4.0)</a>
         </div>
     </footer>
-    <script src="/assets/catalog.js" defer></script>
+    <script src="<?= $e($assetVer('/assets/catalog.js')) ?>" defer></script>
 <?php if (!empty($GLOBALS['config']['goatcounter_code'])): ?>
     <script data-goatcounter="https://<?= $e($GLOBALS['config']['goatcounter_code']) ?>.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
