@@ -38,6 +38,10 @@
       Retención subida a `backup_keep_days=60` (~8-9 copias) para compensar la
       cadencia semanal. También se puede lanzar a mano desde Plesk tras ediciones
       importantes en el admin.
+      ⚠️ **El PHP por defecto de las Scheduled Tasks es PHP 5.x** (falla con
+      `Unsupported declare 'strict_types'` en cualquier script del repo, que usa
+      PHP 8.4) — hay que **seleccionar 8.4 explícitamente** en el formulario de
+      la tarea. Descubierto 2026-07-23 al ejecutar `completar_provincia.php`.
 - [ ] Ejecutarlo una vez a mano y confirmar que aparece `private/backups/mdc-*.db`.
 
 ### 3. Search Console  ·  *(tú)*
