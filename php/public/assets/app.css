@@ -533,7 +533,14 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
 /* ── Mapa de provincias, coropleta (N-10) ────────────────────────────────── */
 .mapa-wrap { max-width: 30rem; margin: 0.4rem auto 0; }
 .mapa-svg { width: 100%; height: auto; display: block; }
-.mapa-svg text { fill: var(--muted-c); font-size: 6.5px; pointer-events: none; }
+/* Halo en vez de un color fijo: con 6 niveles de intensidad en 2 temas no hay
+   un solo color de texto que contraste con todos. --ink sobre un contorno
+   --card se lee tanto en un relleno claro (prov-0/1) como en uno oscuro
+   (prov-5) sin calcular el contraste de cada nivel a mano. */
+.mapa-svg text {
+    fill: var(--ink); font-size: 6.5px; font-weight: 600; pointer-events: none;
+    paint-order: stroke fill; stroke: var(--card); stroke-width: 2px; stroke-linejoin: round;
+}
 .mapa-svg .prov { transition: opacity 0.15s ease; }
 .mapa-svg a.prov { cursor: pointer; }
 .mapa-svg a.prov:hover .prov, .mapa-svg a.prov:focus-visible .prov { opacity: 0.72; }
