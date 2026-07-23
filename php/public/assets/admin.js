@@ -270,3 +270,59 @@
     // Se llama también desde el bloque de autores al añadir/quitar chips.
     window.triggerDuplicateCheck = triggerCheck;
 })();
+
+/* Autocomplete de banda (single-select) en el formulario de alta de contrato
+   (temporada, N-04). Mismo patrón que el selector de banda de estreno, con
+   un "Seleccionada:" aparte en vez de escribir la elección en el buscador
+   (igual que banda-relaciones.js). */
+(function () {
+    const search  = document.getElementById('contratoBandaSearch');
+    const hidden  = document.getElementById('ID_BANDA');
+    const suggest = document.getElementById('contratoBandaSuggest');
+    const chosen  = document.getElementById('contratoBandaChosen');
+    if (!search || !hidden || !suggest) return;
+
+    function close() { suggest.hidden = true; suggest.innerHTML = ''; }
+
+    function setChosen(id, label) {
+        hidden.value = id;
+        if (chosen) chosen.textContent = label + ' (#' + id + ')';
+        search.value = '';
+        close();
+        search.focus();
+    }
+
+    let timer, ctrl;
+    search.addEventListener('input', () => {
+        const q = search.value.trim();
+        if (q === '') hidden.value = '';
+        clearTimeout(timer);
+        if (q.length < 3) { close(); return; }
+        timer = setTimeout(async () => {
+            if (ctrl) ctrl.abort();
+            ctrl = new AbortController();
+            try {
+                const res = await fetch('/api/banda/fastSearch?q=' + encodeURIComponent(q),
+                    { signal: ctrl.signal, credentials: 'same-origin' });
+                const data = await res.json();
+                const rows = Array.isArray(data.data) ? data.data : [];
+                if (!rows.length) { close(); return; }
+                suggest.innerHTML = '';
+                rows.forEach((r) => {
+                    const label = r.LABEL || ('#' + r.ID_BANDA);
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'suggest-item';
+                    b.textContent = label;
+                    b.addEventListener('click', () => setChosen(r.ID_BANDA, label));
+                    suggest.appendChild(b);
+                });
+                suggest.hidden = false;
+            } catch (_) { /* abortado */ }
+        }, 200);
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        if (!suggest.contains(e.target) && e.target !== search) close();
+    });
+})();

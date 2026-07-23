@@ -376,6 +376,37 @@ $tests = [
         }
     },
 
+    // ── Temporada (N-04): contratos banda↔hermandad, alta manual ────────────
+    'temporada sin año → 302 al año en curso' => static function () use ($base): void {
+        $r = httpGet($base . '/temporada');
+        if ($r['status'] !== 302) {
+            throw new RuntimeException("/temporada → esperado 302, obtenido {$r['status']}");
+        }
+        $anioActual = gmdate('Y');
+        $loc = $r['headers']['location'] ?? '';
+        if (!str_ends_with($loc, "/temporada/$anioActual")) {
+            throw new RuntimeException("/temporada → Location '$loc' no apunta al año en curso ($anioActual)");
+        }
+    },
+    'temporada 2026 (con contratos) 200 + indexable, agrupado por hermandad' => static function () use ($base): void {
+        assertNotNoIndex('/temporada/2026', $base);
+        $r = assertStatus('/temporada/2026', 200, $base);
+        foreach (['Hdad de los Gitanos', 'Virgen de las Angustias', 'Las Cigarreras', 'Cristo de la Salud', 'Tres Caídas', 'fuente'] as $needle) {
+            if (!str_contains($r['body'], $needle)) {
+                throw new RuntimeException("/temporada/2026 → falta '$needle'");
+            }
+        }
+    },
+    'temporada 2026 JSON-LD breadcrumbs' => static fn() => assertJsonLd('/temporada/2026', $base, 'BreadcrumbList'),
+    'temporada sin contratos → noindex + mensaje vacío' => static function () use ($base): void {
+        assertNoIndex('/temporada/2025', $base);
+        $r = assertStatus('/temporada/2025', 200, $base);
+        if (!str_contains($r['body'], 'Todavía no hay contratos registrados')) {
+            throw new RuntimeException('/temporada/2025 → falta el mensaje de estado vacío');
+        }
+    },
+    'temporada año fuera de rango (1500) 404' => static fn() => assertStatus('/temporada/1500', 404, $base),
+
     // ── Hubs de catálogo indexables (C1) ────────────────────────────────────
     'hub año con sustancia 200 + indexable' => static fn() => assertNotNoIndex('/marcha/ano/1995', $base),
     'hub año thin → noindex' => static fn() => assertNoIndex('/marcha/ano/1990', $base),

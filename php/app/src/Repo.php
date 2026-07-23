@@ -1432,4 +1432,30 @@ final class Repo
         self::attachAutores($rows);
         return $rows;
     }
+
+    // ── Temporada / contratos (N-04/N-05) ───────────────────────────────────
+    /**
+     * Contratos de un año, ordenados para agrupar por hermandad en la
+     * plantilla (misma hermandad = filas consecutivas). FUENTE se expone
+     * (es la cita pública); NOTA es interna del admin y no se selecciona.
+     * @return list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
+     *                     TITULAR:?string,FUENTE:?string,ID_BANDA:int,BANDA:string}>
+     */
+    public static function temporada(string $anio): array
+    {
+        return Db::all(
+            "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.FUENTE,
+                    b.ID_BANDA, (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
+             FROM contrato c INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
+             WHERE c.ANIO = ?
+             ORDER BY c.HERMANDAD_SLUG ASC, c.TITULAR ASC, b.NOMBRE_BREVE ASC",
+            [$anio]
+        );
+    }
+
+    /** Años con al menos un contrato, para el sitemap y el índice de /temporada. */
+    public static function aniosConTemporada(): array
+    {
+        return Db::all('SELECT ANIO AS K, COUNT(*) AS N FROM contrato GROUP BY ANIO ORDER BY ANIO DESC');
+    }
 }

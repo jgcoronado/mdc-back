@@ -103,16 +103,22 @@ plan de palancas + M6/M7 plegados).
 Cubren también **M9** (estadísticas ampliadas como contenido indexable).
 
 **Las 4 pantallas de esta cola están completadas.** Siguiente bloque del plan de
-palancas: entidades nuevas (N-03 hermandad → N-04/05 contratos → N-06 ingesta de
-contratos, septiembre-noviembre, migraciones aditivas) — ver el dossier del
-artefacto `1a31cc69`.
+palancas: entidades nuevas — ver el dossier del artefacto `1a31cc69` (§08).
 
-### Entidades nuevas (septiembre–noviembre) — migraciones aditivas
+**Corrección sobre el orden**: el dossier real secuencia **N-06 → N-03 → N-04/05**
+(no N-03 primero, como se dijo en un resumen anterior de esta tabla), y **N-03
+(hermandad) está condicionado explícitamente a que N-01 (dedicatorias) demuestre
+tráfico real** — algo que no se puede verificar sin acceso a GoatCounter/Search
+Console y muy probablemente prematuro a solo 2 semanas de publicarse N-01. El
+propio dossier ofrece la vía intermedia adoptada: `/temporada/{año}` con alta
+manual ya, hermandad como texto normalizado (sin entidad `hermandad` todavía, sin
+N-06 automático todavía).
+
 | # | Pantalla / tarea | Estado |
 |---|------------------|--------|
-| N-03 | Ficha de hermandad (Fase 2: hub ligero → entidad `hermandad` + `marcha_hermandad`) | ⏳ |
-| N-04/05 | Contratos banda↔hermandad↔año (tabla `contrato`; `/temporada/{año}`) | ⏳ |
-| N-06 | Ingesta semi-automática de anuncios de contrato (extender `tools/ingest`) | ⏳ |
+| N-04/05 | Contratos banda↔hermandad↔año — tabla `contrato`, `/temporada/{año}`, alta manual desde `/dashboard/temporada/{año}` | ✅ Completado 2026-07-23 — `HERMANDAD` es texto libre + `HERMANDAD_SLUG` normalizado (mismo espíritu que `dedicatoria_alias`, sin FK a una entidad `hermandad` que no existe aún); agrupado por hermandad en la página pública; noindex si hay menos de `HUB_MIN_MARCHAS` contratos ese año; rango válido [2020, actual+2] |
+| N-06 | Ingesta semi-automática de anuncios de contrato (extender `tools/ingest`) | ⏳ Diferido — tarea grande y abierta (clasificador de texto sobre YouTube), no encaja en el patrón de "solo queries" del resto de pantallas de hoy |
+| N-03 | Ficha de hermandad (entidad `hermandad` + `marcha_hermandad`) | ⏳ Bloqueada por el dossier — condicionada a tráfico real de N-01, no verificable ahora mismo |
 
 ### Calidad (plegado del consejo)
 | # | Tarea | Depende de | Estado |

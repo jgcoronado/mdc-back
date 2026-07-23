@@ -847,6 +847,62 @@ final class Pages
         ]);
     }
 
+    // ── Temporada (N-04): contratos banda↔hermandad, alta manual por ahora ──
+    public static function temporadaIndex(): void
+    {
+        Http::redirect('/temporada/' . gmdate('Y'), 302);
+    }
+
+    public static function temporada(array $p): void
+    {
+        $anio = (string) $p['anio'];
+        if (preg_match('/^\d{4}$/', $anio) !== 1) {
+            Http::notFound();
+        }
+        // Igual que /aniversarios: no hay un universo cerrado de "años válidos"
+        // (cualquier temporada, pasada o futura, es un destino legítimo una vez
+        // haya contratos), así que se acota el rango en vez de dejarlo abierto a
+        // un espacio infinito de URLs sin contenido.
+        $anioActual = (int) gmdate('Y');
+        if ((int) $anio < 2020 || (int) $anio > $anioActual + 2) {
+            Http::notFound();
+        }
+
+        $contratos = Repo::temporada($anio);
+        $grupos = [];
+        foreach ($contratos as $c) {
+            $key = (string) $c['HERMANDAD_SLUG'];
+            $grupos[$key]['nombre'] ??= $c['HERMANDAD'];
+            $grupos[$key]['items'][] = $c;
+        }
+
+        $base = self::base();
+        $canonical = $base . '/temporada/' . $anio;
+        $h1 = "Temporada $anio";
+        $desc = "Qué banda toca este año tras cada paso: contratos de la temporada $anio por hermandad.";
+
+        Http::cachePublic(3600);
+        View::render('temporada', [
+            'h1' => $h1,
+            'anio' => $anio,
+            'grupos' => $grupos,
+        ], [
+            'title' => "$h1 — Marchas de Cristo",
+            'description' => $desc,
+            'canonical' => $canonical,
+            // Alta manual, todavía sin datos casi siempre: no indexar una
+            // temporada vacía o con apenas 1-2 contratos (thin), igual que
+            // los demás hubs con Repo::HUB_MIN_MARCHAS.
+            'noindex' => count($contratos) < Repo::HUB_MIN_MARCHAS,
+            'jsonld' => [
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => $h1, 'url' => $canonical],
+                ]),
+            ],
+        ]);
+    }
+
     // ── Búsqueda global unificada (M3) ────────────────────────────────────────
     public static function buscar(): void
     {
@@ -917,6 +973,13 @@ final class Pages
             foreach (Repo::hubProvincias() as $r) {
                 if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
                     $urls[] = [$base . self::provinciaHubPath((string) $r['K']), 'weekly', '0.7'];
+                }
+            }
+            // Temporada (N-04): solo los años con contratos reales — alta manual,
+            // así que la mayoría de años no tendrán nada todavía.
+            foreach (Repo::aniosConTemporada() as $r) {
+                if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
+                    $urls[] = [$base . '/temporada/' . $r['K'], 'weekly', '0.5'];
                 }
             }
             foreach (Db::all('SELECT ID_MARCHA AS id, TITULO AS label FROM marcha') as $r) {
@@ -1171,6 +1234,7 @@ final class Pages
             '- [Rankings](' . $base . '/rankings)',
             '- [Aniversarios](' . $base . '/aniversarios)',
             '- [Mapa](' . $base . '/mapa)',
+            '- [Temporada](' . $base . '/temporada)',
             '- [Mapa del sitio](' . $base . '/sitemap.xml)',
             '',
         ];

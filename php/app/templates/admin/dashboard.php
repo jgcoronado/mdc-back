@@ -24,6 +24,7 @@ $isAdmin = Roles::isAdmin($rol);
             <a class="btn btn-sm btn-ghost" href="/dashboard/ingesta">Ingesta YouTube</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/enlaces">Enlaces streaming</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/dedicatorias">Dedicatorias</a>
+            <a class="btn btn-sm btn-ghost" href="/dashboard/temporada/<?= (int) date('Y') ?>">Temporada</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/estilos">Estilos CCTT/AM</a>
 <?php endif; ?>
             <form action="/logout" method="POST" class="inline-form">

@@ -65,6 +65,10 @@ $router->get('/aniversarios/{anio}', [Pages::class, 'aniversariosAnioHub']);
 // ── Mapa (N-10): coropleta SVG por provincia ──────────────────────────────────
 $router->get('/mapa', [Pages::class, 'mapa']);
 
+// ── Temporada (N-04): contratos banda↔hermandad, alta manual (N-06 pendiente) ──
+$router->get('/temporada', [Pages::class, 'temporadaIndex']);
+$router->get('/temporada/{anio}', [Pages::class, 'temporada']);
+
 // ── Búsqueda global unificada (M3): página + autocompletado público ──────────
 $router->get('/buscar', [Pages::class, 'buscar']);
 $router->get('/api/buscar', [Api::class, 'buscar']);
@@ -203,6 +207,11 @@ $router->post('/dashboard/ingesta/descartar-multiple', [Admin::class, 'ingestaDe
 $router->get('/dashboard/ingesta/{id}', [Admin::class, 'ingestaDetail']);
 $router->post('/dashboard/ingesta/{id}/aceptar', [Admin::class, 'ingestaAceptar']);
 $router->post('/dashboard/ingesta/{id}/descartar', [Admin::class, 'ingestaDescartar']);
+
+// ── Temporada / contratos (N-04/N-05): alta manual desde el panel ───────────
+$router->get('/dashboard/temporada/{anio}', [Admin::class, 'temporadaAdmin']);
+$router->post('/dashboard/temporada/{anio}/add', [Admin::class, 'temporadaAddPost']);
+$router->post('/dashboard/temporada/{anio}/{contrato}/borrar', [Admin::class, 'temporadaDeletePost']);
 
 // ── Enlaces de streaming (curación de candidatos Spotify/Apple/Deezer) ───────
 $router->get('/dashboard/enlaces', [Admin::class, 'enlaceList']);

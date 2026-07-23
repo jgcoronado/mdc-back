@@ -63,6 +63,10 @@ CREATE TABLE ingest_candidato (
 CREATE TABLE enlace_streaming (ID INTEGER PRIMARY KEY, TIPO_ENT TEXT, ID_ENT INTEGER, SERVICIO TEXT, URL TEXT);
 CREATE TABLE enlace_candidato (ID INTEGER PRIMARY KEY, TIPO_ENT TEXT, ID_ENT INTEGER, SERVICIO TEXT, URL TEXT, ESTADO TEXT, CONFIANZA TEXT);
 CREATE TABLE admin_log (ID INTEGER PRIMARY KEY, accion TEXT, tabla TEXT, id_registro INTEGER, usuario TEXT, ts INTEGER, payload TEXT);
+CREATE TABLE contrato (
+  ID_CONTRATO INTEGER PRIMARY KEY, ID_BANDA INTEGER, HERMANDAD TEXT, HERMANDAD_SLUG TEXT,
+  TITULAR TEXT, ANIO INTEGER, FUENTE TEXT, NOTA TEXT, CREATED_AT TEXT DEFAULT (datetime('now'))
+);
 CREATE VIRTUAL TABLE marcha_fts USING fts5(TITULO, content=marcha, content_rowid=ID_MARCHA, tokenize="unicode61 remove_diacritics 2");
 CREATE VIRTUAL TABLE autor_fts USING fts5(NOMBRE, APELLIDOS, NOMBRE_ART, content=autor, content_rowid=ID_AUTOR, tokenize="unicode61 remove_diacritics 2");
 SQL);
@@ -120,6 +124,11 @@ $ins('INSERT INTO ingest_candidato (MARCHA_CREADA, VIDEO_ID, PUBLICADO_AT, REVIE
 ]);
 $ins('INSERT INTO enlace_streaming (TIPO_ENT, ID_ENT, SERVICIO, URL) VALUES (?,?,?,?)', [
     ['marcha', 1, 'spotify', 'https://open.spotify.com/track/x'],
+]);
+
+$ins('INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, FUENTE) VALUES (?,?,?,?,?,?)', [
+    [1, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Virgen de las Angustias', 2026, 'https://example.org/anuncio'],
+    [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2026, null],
 ]);
 
 $pdo->exec('INSERT INTO marcha_fts(rowid, TITULO) SELECT ID_MARCHA, TITULO FROM marcha');

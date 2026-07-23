@@ -537,6 +537,47 @@ final class Admin
         Http::redirect("/dashboard/banda/$id?err=" . ($r['code'] ?? 'ERROR'), 302);
     }
 
+    // ── Temporada / contratos (N-04/N-05): alta manual ──────────────────────
+    public static function temporadaAdmin(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $anio = (string) $p['anio'];
+        if (preg_match('/^\d{4}$/', $anio) !== 1) Http::notFound();
+        View::render('admin/temporada', [
+            'session' => $session, 'anio' => $anio,
+            'contratos' => Repo::temporada($anio),
+            'notice' => self::noticeFromQuery(),
+        ], ['title' => "Temporada $anio — Marchas de Cristo", 'noindex' => true]);
+    }
+
+    public static function temporadaAddPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $anio = (string) $p['anio'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/temporada/$anio?err=CSRF", 302);
+
+        $idBanda = (int) ($_POST['ID_BANDA'] ?? 0);
+        $hermandad = (string) ($_POST['HERMANDAD'] ?? '');
+        $titular = is_string($_POST['TITULAR'] ?? null) ? (string) $_POST['TITULAR'] : null;
+        $fuente = is_string($_POST['FUENTE'] ?? null) ? (string) $_POST['FUENTE'] : null;
+        $nota = is_string($_POST['NOTA'] ?? null) ? (string) $_POST['NOTA'] : null;
+
+        $r = AdminRepo::addContrato($idBanda, $hermandad, $anio, $titular, $fuente, $nota);
+        if (($r['code'] ?? '') === 'CREATED') Http::redirect("/dashboard/temporada/$anio?created=1", 302);
+        Http::redirect("/dashboard/temporada/$anio?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    public static function temporadaDeletePost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $anio = (string) $p['anio'];
+        $contrato = (int) $p['contrato'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("/dashboard/temporada/$anio?err=CSRF", 302);
+        $r = AdminRepo::deleteContrato($contrato);
+        if (($r['code'] ?? '') === 'DELETED') Http::redirect("/dashboard/temporada/$anio?deleted=1", 302);
+        Http::redirect("/dashboard/temporada/$anio?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
     /** Alta/edición/baja manual de los enlaces de streaming/RRSS musicales de una banda (pestaña Social). */
     public static function bandaSocialPost(array $p): void
     {

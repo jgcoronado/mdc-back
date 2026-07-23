@@ -289,6 +289,37 @@ final class AdminRepo
         return ['code' => 'DELETED'];
     }
 
+    // ── Temporada / contratos (N-04/N-05) — alta manual, sin edición: borrar
+    // y volver a crear si hay un error, es más simple que un formulario de
+    // edición para el volumen bajo que tiene esto de momento. ────────────────
+
+    /** @return array{code:string, contratoId?:int} */
+    public static function addContrato(int $idBanda, string $hermandad, string $anio, ?string $titular, ?string $fuente, ?string $nota): array
+    {
+        if (!self::bandaExiste($idBanda)) return ['code' => 'INVALID_BANDA'];
+        $hermandad = trim($hermandad);
+        if ($hermandad === '') return ['code' => 'HERMANDAD_REQUERIDA'];
+        if (!preg_match('/^\d{4}$/', $anio)) return ['code' => 'INVALID_ANIO'];
+
+        Db::run(
+            'INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, FUENTE, NOTA)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$idBanda, $hermandad, Slug::slugify($hermandad), self::normalize($titular), (int) $anio, self::normalize($fuente), self::normalize($nota)]
+        );
+        $contratoId = Db::lastInsertId();
+        Db::logAdmin('INSERT', 'contrato', $contratoId, ['banda' => $idBanda, 'hermandad' => $hermandad, 'anio' => $anio]);
+        return ['code' => 'CREATED', 'contratoId' => $contratoId];
+    }
+
+    /** @return array{code:string} */
+    public static function deleteContrato(int $idContrato): array
+    {
+        $changes = Db::run('DELETE FROM contrato WHERE ID_CONTRATO = ?', [$idContrato]);
+        if ($changes === 0) return ['code' => 'NOT_FOUND'];
+        Db::logAdmin('DELETE', 'contrato', $idContrato);
+        return ['code' => 'DELETED'];
+    }
+
     // ── Ingesta (candidatos de YouTube, ver tools/ingest/) ──────────────────
 
     /**
