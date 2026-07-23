@@ -63,7 +63,7 @@ enlaces con recuentos" es conceptualmente igual o mejor.
       vertical, columnas más juntas), introducir pestañas/anclas "Datos / Escuchar /
       Grabaciones (n)", y limitar la altura del reproductor de vídeo para que no
       desplace el contenido.
-- [ ] **Prioridad 2 — Legibilidad global.** Revisar las etiquetas en versalitas
+- [x] **Prioridad 2 — Legibilidad global.** Revisar las etiquetas en versalitas
       monoespaciadas (COMPOSITOR, DEDICATORIA…) hacia un estilo más legible para
       público general, conservando la monoespaciada solo como acento.
 - [ ] **Prioridad 3 — Listados.** Añadir filtros facetados (autor, año, tipo, estilo,
