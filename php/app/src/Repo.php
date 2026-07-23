@@ -335,6 +335,34 @@ final class Repo
         return self::hubMarchas('m.FECHA = ?', [$anio], $page);
     }
 
+    /** Múltiplos de 25 años cubiertos por /aniversarios/{año} (centenarios incluidos). */
+    public const ANIVERSARIO_TRAMOS = [25, 50, 75, 100, 125, 150, 175, 200];
+
+    /**
+     * Marchas que cumplen aniversario "redondo" (25/50/.../200 años) en
+     * $anio: una entrada por cada tramo con marchas reales ese año de
+     * composición (los años sin coincidencia se omiten, no se rellenan
+     * vacíos). Reutiliza hubMarchas vía marchasDeAnio, así que cada entrada
+     * ya trae compositor/provincia/grabaciones con la misma forma que el hub
+     * de año — hasta HUB_PAGE_SIZE por tramo (basta para destacar; el enlace
+     * al hub del año de composición cubre el catálogo completo si hay más).
+     * @return list<array{ANIOS:int,ANIO_COMPUESTO:int,result:array}>
+     */
+    public static function aniversariosDe(string $anio): array
+    {
+        $anioInt = (int) $anio;
+        $out = [];
+        foreach (self::ANIVERSARIO_TRAMOS as $m) {
+            $anioComp = $anioInt - $m;
+            if ($anioComp < 1000) continue;
+            $result = self::marchasDeAnio((string) $anioComp, 1);
+            if ((int) $result['totalRows'] > 0) {
+                $out[] = ['ANIOS' => $m, 'ANIO_COMPUESTO' => $anioComp, 'result' => $result];
+            }
+        }
+        return $out;
+    }
+
     /** $estilo es el valor de BD: 'CCTT' o 'AM'. */
     public static function marchasDeEstilo(string $estilo, int $page = 1): array
     {

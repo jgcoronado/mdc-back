@@ -58,6 +58,10 @@ $router->get('/rankings', [Pages::class, 'rankingsIndex']);
 // hubs de /marcha).
 $router->get('/rankings/{anio}', [Pages::class, 'rankingsAnioHub']);
 
+// ── Aniversarios (N-09): 25/50/75/100+ años, con centenarios destacados ──────
+$router->get('/aniversarios', [Pages::class, 'aniversariosIndex']);
+$router->get('/aniversarios/{anio}', [Pages::class, 'aniversariosAnioHub']);
+
 // ── Búsqueda global unificada (M3): página + autocompletado público ──────────
 $router->get('/buscar', [Pages::class, 'buscar']);
 $router->get('/api/buscar', [Api::class, 'buscar']);

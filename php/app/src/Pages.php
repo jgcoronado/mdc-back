@@ -217,6 +217,11 @@ final class Pages
         return '/rankings/' . $anio;
     }
 
+    public static function aniversariosAnioPath(string|int $anio): string
+    {
+        return '/aniversarios/' . $anio;
+    }
+
     public static function provinciaHubPath(string $provincia): string
     {
         return '/marcha/provincia/' . Slug::slugify($provincia);
@@ -273,6 +278,13 @@ final class Pages
             $vease[] = ['href' => self::anioHubPath($next['K']), 'label' => 'Marchas de ' . $next['K'], 'cnt' => (int) $next['N']];
         }
         $vease[] = ['href' => self::rankingsAnioPath($anio), 'label' => "Rankings de $anio", 'cnt' => null];
+        // Aniversario redondo (N-09): si las marchas de este año cumplen 25/50/
+        // .../200 años en el año en curso, tejer el enlace hacia esa página.
+        $anioActual = (int) gmdate('Y');
+        $cumple = $anioActual - (int) $anio;
+        if ($cumple > 0 && $cumple % 25 === 0 && in_array($cumple, Repo::ANIVERSARIO_TRAMOS, true)) {
+            $vease[] = ['href' => self::aniversariosAnioPath($anioActual), 'label' => "Cumplen $cumple años en $anioActual", 'cnt' => null];
+        }
         $vease[] = ['href' => '/marcha?fechaDesde=' . $anio . '&fechaHasta=' . $anio, 'label' => 'Afinar la búsqueda en el explorador', 'cnt' => null];
 
         $desc = $n === 1
@@ -720,6 +732,74 @@ final class Pages
         ]);
     }
 
+    // ── Aniversarios (N-09) ──────────────────────────────────────────────────
+    // /aniversarios sin año es un punto de entrada estable pero cambia cada
+    // 1 de enero, así que redirige (temporal, no 301) al año en curso — el
+    // contenido real e indexable vive en /aniversarios/{año}.
+    public static function aniversariosIndex(): void
+    {
+        Http::redirect(self::aniversariosAnioPath(gmdate('Y')), 302);
+    }
+
+    public static function aniversariosAnioHub(array $p): void
+    {
+        $anio = (string) $p['anio'];
+        if (preg_match('/^\d{4}$/', $anio) !== 1) {
+            Http::notFound();
+        }
+        // Fuera de este rango el espacio de URLs sería infinito (cualquier
+        // año de 4 cifras) sin contenido real que mostrar — 404 en vez de
+        // dejarlo abierto a un rastreador.
+        $anioActual = (int) gmdate('Y');
+        if ((int) $anio < 1900 || (int) $anio > $anioActual + 1) {
+            Http::notFound();
+        }
+
+        $tramos = Repo::aniversariosDe($anio);
+        if ($tramos === []) {
+            Http::notFound();
+        }
+        $total = array_sum(array_map(static fn(array $t): int => (int) $t['result']['totalRows'], $tramos));
+
+        $muestra = [];
+        foreach ($tramos as $t) {
+            foreach ($t['result']['data'] as $m) {
+                $muestra[] = $m;
+                if (count($muestra) >= 30) break 2;
+            }
+        }
+
+        $vease = [
+            ['href' => self::aniversariosAnioPath((int) $anio - 1), 'label' => 'Aniversarios de ' . ((int) $anio - 1), 'cnt' => null],
+            ['href' => self::aniversariosAnioPath((int) $anio + 1), 'label' => 'Aniversarios de ' . ((int) $anio + 1), 'cnt' => null],
+        ];
+
+        $base = self::base();
+        $canonical = $base . self::aniversariosAnioPath($anio);
+        $h1 = "Aniversarios de $anio";
+        $desc = "Marchas procesionales que cumplen 25, 50, 75, 100 años o más en $anio, agrupadas por el año en que se compusieron.";
+
+        Http::cachePublic(3600);
+        View::render('aniversarios_anio', [
+            'h1' => $h1,
+            'anio' => $anio,
+            'tramos' => $tramos,
+            'vease' => $vease,
+        ], [
+            'title' => "$h1 — Marchas de Cristo",
+            'description' => $desc,
+            'canonical' => $canonical,
+            'noindex' => $total < Repo::HUB_MIN_MARCHAS,
+            'jsonld' => [
+                Seo::marchaHub($h1, $desc, $muestra, $total, $canonical),
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Aniversarios', 'url' => $canonical],
+                ]),
+            ],
+        ]);
+    }
+
     // ── Búsqueda global unificada (M3) ────────────────────────────────────────
     public static function buscar(): void
     {
@@ -763,6 +843,11 @@ final class Pages
             [$base . '/disco', 'weekly', '0.8'],
             [$base . '/dedicatorias', 'weekly', '0.8'],
             [$base . '/rankings', 'weekly', '0.7'],
+            // Solo el año en curso (N-09): a diferencia de los hubs de año, no
+            // hay un universo cerrado de "años válidos" para aniversarios —
+            // cualquier año lo es — así que solo se anuncia el vigente; los
+            // años pasados siguen accesibles (y rastreables) vía prev/next.
+            [$base . self::aniversariosAnioPath(gmdate('Y')), 'monthly', '0.6'],
             [$base . '/datos', 'monthly', '0.5'],
         ];
 
@@ -1036,6 +1121,7 @@ final class Pages
             '- [Discos](' . $base . '/disco)',
             '- [Dedicatorias](' . $base . '/dedicatorias)',
             '- [Rankings](' . $base . '/rankings)',
+            '- [Aniversarios](' . $base . '/aniversarios)',
             '- [Mapa del sitio](' . $base . '/sitemap.xml)',
             '',
         ];

@@ -317,6 +317,28 @@ $tests = [
     'rankings año inexistente 404' => static fn() => assertStatus('/rankings/1800', 404, $base),
     'hub año enlaza a rankings del año' => static fn() => assertContains('/marcha/ano/1995', 'href="/rankings/1995"', $base),
 
+    // ── Aniversarios (N-09): tramos fijos (no atados a la fecha real de hoy,
+    // para que la suite no dependa del año en que se ejecute CI) ────────────
+    'aniversarios sin año → 302 al año en curso' => static function () use ($base): void {
+        $r = httpGet($base . '/aniversarios');
+        if ($r['status'] !== 302) {
+            throw new RuntimeException("/aniversarios → esperado 302, obtenido {$r['status']}");
+        }
+        $anioActual = gmdate('Y');
+        $loc = $r['headers']['location'] ?? '';
+        if (!str_ends_with($loc, "/aniversarios/$anioActual")) {
+            throw new RuntimeException("/aniversarios → Location '$loc' no apunta al año en curso ($anioActual)");
+        }
+    },
+    // 2020-25=1995 (3 marchas en la fixture) → con sustancia, indexable.
+    'aniversarios 2020 (25 años → 1995) 200 + indexable' => static fn() => assertNotNoIndex('/aniversarios/2020', $base),
+    'aniversarios 2020 JSON-LD CollectionPage' => static fn() => assertJsonLd('/aniversarios/2020', $base, 'CollectionPage'),
+    // 2015-25=1990 (1 sola marcha) → thin, noindex pero no 404.
+    'aniversarios 2015 (25 años → 1990) → noindex' => static fn() => assertNoIndex('/aniversarios/2015', $base),
+    // 2010: ningún tramo de 25 en 25 cae en 1990 ni 1995 → sin coincidencias.
+    'aniversarios 2010 (sin coincidencias) 404' => static fn() => assertStatus('/aniversarios/2010', 404, $base),
+    'aniversarios año fuera de rango (1500) 404' => static fn() => assertStatus('/aniversarios/1500', 404, $base),
+
     // ── Hubs de catálogo indexables (C1) ────────────────────────────────────
     'hub año con sustancia 200 + indexable' => static fn() => assertNotNoIndex('/marcha/ano/1995', $base),
     'hub año thin → noindex' => static fn() => assertNoIndex('/marcha/ano/1990', $base),

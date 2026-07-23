@@ -94,8 +94,8 @@ plan de palancas + M6/M7 plegados).
 | # | Pantalla / tarea | Depende de | Estado |
 |---|------------------|-----------|--------|
 | N-07 | `/rankings` — parametrizar por año las queries `fetchMas*` existentes | — | ✅ Completado 2026-07-23 — `/estadisticas` renombrado con 301 permanente; `/rankings/{año}` con umbral `HUB_MIN_MARCHAS` (thin → noindex, como los demás hubs), índice por décadas, cross-link con `/marcha/ano/{año}` |
-| N-09 | `/aniversarios/{año}` — 25/50/75/100 años, centenarios | — | ⏳ Siguiente |
-| N-08 | Anuario `/marchas/{año}` (ampliar el hub `/marcha/ano/{año}` actual) | — | ⏳ |
+| N-09 | `/aniversarios/{año}` — 25/50/75/100 años, centenarios | — | ✅ Completado 2026-07-23 — tramos de 25 en 25 hasta 200 (centenarios destacados 🎉); `/aniversarios` redirige 302 al año en curso; `/aniversarios/{año}` fuera de [1900, actual+1] → 404 (evita espacio infinito de URLs); cross-link recíproco desde `/marcha/ano/{año}` cuando ese año cumple aniversario redondo hoy |
+| N-08 | Anuario `/marchas/{año}` (ampliar el hub `/marcha/ano/{año}` actual) | — | ⏳ Siguiente |
 | N-10 | `/mapa` — coropleta SVG por provincia | **P-07 en prod** | ⏳ Bloqueada |
 | — | Ejecutar P-07 (`completar_provincia.php`) y `seed_dedicatorias.php` en **prod** | deploy hecho | ⏳ Pendiente in situ |
 
