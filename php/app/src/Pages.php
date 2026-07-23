@@ -868,7 +868,17 @@ final class Pages
             Http::notFound();
         }
 
-        $contratos = Repo::temporada($anio);
+        // Fallback defensivo: la tabla `contrato` (005_contrato.sql) necesita
+        // una migración manual en el host que puede no haberse aplicado aún
+        // (mismo mecanismo que P-07, ver docs/pendientes-post-cutover.md). Sin
+        // esto, visitar la página antes de migrar da un 500 crudo en vez de
+        // "todavía no hay contratos" — que es, en la práctica, el mismo estado.
+        try {
+            $contratos = Repo::temporada($anio);
+        } catch (\Throwable $e) {
+            error_log('[temporada] ' . $e->getMessage());
+            $contratos = [];
+        }
         $grupos = [];
         foreach ($contratos as $c) {
             $key = (string) $c['HERMANDAD_SLUG'];
@@ -975,13 +985,6 @@ final class Pages
                     $urls[] = [$base . self::provinciaHubPath((string) $r['K']), 'weekly', '0.7'];
                 }
             }
-            // Temporada (N-04): solo los años con contratos reales — alta manual,
-            // así que la mayoría de años no tendrán nada todavía.
-            foreach (Repo::aniosConTemporada() as $r) {
-                if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
-                    $urls[] = [$base . '/temporada/' . $r['K'], 'weekly', '0.5'];
-                }
-            }
             foreach (Db::all('SELECT ID_MARCHA AS id, TITULO AS label FROM marcha') as $r) {
                 $urls[] = [$base . Slug::buildDetailPath('marcha', $r['id'], (string) $r['label']), 'monthly', '0.7'];
             }
@@ -1003,6 +1006,21 @@ final class Pages
             }
         } catch (Throwable $e) {
             error_log('[sitemap] ' . $e->getMessage());
+        }
+
+        // Temporada (N-04) en su propio try: tabla nueva (005_contrato.sql) que
+        // necesita una migración manual en el host (ver docs/pendientes-post-cutover.md)
+        // — si aún no se ha aplicado, esto no debe tumbar el resto del sitemap
+        // (ya pasó: el primer deploy de N-04 dejó el sitemap sin fichas de marcha
+        // porque la consulta vivía dentro del try principal, más arriba).
+        try {
+            foreach (Repo::aniosConTemporada() as $r) {
+                if ((int) $r['N'] >= Repo::HUB_MIN_MARCHAS) {
+                    $urls[] = [$base . '/temporada/' . $r['K'], 'weekly', '0.5'];
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('[sitemap:temporada] ' . $e->getMessage());
         }
 
         $lastmodTag = $lastmod !== null ? '<lastmod>' . $lastmod . '</lastmod>' : '';

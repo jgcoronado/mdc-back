@@ -543,10 +543,23 @@ final class Admin
         $session = Auth::requireAdmin();
         $anio = (string) $p['anio'];
         if (preg_match('/^\d{4}$/', $anio) !== 1) Http::notFound();
+
+        // Igual que Pages::temporada(): la tabla `contrato` puede no estar
+        // migrada aún en este host (mecanismo manual, como P-07). Sin este
+        // fallback el panel da un 500 crudo en vez de avisar de qué falta.
+        $notice = self::noticeFromQuery();
+        try {
+            $contratos = Repo::temporada($anio);
+        } catch (\Throwable $e) {
+            error_log('[dashboard/temporada] ' . $e->getMessage());
+            $contratos = [];
+            $notice = ['type' => 'error', 'msg' => 'La tabla contrato no existe todavía en este host — falta aplicar la migración 005_contrato.sql (migrate_ingest.php vía Plesk, con PHP 8.4 seleccionado).'];
+        }
+
         View::render('admin/temporada', [
             'session' => $session, 'anio' => $anio,
-            'contratos' => Repo::temporada($anio),
-            'notice' => self::noticeFromQuery(),
+            'contratos' => $contratos,
+            'notice' => $notice,
         ], ['title' => "Temporada $anio — Marchas de Cristo", 'noindex' => true]);
     }
 
@@ -562,7 +575,12 @@ final class Admin
         $fuente = is_string($_POST['FUENTE'] ?? null) ? (string) $_POST['FUENTE'] : null;
         $nota = is_string($_POST['NOTA'] ?? null) ? (string) $_POST['NOTA'] : null;
 
-        $r = AdminRepo::addContrato($idBanda, $hermandad, $anio, $titular, $fuente, $nota);
+        try {
+            $r = AdminRepo::addContrato($idBanda, $hermandad, $anio, $titular, $fuente, $nota);
+        } catch (\Throwable $e) {
+            error_log('[dashboard/temporada/add] ' . $e->getMessage());
+            Http::redirect("/dashboard/temporada/$anio?err=TABLA_NO_MIGRADA", 302);
+        }
         if (($r['code'] ?? '') === 'CREATED') Http::redirect("/dashboard/temporada/$anio?created=1", 302);
         Http::redirect("/dashboard/temporada/$anio?err=" . ($r['code'] ?? 'ERROR'), 302);
     }
