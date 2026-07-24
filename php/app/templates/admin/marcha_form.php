@@ -7,6 +7,8 @@ $isEdit = $mode === 'edit';
 $proposalMode = $proposalMode ?? false;
 $val = static fn(string $k): string => V::e($marcha[$k] ?? '');
 $estilo = (string) ($marcha['ESTILO'] ?? '');
+$tipo = (string) ($marcha['TIPO'] ?? '');
+$tipoLabel = static fn(string $t): string => ucfirst(mb_strtolower($t, 'UTF-8'));
 // ID numérico de la banda de estreno ya guardada (para el campo hidden)
 $bandaEstrenoId  = (string) ($marcha['BANDA_ESTRENO'] ?? '');
 $bandaEstrenoNom = (string) ($marcha['BANDA_NOMBRE'] ?? '');  // nombre breve, pasado desde Admin
@@ -92,6 +94,17 @@ $excludeId = $isEdit ? (int) ($marcha['ID_MARCHA'] ?? 0) : 0;
                 <div id="bandaEstrenoSuggest" class="suggest" hidden></div>
             </div>
             <p class="field-help muted small">Banda que estrenó la marcha. Busca por nombre breve, nombre completo o localidad. Deja en blanco si se desconoce. <button type="button" class="link-btn" id="bandaEstrenoClear">Quitar selección</button>.</p>
+        </div>
+
+        <div class="field">
+            <label class="field-label" for="TIPO">Tipo</label>
+            <select class="input" id="TIPO" name="TIPO">
+                <option value="" <?= $tipo === '' ? 'selected' : '' ?>>— Sin asignar —</option>
+<?php foreach (\App\AdminRepo::MARCHA_TIPOS as $opt): ?>
+                <option value="<?= V::e($opt) ?>" <?= $tipo === $opt ? 'selected' : '' ?>><?= V::e($tipoLabel($opt)) ?></option>
+<?php endforeach; ?>
+            </select>
+            <p class="field-help muted small">Casi todas las marchas son «Marcha procesional»; el resto son adaptaciones minoritarias heredadas del catálogo original.</p>
         </div>
 
         <div class="field">

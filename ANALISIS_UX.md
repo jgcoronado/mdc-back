@@ -78,9 +78,19 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         asc/desc). El orden por defecto se preserva idéntico al histórico (paridad).
       - Nota: compositores (autor) se deja como buscador por nombre; su único eje
         útil sería "nº de marchas", ya cubierto por Estadísticas.
-- [ ] **Prioridad 4 — Datos.** Valorar campos adicionales que aporta
+- [~] **Prioridad 4 — Datos.** Valorar campos adicionales que aporta
       patrimoniomusical (ubicación geográfica, distinción tipo/estilo, campo libre de
       "notas/observaciones").
+      - Ubicación (`LOCALIDAD`/`PROVINCIA`) y notas (`DETALLES_MARCHA`) ya existían y
+        se muestran en la ficha; no requerían cambios.
+      - **TIPO ahora es editable y validado en el panel de admin** (antes era de solo
+        lectura, texto libre sin curar). Valores reales confirmados por consulta
+        directa a la BD de producción (2026-07): `MARCHA PROCESIONAL` (4182),
+        vacío (657), y 3 adaptaciones minoritarias (13+9+8). Lista cerrada en
+        `AdminRepo::MARCHA_TIPOS`, mismo patrón de validación que `ESTILO`.
+      - Pendiente: coordenadas geográficas (lat/long) para el Mapa por localidad en
+        vez de solo por provincia — requiere columna nueva + geocodificación, y el
+        usuario ha pedido abordarlo a continuación.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con

@@ -10,8 +10,21 @@ namespace App;
  */
 final class AdminRepo
 {
-    public const EDITABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'AUDIO', 'BANDA_ESTRENO', 'ESTILO', 'DETALLES_MARCHA'];
-    public const INSERTABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'ESTILO', 'DETALLES_MARCHA'];
+    public const EDITABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'AUDIO', 'BANDA_ESTRENO', 'TIPO', 'ESTILO', 'DETALLES_MARCHA'];
+    public const INSERTABLE_MARCHA = ['TITULO', 'FECHA', 'DEDICATORIA', 'LOCALIDAD', 'PROVINCIA', 'BANDA_ESTRENO', 'TIPO', 'ESTILO', 'DETALLES_MARCHA'];
+
+    /**
+     * Valores reales de marcha.TIPO en producción (consultado 2026-07:
+     * MARCHA PROCESIONAL=4182, vacío=657, el resto son adaptaciones minoritarias).
+     * Campo heredado de la importación original — se valida contra esta lista
+     * cerrada para no admitir texto libre nuevo, igual que ESTILO.
+     */
+    public const MARCHA_TIPOS = [
+        'MARCHA PROCESIONAL',
+        'ADAPTACIÓN MARCHA DE BANDA DE MÚSICA',
+        'ADAPTACIÓN MÚSICA RELIGIOSA',
+        'ADAPTACIÓN MÚSICA POPULAR',
+    ];
     public const EDITABLE_AUTOR = ['NOMBRE', 'APELLIDOS', 'NOMBRE_ART', 'F_NAC', 'LUGAR_NAC', 'F_DEF', 'BIO'];
     public const EDITABLE_BANDA = ['NOMBRE_COMPLETO', 'NOMBRE_BREVE', 'LOCALIDAD', 'PROVINCIA', 'FECHA_FUND', 'FECHA_EXT', 'DIRECTOR_ACTUAL', 'DIR_MUS_ACTUAL', 'WEB'];
 
@@ -54,6 +67,9 @@ final class AdminRepo
         if (array_key_exists('ESTILO', $safe) && $safe['ESTILO'] !== null && !in_array($safe['ESTILO'], ['CCTT', 'AM'], true)) {
             return ['code' => 'INVALID_ESTILO'];
         }
+        if (array_key_exists('TIPO', $safe) && $safe['TIPO'] !== null && !in_array($safe['TIPO'], self::MARCHA_TIPOS, true)) {
+            return ['code' => 'INVALID_TIPO'];
+        }
 
         $set = implode(', ', array_map(static fn(string $k): string => "$k = ?", array_keys($safe)));
         $changes = Db::run("UPDATE marcha SET $set WHERE ID_MARCHA = ?", [...array_values($safe), $marchaId]);
@@ -84,6 +100,9 @@ final class AdminRepo
         }
         if (array_key_exists('ESTILO', $safe) && $safe['ESTILO'] !== null && !in_array($safe['ESTILO'], ['CCTT', 'AM'], true)) {
             return ['code' => 'INVALID_ESTILO'];
+        }
+        if (array_key_exists('TIPO', $safe) && $safe['TIPO'] !== null && !in_array($safe['TIPO'], self::MARCHA_TIPOS, true)) {
+            return ['code' => 'INVALID_TIPO'];
         }
 
         $ids = array_values(array_unique(array_filter(
