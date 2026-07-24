@@ -16,9 +16,9 @@ $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
         </div>
         <h1>Mapa de provincias</h1>
         <p class="asiento">Marchas procesionales del catálogo por provincia. Pulsa una provincia
-            (o consulta la tabla de abajo) para ver su catálogo completo. Los puntos marcan
-            localidades con marchas — su tamaño crece con el número de marchas; la posición es
-            aproximada.</p>
+            para ver sus municipios con marchas (los puntos marcan localidades; su tamaño crece
+            con el número de marchas). También puedes ir directo al catálogo desde la tabla de
+            abajo.</p>
 
         <div class="mapa-wrap">
             <?= $svgMapa ?>

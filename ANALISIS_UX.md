@@ -93,11 +93,15 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         transformación afín lat/lng → coordenadas del `mapa-provincias.svg` por
         mínimos cuadrados (centro geográfico real de cada provincia vs. centro de
         su `<g>` en el SVG; error medio ~5.5 unidades sobre un lienzo 569×392,
-        Canarias excluida por dibujarse como recuadro aparte). El mapa de
-        provincias ahora también pinta un punto por localidad con marchas, tamaño
-        según recuento, enlazado a su filtro en el buscador. Sin llamadas de red
+        Canarias excluida por dibujarse como recuadro aparte). Sin llamadas de red
         en tiempo de ejecución (dataset estático en `app/geo/municipios_es.php`,
         coherente con la política de CSP del sitio).
+        Navegación en dos niveles (a petición del usuario, tras ver que en el
+        mapa nacional todos los municipios quedaban clicables a la vez):
+        el mapa nacional (`/mapa`) solo permite pulsar la **provincia**, que
+        lleva a un mapa ampliado de esa provincia (`/mapa/provincia/{slug}`,
+        recorte del viewBox a su caja delimitadora) donde ya sí son clicables
+        los **municipios**, enlazando al buscador filtrado por localidad.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con

@@ -427,17 +427,25 @@ final class Repo
 
     /**
      * Localidades con marchas vivas, con recuento y su provincia, de más a
-     * menos marchas. Para el mapa por localidad (App\Mapa::puntos).
+     * menos marchas. Para el mapa por localidad (App\Mapa::puntos). Con
+     * $provincia, filtra a una sola provincia (mapa ampliado de provincia).
      * @return list<array{LOCALIDAD:string,PROVINCIA:string,N:int}>
      */
-    public static function hubLocalidades(): array
+    public static function hubLocalidades(?string $provincia = null): array
     {
+        $where = "m.LOCALIDAD IS NOT NULL AND m.LOCALIDAD != ''
+               AND m.PROVINCIA IS NOT NULL AND m.PROVINCIA != ''
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)";
+        $values = [];
+        if ($provincia !== null) {
+            $where .= ' AND m.PROVINCIA = ?';
+            $values[] = $provincia;
+        }
         return Db::all(
             "SELECT m.LOCALIDAD, m.PROVINCIA, COUNT(*) AS N FROM marcha m
-             WHERE m.LOCALIDAD IS NOT NULL AND m.LOCALIDAD != ''
-               AND m.PROVINCIA IS NOT NULL AND m.PROVINCIA != ''
-               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
-             GROUP BY m.LOCALIDAD, m.PROVINCIA ORDER BY N DESC, m.LOCALIDAD ASC"
+             WHERE $where
+             GROUP BY m.LOCALIDAD, m.PROVINCIA ORDER BY N DESC, m.LOCALIDAD ASC",
+            $values
         );
     }
 

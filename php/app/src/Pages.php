@@ -233,6 +233,11 @@ final class Pages
         return '/marcha/provincia/' . Slug::slugify($provincia);
     }
 
+    public static function mapaProvinciaPath(string $provincia): string
+    {
+        return '/mapa/provincia/' . Slug::slugify($provincia);
+    }
+
     /** Ruta del hub para un valor de BD ('CCTT'/'AM'), o null si no es un estilo conocido. */
     public static function estiloHubPath(?string $db): ?string
     {
@@ -849,6 +854,56 @@ final class Pages
                 Seo::breadcrumbs([
                     ['name' => 'Inicio', 'url' => $base],
                     ['name' => 'Mapa', 'url' => $canonical],
+                ]),
+            ],
+        ]);
+    }
+
+    /** Mapa ampliado de una provincia: municipios clicables (self::mapaProvinciaPath). */
+    public static function mapaProvincia(array $p): void
+    {
+        $raw = (string) $p['slug'];
+        $slug = Slug::slugify($raw);
+        $prov = null;
+        foreach (Repo::hubProvincias() as $r) {
+            if (Slug::slugify((string) $r['K']) === $slug) {
+                $prov = $r;
+                break;
+            }
+        }
+        if ($prov === null) {
+            Http::notFound();
+        }
+        if ($raw !== $slug) {
+            Http::redirect(self::mapaProvinciaPath((string) $prov['K']));
+        }
+        $nombre = (string) $prov['K'];
+
+        $porLocalidad = Repo::hubLocalidades($nombre);
+        $puntos = Mapa::puntos($porLocalidad);
+        $svgMapa = Mapa::renderProvincia($nombre, $puntos);
+        if ($svgMapa === null) {
+            Http::notFound();
+        }
+
+        $base = self::base();
+        $canonical = $base . self::mapaProvinciaPath($nombre);
+
+        Http::cachePublic(3600);
+        View::render('mapa_provincia', [
+            'svgMapa' => $svgMapa,
+            'provincia' => $nombre,
+            'porLocalidad' => $porLocalidad,
+            'total' => (int) $prov['N'],
+        ], [
+            'title' => 'Mapa de ' . $nombre . ' — Marchas de Cristo',
+            'description' => 'Localidades con marchas procesionales en la provincia de ' . $nombre . ': pulsa un municipio para ver su catálogo.',
+            'canonical' => $canonical,
+            'jsonld' => [
+                Seo::breadcrumbs([
+                    ['name' => 'Inicio', 'url' => $base],
+                    ['name' => 'Mapa', 'url' => $base . '/mapa'],
+                    ['name' => $nombre, 'url' => $canonical],
                 ]),
             ],
         ]);

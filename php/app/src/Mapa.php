@@ -39,6 +39,67 @@ final class Mapa
     ];
 
     /**
+     * Caja delimitadora (x, y, ancho, alto, en unidades del viewBox "0 0 569
+     * 392") de cada <g id="ES-XX"> en mapa-provincias.svg — calculada una vez
+     * con getBBox() en un navegador (la geometría del SVG es fija, no cambia
+     * entre peticiones). Se usa para encuadrar el zoom de App\Mapa::renderProvincia.
+     */
+    private const PROVINCIA_BBOX = [
+        'ES-A' => [392.86, 208.48, 41.76, 42.96],
+        'ES-AB' => [335.98, 188.08, 62.16, 56.88],
+        'ES-AL' => [327.82, 249.04, 48.72, 50.16],
+        'ES-AV' => [247.66, 117.51, 48.96, 43.44],
+        'ES-B' => [464.38, 67.11, 42.96, 45.84],
+        'ES-BA' => [194.62, 184.96, 85.92, 61.68],
+        'ES-BI' => [318.94, 25.34, 30.47, 19.44],
+        'ES-BU' => [292.31, 35.91, 54.47, 70.56],
+        'ES-C' => [143.02, 8.31, 52.79, 48.97],
+        'ES-CA' => [220.54, 283.13, 44.16, 42.24],
+        'ES-CC' => [190.54, 143.68, 80.64, 58.8],
+        'ES-CE' => [245.19, 328.97, 21.22, 9.73],
+        'ES-CO' => [249.82, 215.68, 50.16, 62.88],
+        'ES-CR' => [267.59, 182.09, 76.06, 49.66],
+        'ES-CS' => [399.34, 131.92, 47.95, 43.68],
+        'ES-CU' => [327.1, 138.4, 62.88, 57.84],
+        'ES-GC' => [92.16, 313.12, 85.66, 68.16],
+        'ES-GI' => [473.5, 58.72, 48.47, 33.84],
+        'ES-GR' => [289.42, 242.56, 68.16, 55.92],
+        'ES-GU' => [315.82, 111.51, 61.44, 47.52],
+        'ES-H' => [186.94, 234.88, 45.36, 57.84],
+        'ES-HU' => [388.31, 46, 57.09, 63.12],
+        'ES-J' => [291.1, 224.32, 59.04, 46.56],
+        'ES-L' => [432.94, 47.19, 44.88, 64.31],
+        'ES-LE' => [210.46, 33.75, 70.56, 48.48],
+        'ES-LO' => [328.3, 58.23, 43.68, 29.28],
+        'ES-LU' => [183.58, 9.75, 35.76, 58.32],
+        'ES-M' => [283.41, 118, 47.28, 51.59],
+        'ES-MA' => [247.18, 274.49, 60.24, 38.64],
+        'ES-ML' => [322.59, 353.69, 22.53, 10.13],
+        'ES-MU' => [353.26, 214.96, 53.28, 55.92],
+        'ES-NA' => [347.26, 30.87, 52.56, 56.64],
+        'ES-O' => [209.02, 15.75, 78.72, 30.48],
+        'ES-OR' => [171.82, 56.55, 48.48, 32.16],
+        'ES-P' => [270.17, 41.19, 35.33, 52.56],
+        'ES-PM' => [465.09, 152.81, 95.28, 63.84],
+        'ES-PO' => [143.59, 44.79, 43.83, 38.64],
+        'ES-S' => [277.41, 23.19, 50.41, 30.25],
+        'ES-SA' => [211.9, 110.79, 56.4, 42.24],
+        'ES-SE' => [218.62, 236.56, 60.24, 54.72],
+        'ES-SG' => [279.58, 100.95, 46.32, 38.16],
+        'ES-SO' => [315.58, 78.39, 53.76, 43.92],
+        'ES-SS' => [335.74, 27.75, 37.93, 20.4],
+        'ES-T' => [429.34, 97.83, 44.88, 43.92],
+        'ES-TE' => [369.1, 109.35, 64.08, 61.2],
+        'ES-TF' => [7.63, 334.72, 80.79, 49.22],
+        'ES-TO' => [257.5, 151.84, 77.76, 43.2],
+        'ES-V' => [378.47, 156.16, 47.75, 60.97],
+        'ES-VA' => [256.53, 70.94, 46.09, 49.47],
+        'ES-VI' => [323.75, 35.19, 31.44, 30],
+        'ES-Z' => [357.58, 53.43, 78.0, 73.45],
+        'ES-ZA' => [210.94, 71.43, 53.76, 47.52],
+    ];
+
+    /**
      * Cortes de recuento => nivel de intensidad (1-4; 0 = sin datos, 5 = por
      * encima del último corte). Ajustados a la distribución real del catálogo
      * (muy concentrado en Andalucía: Sevilla sola pasa de 1.300) en vez de una
@@ -129,7 +190,46 @@ final class Mapa
         return min(6.0, 1.3 + log($n + 1, 2) * 0.85);
     }
 
+    /** Añade la capa de puntos (uno por localidad) a un <svg> ya cargado en $dom.
+     *  $clicables=false: solo tooltip (<title>), sin <a> — así en el mapa
+     *  nacional los puntos no compiten con el clic en la provincia; el
+     *  desglose por municipio vive en self::renderProvincia(). */
+    private static function pintarPuntos(\DOMDocument $dom, \DOMElement $svgEl, array $puntos, bool $clicables): void
+    {
+        if ($puntos === []) {
+            return;
+        }
+        $capa = $dom->createElement('g');
+        $capa->setAttribute('class', 'mapa-puntos');
+        foreach ($puntos as $p) {
+            $c = $dom->createElement('circle');
+            $c->setAttribute('class', 'mapa-punto');
+            $c->setAttribute('cx', (string) round($p['x'], 2));
+            $c->setAttribute('cy', (string) round($p['y'], 2));
+            $c->setAttribute('r', (string) round(self::radio($p['n']), 2));
+            $title = $dom->createElement('title');
+            $title->appendChild($dom->createTextNode(
+                $p['localidad'] . ' (' . $p['provincia'] . '): ' . number_format($p['n'], 0, ',', '.') . ' marcha' . ($p['n'] === 1 ? '' : 's')
+            ));
+            $c->appendChild($title);
+            if ($clicables) {
+                $a = $dom->createElement('a');
+                $a->setAttribute('href', '/marcha?' . http_build_query(['localidad' => $p['localidad']]));
+                $a->appendChild($c);
+                $capa->appendChild($a);
+            } else {
+                $capa->appendChild($c);
+            }
+        }
+        $svgEl->appendChild($capa);
+    }
+
     /**
+     * Mapa nacional: provincias coloreadas por recuento, enlazadas a su mapa
+     * ampliado (self::renderProvincia, vía Pages::mapaProvinciaPath). Los
+     * puntos de localidad se muestran (tooltip) pero no son clicables aquí —
+     * el desglose por municipio vive en la vista de provincia.
+     *
      * @param list<array{K:string,N:int}> $porProvincia  Repo::hubProvincias()
      * @param list<array{x:float,y:float,localidad:string,provincia:string,n:int}> $puntos  self::puntos()
      * @return string  Markup <svg>…</svg> listo para imprimir sin escapar
@@ -166,33 +266,65 @@ final class Mapa
 
             if ($n > 0) {
                 $a = $dom->createElement('a');
-                $a->setAttribute('href', Pages::provinciaHubPath($nombre));
+                $a->setAttribute('href', Pages::mapaProvinciaPath($nombre));
                 $svgEl->replaceChild($a, $g);
                 $a->appendChild($g);
             }
         }
 
-        if ($puntos !== []) {
-            $capa = $dom->createElement('g');
-            $capa->setAttribute('class', 'mapa-puntos');
-            foreach ($puntos as $p) {
-                $a = $dom->createElement('a');
-                $a->setAttribute('href', '/marcha?' . http_build_query(['localidad' => $p['localidad']]));
-                $c = $dom->createElement('circle');
-                $c->setAttribute('class', 'mapa-punto');
-                $c->setAttribute('cx', (string) round($p['x'], 2));
-                $c->setAttribute('cy', (string) round($p['y'], 2));
-                $c->setAttribute('r', (string) round(self::radio($p['n']), 2));
-                $title = $dom->createElement('title');
-                $title->appendChild($dom->createTextNode(
-                    $p['localidad'] . ' (' . $p['provincia'] . '): ' . number_format($p['n'], 0, ',', '.') . ' marcha' . ($p['n'] === 1 ? '' : 's')
-                ));
-                $c->appendChild($title);
-                $a->appendChild($c);
-                $capa->appendChild($a);
-            }
-            $svgEl->appendChild($capa);
+        self::pintarPuntos($dom, $svgEl, $puntos, clicables: false);
+
+        return (string) $dom->saveXML($svgEl);
+    }
+
+    /**
+     * Mapa ampliado de una sola provincia: recorta el viewBox a su caja
+     * delimitadora (con margen) y muestra solo su <g>, con los puntos de sus
+     * localidades ya clicables (enlazan al buscador filtrado por localidad).
+     *
+     * @param  list<array{x:float,y:float,localidad:string,provincia:string,n:int}> $puntos  self::puntos(), ya filtrado a esta provincia
+     * @return string|null  Markup <svg>…</svg>, o null si $nombreProvincia no es una provincia conocida.
+     */
+    public static function renderProvincia(string $nombreProvincia, array $puntos): ?string
+    {
+        $iso = array_search($nombreProvincia, self::PROVINCIAS, true);
+        if ($iso === false || !isset(self::PROVINCIA_BBOX[$iso])) {
+            return null;
         }
+
+        $dom = new \DOMDocument();
+        $dom->loadXML((string) file_get_contents(PUBLIC_DIR . '/assets/mapa-provincias.svg'));
+        $svgEl = $dom->documentElement;
+
+        $target = null;
+        foreach (iterator_to_array($svgEl->childNodes) as $g) {
+            if (!($g instanceof \DOMElement) || $g->nodeName !== 'g') {
+                continue;
+            }
+            if ($g->getAttribute('id') === $iso) {
+                $target = $g;
+            } else {
+                $svgEl->removeChild($g);
+            }
+        }
+        if ($target === null) {
+            return null;
+        }
+        $target->setAttribute('class', 'prov prov-provincia');
+
+        // La etiqueta <text> del nombre viene en unidades absolutas del SVG:
+        // al recortar el viewBox a una sola provincia se vería gigante y
+        // taparía los puntos. Se quita aquí; el nombre ya está en el <h1>.
+        foreach (iterator_to_array($target->getElementsByTagName('text')) as $text) {
+            $text->parentNode->removeChild($text);
+        }
+
+        // Margen del 12% alrededor de la provincia para que no quede pegada al borde.
+        [$x, $y, $w, $h] = self::PROVINCIA_BBOX[$iso];
+        $pad = max($w, $h) * 0.12;
+        $svgEl->setAttribute('viewBox', sprintf('%.2f %.2f %.2f %.2f', $x - $pad, $y - $pad, $w + 2 * $pad, $h + 2 * $pad));
+
+        self::pintarPuntos($dom, $svgEl, $puntos, clicables: true);
 
         return (string) $dom->saveXML($svgEl);
     }

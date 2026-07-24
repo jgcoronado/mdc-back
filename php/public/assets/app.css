@@ -564,6 +564,9 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
 .prov-3 { fill: var(--map-3); background: var(--map-3); }
 .prov-4 { fill: var(--map-4); background: var(--map-4); }
 .prov-5 { fill: var(--acc); background: var(--acc); }
+/* Mapa ampliado de una sola provincia (App\Mapa::renderProvincia): un único
+   tono neutro, ya que aquí no hay coropleta que comparar entre provincias. */
+.prov-provincia { fill: var(--s2); background: var(--s2); }
 /* Puntos por localidad (Prioridad 4): posición aproximada (transformación afín
    calibrada contra el propio SVG, no una proyección cartográfica exacta). */
 .mapa-punto { fill: var(--ink); fill-opacity: 0.55; stroke: var(--bg); stroke-width: 0.4; transition: fill-opacity 0.15s ease, r 0.15s ease; }

@@ -64,6 +64,7 @@ $router->get('/aniversarios/{anio}', [Pages::class, 'aniversariosAnioHub']);
 
 // ── Mapa (N-10): coropleta SVG por provincia ──────────────────────────────────
 $router->get('/mapa', [Pages::class, 'mapa']);
+$router->get('/mapa/provincia/{slug}', [Pages::class, 'mapaProvincia']);
 
 // ── Temporada (N-04): contratos banda↔hermandad, alta manual (N-06 pendiente) ──
 $router->get('/temporada', [Pages::class, 'temporadaIndex']);
