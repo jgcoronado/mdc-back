@@ -441,12 +441,34 @@ final class Repo
             $where .= ' AND m.PROVINCIA = ?';
             $values[] = $provincia;
         }
-        return Db::all(
+        $rows = Db::all(
             "SELECT m.LOCALIDAD, m.PROVINCIA, COUNT(*) AS N FROM marcha m
              WHERE $where
-             GROUP BY m.LOCALIDAD, m.PROVINCIA ORDER BY N DESC, m.LOCALIDAD ASC",
+             GROUP BY m.LOCALIDAD, m.PROVINCIA",
             $values
         );
+
+        // Fusiona variantes de mayúsculas/acentos de una misma localidad —
+        // dato heredado sin capitalización consistente (p.ej. "Aguilar De La
+        // Frontera" y "Aguilar de la Frontera" en la misma provincia): sin
+        // esto, GROUP BY las trata como localidades distintas y el mapa
+        // acaba pintando dos puntos superpuestos en las mismas coordenadas
+        // (misma localidad real → mismo match en municipios_es.php), cada
+        // uno con su rótulo, ilegibles al solaparse.
+        $grupos = [];
+        foreach ($rows as $r) {
+            $key = Db::noAcc((string) $r['PROVINCIA']) . '|' . Db::noAcc((string) $r['LOCALIDAD']);
+            $grupos[$key]['provincia'] = $r['PROVINCIA'];
+            $grupos[$key]['total'] = ($grupos[$key]['total'] ?? 0) + (int) $r['N'];
+            $grupos[$key]['variantes'][$r['LOCALIDAD']] = (int) $r['N'];
+        }
+        $out = [];
+        foreach ($grupos as $g) {
+            arsort($g['variantes']);
+            $out[] = ['LOCALIDAD' => array_key_first($g['variantes']), 'PROVINCIA' => $g['provincia'], 'N' => $g['total']];
+        }
+        usort($out, static fn(array $a, array $b): int => $b['N'] <=> $a['N'] ?: strcmp((string) $a['LOCALIDAD'], (string) $b['LOCALIDAD']));
+        return $out;
     }
 
     // ── Admin: cargadores en crudo (para formularios de edición) ─────────────

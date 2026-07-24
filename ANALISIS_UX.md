@@ -133,6 +133,18 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         radio/tamaño de letra "base" a escala 1 y los reescala en sentido
         inverso al factor de zoom en cada cambio de vista, de modo que solo
         cambia su posición relativa, no su tamaño aparente.
+        Bug de datos encontrado al probar con datos reales de producción
+        (provincia de Córdoba): la misma localidad aparecía dos veces con
+        distinta capitalización ("Aguilar De La Frontera" / "Aguilar de la
+        Frontera"), y al coincidir ambas en el mismo punto geográfico
+        (mismo match en `municipios_es.php`), sus dos rótulos quedaban
+        superpuestos exactamente en el mismo sitio — ilegibles/"borrosos".
+        `Repo::hubLocalidades()` ahora fusiona variantes de mayúsculas/acentos
+        de una misma localidad (agrupa por clave normalizada con `Db::noAcc`,
+        suma los recuentos, se queda con la grafía más frecuente como texto
+        mostrado) antes de devolver la lista — corrige tanto los puntos del
+        mapa como la tabla accesible de abajo, que comparten esta misma
+        fuente de datos.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con
