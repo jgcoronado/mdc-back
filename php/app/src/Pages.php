@@ -172,9 +172,12 @@ final class Pages
     public static function bandaList(): void
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
-        $result = $hasQuery ? Repo::searchBandas(http_build_query($criteria), $page, $limit) : null;
-        $result !== null ? Http::noStore() : Http::cachePublic(3600);
-        View::render('banda_list', compact('criteria', 'result', 'page', 'limit'), [
+        // Explorador: lista siempre (sin filtros = catálogo completo paginado).
+        $qs = http_build_query($criteria);
+        $result = Repo::searchBandas($qs, $page, $limit);
+        $facets = Repo::bandaFacets($qs);
+        $hasQuery ? Http::noStore() : Http::cachePublic(3600);
+        View::render('banda_list', compact('criteria', 'result', 'page', 'limit', 'facets'), [
             'title' => 'Buscador de bandas — Marchas de Cristo',
             'description' => 'Busca bandas de cornetas y tambores y agrupaciones musicales por nombre, localidad y provincia.',
             'noindex' => true,
@@ -184,9 +187,12 @@ final class Pages
     public static function discoList(): void
     {
         [$criteria, $hasQuery, $page, $limit] = self::searchParams();
-        $result = $hasQuery ? Repo::searchDiscos(http_build_query($criteria), $page, $limit) : null;
-        $result !== null ? Http::noStore() : Http::cachePublic(3600);
-        View::render('disco_list', compact('criteria', 'result', 'page', 'limit'), [
+        // Explorador: lista siempre (sin filtros = catálogo completo paginado).
+        $qs = http_build_query($criteria);
+        $result = Repo::searchDiscos($qs, $page, $limit);
+        $facets = Repo::discoFacets($qs);
+        $hasQuery ? Http::noStore() : Http::cachePublic(3600);
+        View::render('disco_list', compact('criteria', 'result', 'page', 'limit', 'facets'), [
             'title' => 'Buscador de discos — Marchas de Cristo',
             'description' => 'Busca discos de música procesional de Semana Santa por nombre.',
             'noindex' => true,

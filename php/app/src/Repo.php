@@ -741,15 +741,39 @@ final class Repo
         return $banda;
     }
 
+    /**
+     * WHERE + values de la búsqueda de bandas. $exclude omite un criterio
+     * (para calcular facetas sin su propio filtro).
+     * @return array{0:string,1:list<mixed>}
+     */
+    private static function bandaWhere(array $params, ?string $exclude = null): array
+    {
+        $conditions = [];
+        $values = [];
+        $on = static fn(string $k): bool => $k !== $exclude && !empty($params[$k]);
+        if (!empty($params['titulo'])) { $conditions[] = 'NOACC(b.NOMBRE_COMPLETO) LIKE ?'; $values[] = '%' . Db::noAcc($params['titulo']) . '%'; }
+        if ($on('localidad')) { $conditions[] = 'NOACC(b.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
+        if ($on('provincia')) { $conditions[] = 'NOACC(b.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
+        $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
+        return [$where, $values];
+    }
+
+    /** Columnas ordenables del explorador de bandas: clave pública → SQL. */
+    private const BANDA_ORDEN = ['nombre' => 'b.NOMBRE_BREVE', 'localidad' => 'b.LOCALIDAD', 'fundacion' => 'b.FECHA_FUND'];
+
     public static function searchBandas(string $query, int $page = 1, int $limit = 20): array
     {
         parse_str($query, $params);
-        $conditions = [];
-        $values = [];
-        if (!empty($params['titulo'])) { $conditions[] = 'NOACC(b.NOMBRE_COMPLETO) LIKE ?'; $values[] = '%' . Db::noAcc($params['titulo']) . '%'; }
-        if (!empty($params['localidad'])) { $conditions[] = 'NOACC(b.LOCALIDAD) LIKE ?'; $values[] = '%' . Db::noAcc($params['localidad']) . '%'; }
-        if (!empty($params['provincia'])) { $conditions[] = 'NOACC(b.PROVINCIA) LIKE ?'; $values[] = '%' . Db::noAcc($params['provincia']) . '%'; }
-        $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
+        [$where, $values] = self::bandaWhere($params);
+
+        // Sin 'orden' explícito se preserva el orden histórico (paridad con Next).
+        if (isset(self::BANDA_ORDEN[(string) ($params['orden'] ?? '')])) {
+            $col = self::BANDA_ORDEN[$params['orden']];
+            $dir = ((string) ($params['dir'] ?? '')) === 'desc' ? 'DESC' : 'ASC';
+            $orderBy = "$col $dir, b.NOMBRE_BREVE ASC";
+        } else {
+            $orderBy = 'b.NOMBRE_BREVE ASC';
+        }
 
         $countRow = Db::one("SELECT COUNT(*) AS n FROM banda b WHERE $where", $values);
         $totalRows = (int) ($countRow['n'] ?? 0);
@@ -760,10 +784,24 @@ final class Repo
                     b.LOCALIDAD, b.FECHA_FUND, b.FECHA_EXT,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM banda b WHERE $where
-             GROUP BY b.ID_BANDA ORDER BY b.NOMBRE_BREVE ASC LIMIT ? OFFSET ?",
+             GROUP BY b.ID_BANDA ORDER BY $orderBy LIMIT ? OFFSET ?",
             [...$values, $limit, $offset]
         );
         return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
+    }
+
+    /**
+     * Facetas del explorador de bandas: provincia, contada sin su propio filtro.
+     * @return array{provincia:list<array>}
+     */
+    public static function bandaFacets(string $query): array
+    {
+        parse_str($query, $params);
+        [$w, $v] = self::bandaWhere($params, 'provincia');
+        $prov = Db::all("SELECT b.PROVINCIA AS K, COUNT(*) AS N FROM banda b
+                         WHERE $w AND b.PROVINCIA IS NOT NULL AND b.PROVINCIA != ''
+                         GROUP BY b.PROVINCIA ORDER BY N DESC, b.PROVINCIA ASC LIMIT 12", $v);
+        return ['provincia' => $prov];
     }
 
     /** Fila cruda de banda (para el panel de relaciones). */
@@ -939,12 +977,42 @@ final class Repo
         return $disco;
     }
 
+    /**
+     * WHERE + values de la búsqueda de discos. $exclude omite un criterio
+     * (para calcular facetas sin su propio filtro).
+     * @return array{0:string,1:list<mixed>}
+     */
+    private static function discoWhere(array $params, ?string $exclude = null): array
+    {
+        $conditions = [];
+        $values = [];
+        $nombre = (string) ($params['nombre'] ?? '');
+        if ($nombre !== '') { $conditions[] = 'NOACC(d.NOMBRE_CD) LIKE ?'; $values[] = '%' . Db::noAcc($nombre) . '%'; }
+        if ($exclude !== 'decada' && !empty($params['decada'])) {
+            $d0 = (int) $params['decada'];
+            $conditions[] = 'CAST(d.FECHA_CD AS INTEGER) BETWEEN ? AND ?';
+            $values[] = $d0; $values[] = $d0 + 9;
+        }
+        $where = $conditions !== [] ? implode(' AND ', $conditions) : '1=1';
+        return [$where, $values];
+    }
+
+    /** Columnas ordenables del explorador de discos: clave pública → SQL. */
+    private const DISCO_ORDEN = ['nombre' => 'd.NOMBRE_CD', 'banda' => 'b.NOMBRE_BREVE', 'anio' => 'CAST(d.FECHA_CD AS INTEGER)'];
+
     public static function searchDiscos(string $query, int $page = 1, int $limit = 20): array
     {
         parse_str($query, $params);
-        $nombre = (string) ($params['nombre'] ?? '');
-        $where = $nombre !== '' ? 'NOACC(d.NOMBRE_CD) LIKE ?' : '1=1';
-        $values = $nombre !== '' ? ['%' . Db::noAcc($nombre) . '%'] : [];
+        [$where, $values] = self::discoWhere($params);
+
+        // Sin 'orden' explícito se preserva el orden histórico (paridad con Next).
+        if (isset(self::DISCO_ORDEN[(string) ($params['orden'] ?? '')])) {
+            $col = self::DISCO_ORDEN[$params['orden']];
+            $dir = ((string) ($params['dir'] ?? '')) === 'desc' ? 'DESC' : 'ASC';
+            $orderBy = "$col $dir, d.NOMBRE_CD ASC";
+        } else {
+            $orderBy = 'd.FECHA_CD ASC';
+        }
 
         $countRow = Db::one("SELECT COUNT(*) AS n FROM disco d WHERE $where", $values);
         $totalRows = (int) ($countRow['n'] ?? 0);
@@ -954,10 +1022,24 @@ final class Repo
             "SELECT d.ID_DISCO, d.NOMBRE_CD, d.FECHA_CD, b.ID_BANDA,
                     (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
              FROM disco d LEFT JOIN banda b ON b.ID_BANDA = d.BANDADISCO
-             WHERE $where ORDER BY d.FECHA_CD ASC LIMIT ? OFFSET ?",
+             WHERE $where ORDER BY $orderBy LIMIT ? OFFSET ?",
             [...$values, $limit, $offset]
         );
         return ['rowsReturned' => count($rows), 'totalRows' => $totalRows, 'data' => $rows];
+    }
+
+    /**
+     * Facetas del explorador de discos: década (de FECHA_CD), sin su propio filtro.
+     * @return array{decada:list<array>}
+     */
+    public static function discoFacets(string $query): array
+    {
+        parse_str($query, $params);
+        [$w, $v] = self::discoWhere($params, 'decada');
+        $dec = Db::all("SELECT (CAST(d.FECHA_CD AS INTEGER) / 10) * 10 AS K, COUNT(*) AS N FROM disco d
+                        WHERE $w AND CAST(d.FECHA_CD AS INTEGER) > 1900
+                        GROUP BY K ORDER BY K DESC LIMIT 10", $v);
+        return ['decada' => $dec];
     }
 
     // ── Búsqueda global unificada (M3) ───────────────────────────────────────
