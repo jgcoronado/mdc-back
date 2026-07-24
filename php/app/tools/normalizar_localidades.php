@@ -62,6 +62,22 @@ function pareceBienEscrito(string $v): bool
     return $v !== mb_strtoupper($v, 'UTF-8') && $v !== mb_strtolower($v, 'UTF-8');
 }
 
+/** true si el primer carácter es una mayúscula (un topónimo nunca debería
+ *  empezar en minúscula: "ávila" es un error de captura, no una variante
+ *  legítima de "Ávila", por muchas filas que tenga). */
+function empiezaEnMayuscula(string $v): bool
+{
+    $primera = mb_substr($v, 0, 1, 'UTF-8');
+    return $primera === mb_strtoupper($primera, 'UTF-8') && $primera !== mb_strtolower($primera, 'UTF-8');
+}
+
+/** Nº de vocales/ñ con tilde — para preferir "Cáceres" sobre "Caceres": la
+ *  ausencia de tilde suele ser el descuido, no la variante "buena". */
+function nAcentos(string $v): int
+{
+    return (int) preg_match_all('/[áéíóúñÁÉÍÓÚÑ]/u', $v);
+}
+
 /** Columnas a limpiar: [tabla, columna id, columna a normalizar]. */
 $OBJETIVOS = [
     ['marcha', 'ID_MARCHA', 'LOCALIDAD'],
@@ -105,11 +121,22 @@ try {
             if (count($variantes) < 2) {
                 continue; // sin variantes, nada que fusionar
             }
-            // Canónica: más usada; empate -> grafía "normal" antes que TODO
-            // MAYÚSCULAS/todo minúsculas; último empate -> alfabética.
+            // Canónica, en este orden (los dos primeros criterios van ANTES
+            // que el recuento a propósito: una mayúscula inicial correcta o
+            // una tilde no deben perder solo porque la variante "sucia"
+            // tenga más filas — "ávila" no debe ganarle a "Ávila" por tener
+            // más filas, ni "Caceres" a "Cáceres" en un empate alfabético):
+            //   1) empieza en mayúscula (un topónimo no debería no hacerlo)
+            //   2) más letras con tilde (la ausencia de tilde suele ser el
+            //      descuido, no la variante "buena")
+            //   3) más usada
+            //   4) mayúsculas/minúsculas mezcladas, no TODO MAYÚSCULAS/minúsculas
+            //   5) alfabética (último desempate, ya sin más criterio objetivo)
             $ordenadas = array_keys($variantes);
             usort($ordenadas, static function ($a, $b) use ($variantes) {
-                return $variantes[$b] <=> $variantes[$a]
+                return (int) empiezaEnMayuscula($b) <=> (int) empiezaEnMayuscula($a)
+                    ?: nAcentos($b) <=> nAcentos($a)
+                    ?: $variantes[$b] <=> $variantes[$a]
                     ?: (int) pareceBienEscrito($b) <=> (int) pareceBienEscrito($a)
                     ?: strcmp($a, $b);
             });

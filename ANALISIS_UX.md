@@ -157,6 +157,23 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         php/app/tools/normalizar_localidades.php` en el servidor, o con
         `DB_PATH=` apuntando a una copia local) — no se ha tocado la BD de
         producción desde aquí.
+        **Ejecutado por el usuario contra producción.** Al revisar la salida
+        real (54 filas fusionadas en total) se encontraron 3 fusiones
+        equivocadas por el criterio original (más filas → alfabético):
+        `"ávila"`(3) le ganó a `"Ávila"`(2) por recuento, y `"Caceres"`/
+        `"Huescar"` (sin tilde) le ganaron a `"Cáceres"`/`"Huéscar"` en un
+        empate a 1 resuelto alfabéticamente — el orden alfabético no
+        distingue "correcto" de "más frecuente". Corregido:
+        `normalizar_localidades.php` antepone ahora dos criterios al
+        recuento: 1) empezar en mayúscula (un topónimo nunca debería
+        perder por esto) y 2) más letras con tilde. Como esas 3 fusiones ya
+        estaban aplicadas en la BD real (el script no es una simulación) y
+        al estar fusionadas ya no se detectan como "variantes", se añadió
+        `app/tools/corregir_acentos_localidad.php` — un corrector puntual,
+        mismo patrón de backup/transacción, para esos 3 casos exactos.
+        Verificado con datos de prueba reproduciendo el bug: el criterio
+        nuevo resuelve bien los 3 casos y no rompe ninguno de los que ya
+        acertaba; el corrector puntual es idempotente. 81/81 smoke tests.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con
