@@ -145,6 +145,18 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         mostrado) antes de devolver la lista — corrige tanto los puntos del
         mapa como la tabla accesible de abajo, que comparten esta misma
         fuente de datos.
+        **Limpieza en origen**: nuevo `app/tools/normalizar_localidades.php`
+        (mismo patrón que los demás `migrate_*.php`/`completar_provincia.php`
+        del proyecto: backup VACUUM INTO, transacción, re-ejecutable sin
+        efecto si ya está limpio). Recorta espacios de más y fusiona
+        variantes de mayúsculas/acentos en `marcha.LOCALIDAD`,
+        `marcha.PROVINCIA`, `banda.LOCALIDAD` y `banda.PROVINCIA`,
+        quedándose con la grafía más usada (empate → prefiere mayúsculas/
+        minúsculas mixtas sobre TODO MAYÚSCULAS o todo minúsculas). Pendiente
+        de que el usuario lo ejecute contra la BD real (`php
+        php/app/tools/normalizar_localidades.php` en el servidor, o con
+        `DB_PATH=` apuntando a una copia local) — no se ha tocado la BD de
+        producción desde aquí.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con
