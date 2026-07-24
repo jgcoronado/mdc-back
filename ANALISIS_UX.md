@@ -108,6 +108,15 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         El tamaño de punto/rótulo se calcula como fracción del ancho del
         viewBox recortado (no un valor absoluto), para que se vea igual de
         grande en una provincia pequeña que en una grande.
+        Ajuste tras probar con datos reales (Sevilla tiene decenas de
+        municipios muy próximos): el tamaño de punto ya no varía por
+        recuento — con muchos municipios cercanos, puntos grandes se
+        solapaban y dejaban de poder pulsarse. Ahora el punto es pequeño y
+        fijo, y **el color** indica la cantidad (`App\Mapa::nivelLocalidad`,
+        rampa `--pt-1..4` ámbar — deliberadamente distinta de la coropleta
+        índigo, para no fundirse con el fondo `--acc` de la provincia), con
+        leyenda debajo del mapa. El rótulo también se redujo a un tercio del
+        tamaño anterior.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con

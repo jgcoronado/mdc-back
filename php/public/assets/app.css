@@ -24,6 +24,11 @@
     --juv: #5b3ea3;  --juv-bg: #f1ecfb;
     /* Coropleta del mapa (N-10): rampa de --s2 a --acc, 4 pasos intermedios */
     --map-1: #d8dbec; --map-2: #b0b8d8; --map-3: #8994c5; --map-4: #6171b1;
+    /* Puntos por municipio en el mapa de provincia: rampa cálida (ámbar), a
+       propósito distinta de --map-1..4 (fría, índigo) — el contorno de la
+       provincia ya usa --acc de fondo, así que los puntos necesitan un color
+       de otra familia para no fundirse con él en ningún nivel. */
+    --pt-1: #ffffff; --pt-2: #ffd9a3; --pt-3: #f5a623; --pt-4: #c9720a;
     /* Alias legacy (plantillas y JS existentes) */
     --surface: var(--s2);
     --surface2: var(--acc-tint);
@@ -57,6 +62,7 @@
         --err: #e09a9a;  --err-bg: #2e1717; --err-line: #4d2626;
         --juv: #b9a3e8;  --juv-bg: #241d33;
         --map-1: #2e3550; --map-2: #465074; --map-3: #5e6a9c; --map-4: #7685c4;
+        --pt-1: #161a24; --pt-2: #4a3a1f; --pt-3: #8a5a1f; --pt-4: #d7a866;
     }
 }
 
@@ -569,19 +575,25 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
    comparar entre provincias), para que el contorno contraste bien con el
    fondo de la tarjeta (--card) en ambos temas. */
 .prov-provincia { fill: var(--acc); background: var(--acc); }
-/* Puntos por municipio (solo en el mapa de provincia): --card sobre --acc da
-   buen contraste en claro y oscuro; el nombre va rotulado al lado (Prioridad
-   4/mapa: posición aproximada, transformación afín calibrada contra el
-   propio SVG, no una proyección cartográfica exacta). */
-.mapa-punto { fill: var(--card); stroke: var(--acc); stroke-width: 0.7; transition: fill 0.15s ease, r 0.15s ease; }
+/* Puntos por municipio (solo en el mapa de provincia): tamaño fijo y pequeño
+   a propósito (para que quepan y se puedan pulsar con muchos municipios
+   cercanos); el color indica la cantidad de marchas (App\Mapa::nivelLocalidad,
+   rampa --pt-1..4, ver :root) y el nombre va rotulado al lado. Posición
+   aproximada: transformación afín calibrada contra el propio SVG, no una
+   proyección cartográfica exacta. */
+.mapa-punto { stroke: var(--ink); stroke-width: 0.35; stroke-opacity: 0.35; transition: stroke-opacity 0.15s ease, stroke-width 0.15s ease; }
+.mapa-punto-n1 { fill: var(--pt-1); }
+.mapa-punto-n2 { fill: var(--pt-2); }
+.mapa-punto-n3 { fill: var(--pt-3); }
+.mapa-punto-n4 { fill: var(--pt-4); }
 /* --mapa-punto-font: fijado por App\Mapa en el <g class="mapa-puntos"> como
    fracción del ancho del viewBox recortado, para que el rótulo se vea igual
    de grande de una provincia a otra sin importar su tamaño real. */
 /* .mapa-svg text (arriba) fija font-size/stroke para el rótulo de provincia
    del mapa nacional; sube la especificidad aquí para que no se lo lleve por
    delante también en el mapa de provincia. */
-.mapa-svg text.mapa-punto-label { fill: var(--ink); font-size: var(--mapa-punto-font, 6px); font-weight: 600; pointer-events: none; paint-order: stroke fill; stroke: var(--card); stroke-width: calc(var(--mapa-punto-font, 6px) * 0.26); stroke-linejoin: round; }
-.mapa-puntos a:hover .mapa-punto, .mapa-puntos a:focus-visible .mapa-punto { fill: var(--map-4); }
+.mapa-svg text.mapa-punto-label { fill: var(--ink); font-size: var(--mapa-punto-font, 6px); font-weight: 600; pointer-events: none; paint-order: stroke fill; stroke: var(--card); stroke-width: calc(var(--mapa-punto-font, 6px) * 0.22); stroke-linejoin: round; }
+.mapa-puntos a:hover .mapa-punto, .mapa-puntos a:focus-visible .mapa-punto { stroke-opacity: 1; stroke-width: 0.9; }
 .mapa-puntos a:focus-visible { outline: 1px solid var(--ink); }
 .mapa-leyenda { display: flex; flex-wrap: wrap; gap: 0.9rem; list-style: none; margin: 0.8rem 0 0; padding: 0; font-size: 0.76rem; color: var(--muted-c); }
 .mapa-leyenda li { display: flex; align-items: center; gap: 0.35rem; }

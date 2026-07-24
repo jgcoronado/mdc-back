@@ -18,11 +18,18 @@ $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
         </div>
         <h1>Mapa de <?= V::e($provincia) ?></h1>
         <p class="asiento">Pulsa un municipio para ver sus marchas, o consulta la tabla de abajo.
-            La posición de los puntos es aproximada.</p>
+            El color indica cuántas marchas tiene cada uno; la posición es aproximada.</p>
 
         <div class="mapa-wrap mapa-wrap-provincia">
             <?= $svgMapa ?>
         </div>
+
+        <ul class="mapa-leyenda" aria-hidden="true">
+            <li><span class="prov-sw mapa-punto-n1"></span> 1 marcha</li>
+            <li><span class="prov-sw mapa-punto-n2"></span> 2–3</li>
+            <li><span class="prov-sw mapa-punto-n3"></span> 4–8</li>
+            <li><span class="prov-sw mapa-punto-n4"></span> 9+</li>
+        </ul>
 
         <p class="ids">
             <a href="<?= V::e(P::provinciaHubPath($provincia)) ?>">Ver las <?= $num($total) ?> marchas de <?= V::e($provincia) ?> →</a>

@@ -380,7 +380,7 @@ $tests = [
     },
     'mapa de provincia: municipio clicable, rotulado y con color de contraste + viewBox recortado' => static function () use ($base): void {
         $r = assertStatus('/mapa/provincia/sevilla', 200, $base);
-        if (!str_contains($r['body'], '<a href="/marcha?localidad=Sevilla"><circle class="mapa-punto"')) {
+        if (!str_contains($r['body'], '<a href="/marcha?localidad=Sevilla"><circle class="mapa-punto mapa-punto-n')) {
             throw new RuntimeException('/mapa/provincia/sevilla → el municipio Sevilla debería ser un punto clicable');
         }
         if (!str_contains($r['body'], '<text class="mapa-punto-label"') || !str_contains($r['body'], '>Sevilla</text>')) {

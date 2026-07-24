@@ -121,6 +121,23 @@ final class Mapa
     }
 
     /**
+     * Cortes de recuento por municipio (1-4), muy distintos de los de
+     * provincia: la mayoría de localidades tiene 1-3 marchas, y solo las
+     * "ciudades cofrades" grandes (Sevilla, Écija…) llegan a decenas.
+     */
+    private const CORTES_LOCALIDAD = [1 => 1, 2 => 3, 3 => 8];
+
+    private static function nivelLocalidad(int $n): int
+    {
+        foreach (self::CORTES_LOCALIDAD as $nivel => $max) {
+            if ($n <= $max) {
+                return $nivel;
+            }
+        }
+        return 4;
+    }
+
+    /**
      * Transformación afín lat/lng → coordenadas del viewBox de mapa-provincias.svg
      * (0 0 569 392), ajustada por mínimos cuadrados entre el centro geográfico
      * real de cada provincia (calculado a partir de app/geo/municipios_es.php)
@@ -183,34 +200,36 @@ final class Mapa
         return $out;
     }
 
-    /** Radio del punto por recuento, como fracción del ancho del viewBox
-     *  visible: escala logarítmica para que las grandes ciudades no eclipsen
-     *  a los pueblos con pocas marchas, pero relativa al zoom — un tamaño fijo
-     *  en unidades absolutas del SVG se ve minúsculo o gigante según lo grande
-     *  que sea la provincia recortada. */
-    private static function radio(int $n, float $viewBoxWidth): float
+    /** Radio del punto, fijo (no varía con el recuento — eso ahora lo indica
+     *  el color, ver self::nivelLocalidad) y como fracción del ancho del
+     *  viewBox visible: un tamaño absoluto en unidades del SVG se ve minúsculo
+     *  o gigante según lo grande que sea la provincia recortada. Pequeño a
+     *  propósito: con decenas de municipios cercanos, puntos y etiquetas
+     *  grandes se solapan y dejan de poder pulsarse. */
+    private static function radio(float $viewBoxWidth): float
     {
-        return $viewBoxWidth * (0.014 + 0.006 * log($n + 1, 2));
+        return $viewBoxWidth * 0.0055;
     }
 
     /** Añade la capa de puntos (uno por localidad) a un <svg> ya cargado en
-     *  $dom, con el nombre del municipio rotulado encima — solo para el mapa
-     *  ampliado de una provincia (self::renderProvincia); el mapa nacional no
-     *  pinta puntos. $viewBoxWidth: ancho del viewBox ya recortado, para
-     *  dimensionar puntos y etiquetas en proporción al zoom (ver self::radio). */
+     *  $dom, coloreados por recuento (self::nivelLocalidad) y con el nombre
+     *  del municipio rotulado encima — solo para el mapa ampliado de una
+     *  provincia (self::renderProvincia); el mapa nacional no pinta puntos.
+     *  $viewBoxWidth: ancho del viewBox ya recortado, para dimensionar puntos
+     *  y etiquetas en proporción al zoom (ver self::radio). */
     private static function pintarPuntos(\DOMDocument $dom, \DOMElement $svgEl, array $puntos, float $viewBoxWidth): void
     {
         if ($puntos === []) {
             return;
         }
-        $fontSize = $viewBoxWidth * 0.04;
+        $fontSize = $viewBoxWidth * 0.015;
+        $r = self::radio($viewBoxWidth);
         $capa = $dom->createElement('g');
         $capa->setAttribute('class', 'mapa-puntos');
         $capa->setAttribute('style', "--mapa-punto-font: {$fontSize}px");
         foreach ($puntos as $p) {
-            $r = self::radio($p['n'], $viewBoxWidth);
             $c = $dom->createElement('circle');
-            $c->setAttribute('class', 'mapa-punto');
+            $c->setAttribute('class', 'mapa-punto mapa-punto-n' . self::nivelLocalidad($p['n']));
             $c->setAttribute('cx', (string) round($p['x'], 2));
             $c->setAttribute('cy', (string) round($p['y'], 2));
             $c->setAttribute('r', (string) round($r, 2));
