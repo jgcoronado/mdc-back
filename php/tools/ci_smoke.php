@@ -365,8 +365,8 @@ $tests = [
         if (!str_contains($r['body'], '<td><a href="/marcha/provincia/sevilla">Sevilla</a></td>')) {
             throw new RuntimeException('/mapa → falta la fila de Sevilla en la tabla accesible (catálogo directo)');
         }
-        if (str_contains($r['body'], '<a href="/marcha?localidad=')) {
-            throw new RuntimeException('/mapa → los puntos de localidad no deberían ser clicables en el mapa nacional');
+        if (str_contains($r['body'], 'mapa-punto')) {
+            throw new RuntimeException('/mapa → el mapa nacional no debería pintar puntos de localidad');
         }
     },
     'mapa: provincia sin datos no es un enlace' => static function () use ($base): void {
@@ -378,10 +378,16 @@ $tests = [
             throw new RuntimeException('/mapa → Madrid no debería tener enlace de provincia (0 marchas en la fixture)');
         }
     },
-    'mapa de provincia: municipio es un enlace clicable + viewBox recortado' => static function () use ($base): void {
+    'mapa de provincia: municipio clicable, rotulado y con color de contraste + viewBox recortado' => static function () use ($base): void {
         $r = assertStatus('/mapa/provincia/sevilla', 200, $base);
         if (!str_contains($r['body'], '<a href="/marcha?localidad=Sevilla"><circle class="mapa-punto"')) {
             throw new RuntimeException('/mapa/provincia/sevilla → el municipio Sevilla debería ser un punto clicable');
+        }
+        if (!str_contains($r['body'], '<text class="mapa-punto-label"') || !str_contains($r['body'], '>Sevilla</text>')) {
+            throw new RuntimeException('/mapa/provincia/sevilla → el municipio Sevilla debería llevar su nombre rotulado');
+        }
+        if (!str_contains($r['body'], 'class="prov prov-provincia"')) {
+            throw new RuntimeException('/mapa/provincia/sevilla → la provincia debería pintarse con el color de contraste, no la coropleta nacional');
         }
         if (str_contains($r['body'], 'viewBox="0 0 569 392"')) {
             throw new RuntimeException('/mapa/provincia/sevilla → el viewBox debería estar recortado a la provincia, no ser el del mapa nacional');

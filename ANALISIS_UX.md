@@ -98,10 +98,16 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         coherente con la política de CSP del sitio).
         Navegación en dos niveles (a petición del usuario, tras ver que en el
         mapa nacional todos los municipios quedaban clicables a la vez):
-        el mapa nacional (`/mapa`) solo permite pulsar la **provincia**, que
-        lleva a un mapa ampliado de esa provincia (`/mapa/provincia/{slug}`,
-        recorte del viewBox a su caja delimitadora) donde ya sí son clicables
-        los **municipios**, enlazando al buscador filtrado por localidad.
+        el mapa nacional (`/mapa`) solo pinta **provincias con su nombre**,
+        sin puntos de localidad, para seleccionarlas; lleva a un mapa ampliado
+        de esa provincia (`/mapa/provincia/{slug}`, recorte del viewBox a su
+        caja delimitadora), pintado en el color de marca (`--acc`, contraste
+        con el fondo de la tarjeta en ambos temas — ya no la coropleta, aquí
+        no hay recuentos que comparar entre provincias), con cada **municipio
+        rotulado con su nombre y clicable** → buscador filtrado por localidad.
+        El tamaño de punto/rótulo se calcula como fracción del ancho del
+        viewBox recortado (no un valor absoluto), para que se vea igual de
+        grande en una provincia pequeña que en una grande.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con

@@ -833,12 +833,11 @@ final class Pages
     public static function mapa(): void
     {
         $porProvincia = Repo::hubProvincias();
-        $puntos = Mapa::puntos(Repo::hubLocalidades());
-        $svgMapa = Mapa::render($porProvincia, $puntos);
+        $svgMapa = Mapa::render($porProvincia);
 
         $base = self::base();
         $canonical = $base . '/mapa';
-        $desc = 'Mapa de España con el número de marchas procesionales del catálogo por provincia: pulsa una provincia para ver su catálogo completo.';
+        $desc = 'Mapa de España con el número de marchas procesionales del catálogo por provincia: pulsa una provincia para ver sus municipios.';
 
         Http::cachePublic(3600);
         View::render('mapa', [
