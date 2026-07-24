@@ -425,6 +425,22 @@ final class Repo
         );
     }
 
+    /**
+     * Localidades con marchas vivas, con recuento y su provincia, de más a
+     * menos marchas. Para el mapa por localidad (App\Mapa::puntos).
+     * @return list<array{LOCALIDAD:string,PROVINCIA:string,N:int}>
+     */
+    public static function hubLocalidades(): array
+    {
+        return Db::all(
+            "SELECT m.LOCALIDAD, m.PROVINCIA, COUNT(*) AS N FROM marcha m
+             WHERE m.LOCALIDAD IS NOT NULL AND m.LOCALIDAD != ''
+               AND m.PROVINCIA IS NOT NULL AND m.PROVINCIA != ''
+               AND EXISTS (SELECT 1 FROM marcha_autor ma WHERE ma.ID_MARCHA = m.ID_MARCHA)
+             GROUP BY m.LOCALIDAD, m.PROVINCIA ORDER BY N DESC, m.LOCALIDAD ASC"
+        );
+    }
+
     // ── Admin: cargadores en crudo (para formularios de edición) ─────────────
 
     /** Fila cruda de marcha (sin normalizar FECHA, sin filtrar por autores). */

@@ -828,7 +828,8 @@ final class Pages
     public static function mapa(): void
     {
         $porProvincia = Repo::hubProvincias();
-        $svgMapa = Mapa::render($porProvincia);
+        $puntos = Mapa::puntos(Repo::hubLocalidades());
+        $svgMapa = Mapa::render($porProvincia, $puntos);
 
         $base = self::base();
         $canonical = $base . '/mapa';

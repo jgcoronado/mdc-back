@@ -564,7 +564,13 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
 .prov-3 { fill: var(--map-3); background: var(--map-3); }
 .prov-4 { fill: var(--map-4); background: var(--map-4); }
 .prov-5 { fill: var(--acc); background: var(--acc); }
+/* Puntos por localidad (Prioridad 4): posición aproximada (transformación afín
+   calibrada contra el propio SVG, no una proyección cartográfica exacta). */
+.mapa-punto { fill: var(--ink); fill-opacity: 0.55; stroke: var(--bg); stroke-width: 0.4; transition: fill-opacity 0.15s ease, r 0.15s ease; }
+.mapa-puntos a:hover .mapa-punto, .mapa-puntos a:focus-visible .mapa-punto { fill: var(--acc); fill-opacity: 0.9; }
+.mapa-puntos a:focus-visible { outline: 1px solid var(--acc); }
 .mapa-leyenda { display: flex; flex-wrap: wrap; gap: 0.9rem; list-style: none; margin: 0.8rem 0 0; padding: 0; font-size: 0.76rem; color: var(--muted-c); }
 .mapa-leyenda li { display: flex; align-items: center; gap: 0.35rem; }
 .prov-sw { width: 0.85rem; height: 0.85rem; border-radius: 2px; border: 1px solid var(--line); display: inline-block; }
+.mapa-punto-sw { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--ink); opacity: 0.55; display: inline-block; }
 .link-btn:hover { color: var(--ink); }
