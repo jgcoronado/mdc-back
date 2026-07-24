@@ -127,6 +127,12 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         solo durante el gesto de arrastre (pointerdown→pointerup), y el
         reordenamiento se quitó del evento `focus` (que el navegador dispara
         como parte del propio clic) dejándolo solo en `pointerenter`.
+        Ajuste adicional: los puntos/rótulos mantienen su tamaño en pantalla
+        al hacer zoom (antes crecían igual que el contorno de la provincia,
+        al ser el mismo `viewBox` quien determina ambos). `mapa.js` guarda el
+        radio/tamaño de letra "base" a escala 1 y los reescala en sentido
+        inverso al factor de zoom en cada cambio de vista, de modo que solo
+        cambia su posición relativa, no su tamaño aparente.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con

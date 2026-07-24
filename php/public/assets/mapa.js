@@ -10,8 +10,39 @@
         var minW = home[2] * 0.12;  // tope de zoom-in (~8x)
         var maxW = home[2];         // no alejar más que la vista inicial
 
+        // Puntos y rótulos a tamaño de pantalla constante: sin esto, al
+        // acercar (viewBox más pequeño) crecerían en pantalla igual que el
+        // contorno de la provincia. Se guarda el radio/tamaño de letra "base"
+        // (a escala 1, tal como los pintó App\Mapa) y se reescalan en sentido
+        // contrario cada vez que cambia el zoom.
+        var capa = svg.querySelector('.mapa-puntos');
+        var puntos = [];
+        var baseFontSize = 0;
+        if (capa) {
+            var fontMatch = /--mapa-punto-font:\s*([\d.]+)/.exec(capa.getAttribute('style') || '');
+            baseFontSize = fontMatch ? parseFloat(fontMatch[1]) : 0;
+            Array.prototype.forEach.call(capa.querySelectorAll('a'), function (a) {
+                var c = a.querySelector('circle'), t = a.querySelector('text');
+                if (!c) return;
+                puntos.push({ c: c, t: t, r0: parseFloat(c.getAttribute('r')), cy: parseFloat(c.getAttribute('cy')) });
+            });
+        }
+
+        function rescalePuntos() {
+            if (!capa || puntos.length === 0) return;
+            var scale = view[2] / home[2];
+            var fontSize = baseFontSize * scale;
+            capa.style.setProperty('--mapa-punto-font', fontSize + 'px');
+            puntos.forEach(function (p) {
+                var r = p.r0 * scale;
+                p.c.setAttribute('r', r);
+                if (p.t) p.t.setAttribute('y', p.cy - r - fontSize * 0.3);
+            });
+        }
+
         function apply() {
             svg.setAttribute('viewBox', view.join(' '));
+            rescalePuntos();
         }
 
         function clampPan() {
