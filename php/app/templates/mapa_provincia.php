@@ -18,7 +18,9 @@ $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
         </div>
         <h1>Mapa de <?= V::e($provincia) ?></h1>
         <p class="asiento">Pulsa un municipio para ver sus marchas, o consulta la tabla de abajo.
-            El color indica cuántas marchas tiene cada uno; la posición es aproximada.</p>
+            El color indica cuántas marchas tiene cada uno; la posición es aproximada. Puedes
+            hacer zoom con la rueda del ratón, arrastrar para desplazarte, o usar los botones
+            +/−.</p>
 
         <div class="mapa-wrap mapa-wrap-provincia">
             <?= $svgMapa ?>
@@ -55,3 +57,4 @@ $num = static fn($n): string => number_format((int) $n, 0, ',', '.');
         </div>
     </article>
 </div>
+<script src="/assets/mapa.js" defer></script>

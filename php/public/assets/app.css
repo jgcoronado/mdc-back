@@ -552,6 +552,25 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
 /* ── Mapa de provincias, coropleta (N-10) ────────────────────────────────── */
 .mapa-wrap { margin: 0.4rem 0 0; }
 .mapa-svg { width: 100%; height: auto; display: block; }
+/* Mapa de provincia con zoom/pan (mapa.js): el propio <svg data-zoom> cambia
+   su viewBox al arrastrar/con la rueda, sin necesidad de recortar overflow. */
+.mapa-wrap-provincia { position: relative; }
+/* touch-action: none NO va aquí de forma permanente: combinado con el
+   reordenamiento de "traer al frente" en pasar el ratón (mapa.js), hace que
+   Chromium deje de generar el evento click sobre el municipio — solo se
+   activa mientras se está arrastrando de verdad (clase añadida por JS al
+   superar el umbral de movimiento), momento en el que ya no hay reordenamiento
+   de por medio. */
+.mapa-svg[data-zoom] { cursor: grab; user-select: none; }
+.mapa-svg[data-zoom].mapa-svg-dragging { cursor: grabbing; touch-action: none; }
+.mapa-zoom-ctrl { position: absolute; top: 0.5rem; right: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.mapa-zoom-ctrl button {
+    width: 1.9rem; height: 1.9rem; border-radius: var(--radius-sm); border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); font-size: 1rem; line-height: 1; cursor: pointer;
+    box-shadow: 0 1px 3px rgba(20, 28, 60, 0.12);
+}
+.mapa-zoom-ctrl button:hover { background: var(--acc-tint); color: var(--acc); }
+.mapa-zoom-ctrl button:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
 /* Halo en vez de un color fijo: con 6 niveles de intensidad en 2 temas no hay
    un solo color de texto que contraste con todos. --ink sobre un contorno
    --card se lee tanto en un relleno claro (prov-0/1) como en uno oscuro
@@ -582,10 +601,12 @@ ul.azgrid { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gri
    aproximada: transformación afín calibrada contra el propio SVG, no una
    proyección cartográfica exacta. */
 .mapa-punto { stroke: var(--ink); stroke-width: 0.35; stroke-opacity: 0.35; transition: stroke-opacity 0.15s ease, stroke-width 0.15s ease; }
-.mapa-punto-n1 { fill: var(--pt-1); }
-.mapa-punto-n2 { fill: var(--pt-2); }
-.mapa-punto-n3 { fill: var(--pt-3); }
-.mapa-punto-n4 { fill: var(--pt-4); }
+/* background además de fill: estas mismas clases se reutilizan en la
+   leyenda (span de HTML, no SVG), que solo pinta con background. */
+.mapa-punto-n1 { fill: var(--pt-1); background: var(--pt-1); }
+.mapa-punto-n2 { fill: var(--pt-2); background: var(--pt-2); }
+.mapa-punto-n3 { fill: var(--pt-3); background: var(--pt-3); }
+.mapa-punto-n4 { fill: var(--pt-4); background: var(--pt-4); }
 /* --mapa-punto-font: fijado por App\Mapa en el <g class="mapa-puntos"> como
    fracción del ancho del viewBox recortado, para que el rótulo se vea igual
    de grande de una provincia a otra sin importar su tamaño real. */

@@ -115,8 +115,18 @@ enlaces con recuentos" es conceptualmente igual o mejor.
         fijo, y **el color** indica la cantidad (`App\Mapa::nivelLocalidad`,
         rampa `--pt-1..4` ámbar — deliberadamente distinta de la coropleta
         índigo, para no fundirse con el fondo `--acc` de la provincia), con
-        leyenda debajo del mapa. El rótulo también se redujo a un tercio del
-        tamaño anterior.
+        leyenda debajo del mapa (corregida: a las clases de color les
+        faltaba `background` — solo tenían `fill`, que no pinta un `<span>`
+        HTML). El rótulo también se redujo a un tercio del tamaño anterior.
+        Añadido zoom/pan (`public/assets/mapa.js`, rueda del ratón, arrastrar,
+        botones +/−/reset) y "traer al frente" el punto+rótulo al pasar el
+        ratón (reordena el `<a>` al final de su capa SVG). Un efecto
+        secundario no evidente: un listener de `pointermove` permanente en el
+        `<svg>` combinado con ese reordenamiento hacía que Chromium dejara de
+        despachar el `click` sobre el municipio — el listener ahora se añade
+        solo durante el gesto de arrastre (pointerdown→pointerup), y el
+        reordenamiento se quitó del evento `focus` (que el navegador dispara
+        como parte del propio clic) dejándolo solo en `pointerenter`.
 - [ ] **Prioridad 5 — Consistencia.** Aplicar la compactación y el patrón de bloques a
       todas las vistas de entidad (compositor, banda, disco) y a home, manteniendo los
       puntos fuertes actuales (breadcrumbs, búsqueda global, "Véase también" con

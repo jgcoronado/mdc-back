@@ -355,6 +355,8 @@ final class Mapa
         $pad = max($w, $h) * 0.12;
         $viewBoxWidth = $w + 2 * $pad;
         $svgEl->setAttribute('viewBox', sprintf('%.2f %.2f %.2f %.2f', $x - $pad, $y - $pad, $viewBoxWidth, $h + 2 * $pad));
+        // Marca este SVG para mapa.js (zoom/pan): el mapa nacional no lo lleva.
+        $svgEl->setAttribute('data-zoom', '1');
 
         self::pintarPuntos($dom, $svgEl, $puntos, $viewBoxWidth);
 
