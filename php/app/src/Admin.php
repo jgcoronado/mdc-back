@@ -67,6 +67,8 @@ final class Admin
         if (isset($_GET['rechazada'])) return ['type' => 'info', 'msg' => 'Propuesta rechazada.'];
         if (isset($_GET['nochanges'])) return ['type' => 'info', 'msg' => 'No había cambios que guardar.'];
         if (isset($_GET['social'])) return ['type' => 'ok', 'msg' => 'Enlaces sociales actualizados.'];
+        if (isset($_GET['resuelto'])) return ['type' => 'ok', 'msg' => 'Duda resuelta.'];
+        if (isset($_GET['descartado'])) return ['type' => 'info', 'msg' => 'Duda descartada.'];
         if (isset($_GET['err'])) return ['type' => 'error', 'msg' => 'Error: ' . preg_replace('/[^A-Z_]/', '', (string) $_GET['err'])];
         return null;
     }
@@ -230,7 +232,15 @@ final class Admin
         }
         $notice = self::noticeFromQuery();
         $pendientes = self::isAdmin($session) ? PropuestaRepo::countPendientes() : 0;
-        View::render('admin/dashboard', compact('q', 'qb', 'qd', 'marchas', 'autores', 'bandas', 'discos', 'session', 'notice', 'pendientes'),
+        $dudasAcompanamientos = 0;
+        if (self::isAdmin($session)) {
+            try {
+                $dudasAcompanamientos = AcompanamientoDudaRepo::countPendientes();
+            } catch (\Throwable $e) {
+                // Tabla 013_acompanamiento_duda.sql aún no migrada en este host; el badge se queda a 0.
+            }
+        }
+        View::render('admin/dashboard', compact('q', 'qb', 'qd', 'marchas', 'autores', 'bandas', 'discos', 'session', 'notice', 'pendientes', 'dudasAcompanamientos'),
             ['title' => 'Panel de administración — Marchas de Cristo', 'noindex' => true]);
     }
 
@@ -788,6 +798,54 @@ final class Admin
         $r = AdminRepo::updateContratoBandaRango($ids, $idBanda);
         if (($r['code'] ?? '') === 'UPDATED') Http::redirect("/dashboard/acompanamientos/$slug?saved=1", 302);
         Http::redirect("/dashboard/acompanamientos/$slug?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    /**
+     * Cola de revisión de la nómina de hermandades/pasos (N-03): filas que
+     * los scripts de parseo de scripts/tmp_acompanamientos/ no han sabido
+     * clasificar solas — ver acompanamiento_duda (013_acompanamiento_duda.sql)
+     * y docs/acompanamientos-nomina-2026.md.
+     */
+    public static function acompanamientoDudasAdmin(): void
+    {
+        $session = Auth::requireAdmin();
+        $pendientes = [];
+        $revisadas = [];
+        $notice = self::noticeFromQuery();
+        try {
+            $pendientes = AcompanamientoDudaRepo::pendientes();
+            $revisadas = AcompanamientoDudaRepo::revisadas(50);
+        } catch (\Throwable $e) {
+            error_log('[dashboard/acompanamientos-dudas] ' . $e->getMessage());
+            $notice = ['type' => 'error', 'msg' => 'La tabla acompanamiento_duda no existe todavía en este host — falta aplicar la migración 013_acompanamiento_duda.sql (migrate_ingest.php).'];
+        }
+        View::render('admin/acompanamiento_dudas', [
+            'session' => $session, 'pendientes' => $pendientes, 'revisadas' => $revisadas,
+            'notice' => $notice,
+        ], ['title' => 'Dudas de acompañamientos — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    public static function acompanamientoDudaResolverPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect('/dashboard/acompanamientos-dudas?err=CSRF', 302);
+        $tipo = (string) ($_POST['TIPO'] ?? '');
+        $nota = trim((string) ($_POST['NOTA'] ?? ''));
+        $r = AdminRepo::resolverAcompanamientoDuda($id, $tipo, $nota !== '' ? $nota : null);
+        if (($r['code'] ?? '') === 'RESOLVED') Http::redirect('/dashboard/acompanamientos-dudas?resuelto=1', 302);
+        Http::redirect('/dashboard/acompanamientos-dudas?err=' . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    public static function acompanamientoDudaDescartarPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (int) $p['id'];
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect('/dashboard/acompanamientos-dudas?err=CSRF', 302);
+        $nota = trim((string) ($_POST['NOTA'] ?? ''));
+        $r = AdminRepo::descartarAcompanamientoDuda($id, $nota !== '' ? $nota : null);
+        if (($r['code'] ?? '') === 'DISCARDED') Http::redirect('/dashboard/acompanamientos-dudas?descartado=1', 302);
+        Http::redirect('/dashboard/acompanamientos-dudas?err=' . ($r['code'] ?? 'ERROR'), 302);
     }
 
     /** Alta/edición/baja manual de los enlaces de streaming/RRSS musicales de una banda (pestaña Social). */

@@ -529,9 +529,12 @@ final class AdminRepo
     /**
      * Borra un rango ya colapsado (todos los ID_CONTRATO que representa una
      * línea de Repo::agruparAcompanamientos). Borra también sus filas de
-     * contrato_localidad — el borrado NO es en cascada en SQLite y dejarlas
-     * huérfanas es justo el bug que ya se limpió a mano una vez (ver memoria
-     * del proyecto, limpieza de pasos de Virgen 2026-08-29).
+     * contrato_localidad y contrato_paso — el borrado NO es en cascada en
+     * SQLite y dejarlas huérfanas es justo el bug que ya se limpió a mano una
+     * vez (ver memoria del proyecto, limpieza de pasos de Virgen 2026-08-29).
+     * contrato_paso además tiene FK con `foreign_keys = ON` (Db::connect()):
+     * sin este borrado previo, eliminar un contrato ya enlazado a un paso
+     * (Córdoba desde 2026-09-07) fallaría entero por violar la referencia.
      *
      * @param list<int> $idsContrato
      * @return array{code:string, borrados?:int}
@@ -542,6 +545,7 @@ final class AdminRepo
         return Db::transaction(function () use ($idsContrato) {
             $placeholders = implode(',', array_fill(0, count($idsContrato), '?'));
             Db::run("DELETE FROM contrato_localidad WHERE ID_CONTRATO IN ($placeholders)", $idsContrato);
+            Db::run("DELETE FROM contrato_paso WHERE ID_CONTRATO IN ($placeholders)", $idsContrato);
             $borrados = Db::run("DELETE FROM contrato WHERE ID_CONTRATO IN ($placeholders)", $idsContrato);
             if ($borrados === 0) return ['code' => 'NOT_FOUND'];
             Db::logAdmin('DELETE_RANGO', 'contrato', null, ['ids' => $idsContrato, 'borrados' => $borrados]);
@@ -1650,5 +1654,45 @@ final class AdminRepo
             }
         }
         return array_slice($out, 0, $limit);
+    }
+
+    /**
+     * Registra la decisión del admin sobre una duda de acompanamiento_duda
+     * (ver AcompanamientoDudaRepo). No toca `hermandad`/`paso`/`contrato_paso`
+     * todavía — la importación final a esas tablas sigue pendiente (ver
+     * docs/acompanamientos-nomina-2026.md); esto solo deja constancia de qué
+     * decidió el admin para cuando llegue.
+     */
+    public static function resolverAcompanamientoDuda(int $id, string $tipo, ?string $nota): array
+    {
+        if (!in_array($tipo, AcompanamientoDudaRepo::TIPOS, true)) return ['code' => 'TIPO_INVALIDO'];
+        $nota = self::normalize($nota);
+
+        $changes = Db::run(
+            "UPDATE acompanamiento_duda
+             SET ESTADO = 'resuelto', RESOLUCION_TIPO = ?, RESOLUCION_NOTA = ?,
+                 REVIEWED_AT = datetime('now'), REVIEWED_BY = ?
+             WHERE ID_DUDA = ? AND ESTADO = 'pendiente'",
+            [$tipo, $nota, Db::auditUser(), $id]
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING'];
+        Db::logAdmin('RESOLVE', 'acompanamiento_duda', $id, ['tipo' => $tipo, 'nota' => $nota]);
+        return ['code' => 'RESOLVED'];
+    }
+
+    /** Descarta una duda sin asignarle tipo (p. ej. la hermandad no lleva CCTT/AM y ya está claro). */
+    public static function descartarAcompanamientoDuda(int $id, ?string $nota): array
+    {
+        $nota = self::normalize($nota);
+        $changes = Db::run(
+            "UPDATE acompanamiento_duda
+             SET ESTADO = 'descartado', RESOLUCION_NOTA = ?,
+                 REVIEWED_AT = datetime('now'), REVIEWED_BY = ?
+             WHERE ID_DUDA = ? AND ESTADO = 'pendiente'",
+            [$nota, Db::auditUser(), $id]
+        );
+        if ($changes === 0) return ['code' => 'NOT_FOUND_OR_NOT_PENDING'];
+        Db::logAdmin('DISCARD', 'acompanamiento_duda', $id, ['nota' => $nota]);
+        return ['code' => 'DISCARDED'];
     }
 }

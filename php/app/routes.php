@@ -249,6 +249,12 @@ $router->post('/dashboard/acompanamientos/{localidad}/add', [Admin::class, 'acom
 $router->post('/dashboard/acompanamientos/{localidad}/borrar-rango', [Admin::class, 'acompanamientosBorrarRangoPost']);
 $router->post('/dashboard/acompanamientos/{localidad}/banda-rango', [Admin::class, 'acompanamientosBandaRangoPost']);
 
+// ── Cola de revisión de la nómina de hermandades/pasos (N-03): filas que los
+// scripts de parseo no han sabido clasificar solas, ver AcompanamientoDudaRepo ─
+$router->get('/dashboard/acompanamientos-dudas', [Admin::class, 'acompanamientoDudasAdmin']);
+$router->post('/dashboard/acompanamientos-dudas/{id}/resolver', [Admin::class, 'acompanamientoDudaResolverPost']);
+$router->post('/dashboard/acompanamientos-dudas/{id}/descartar', [Admin::class, 'acompanamientoDudaDescartarPost']);
+
 // ── Enlaces de streaming (curación de candidatos Spotify/Apple/Deezer) ───────
 $router->get('/dashboard/enlaces', [Admin::class, 'enlaceList']);
 $router->post('/dashboard/enlaces/rechazar-multiple', [Admin::class, 'enlaceRechazarMultiple']);

@@ -1760,12 +1760,19 @@ final class Repo
      * su texto tal cual está en la fila — sin normalizar variantes de
      * redacción, eso también sería inventar/corregir un dato sin confirmar.
      *
+     * "posibleDuplicado" en un rango: otro TITULAR de la misma hermandad tiene
+     * un rango con la misma banda en años que se solapan — casi seguro el
+     * mismo paso real cargado dos veces con redacciones de TITULAR distintas
+     * (ver docs/acompanamientos-nomina-2026.md §Deuda). Es una pista para el
+     * panel, no una fusión automática: el admin decide y borra a mano.
+     *
      * @param list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
      *                    TITULAR:?string,ANIO:int,ID_BANDA:int,BANDA:string}> $rows
      * @return list<array{slug:string,nombre:string,titulares:list<array{
      *                    titular:?string,
      *                    rangos:list<array{anioInicio:int,anioFin:int,idBanda:int,
-     *                                       banda:string,actual:bool,contratos:list<int>}>}>}>
+     *                                       banda:string,actual:bool,contratos:list<int>,
+     *                                       posibleDuplicado:bool}>}>}>
      */
     public static function agruparAcompanamientos(array $rows): array
     {
@@ -1803,6 +1810,7 @@ final class Repo
                             'idBanda' => $idBanda,
                             'banda' => (string) $r['BANDA'],
                             'contratos' => [(int) $r['ID_CONTRATO']],
+                            'posibleDuplicado' => false,
                         ];
                     }
                 }
@@ -1816,6 +1824,33 @@ final class Repo
                     'titular' => $variosTitulares ? ($t['label'] !== '' ? $t['label'] : 'Sin especificar') : null,
                     'rangos' => $rangos,
                 ];
+            }
+
+            // Posible duplicado: dos TITULAR distintos ("Paso de Misterio" /
+            // "Paso de Cristo"...) con la MISMA banda en años que se solapan
+            // casi seguro son el mismo paso real cargado dos veces con
+            // redacciones distintas (ver docs/acompanamientos-nomina-2026.md
+            // §Deuda). No se fusionan solos — Regla 1, esto lo confirma un
+            // humano — solo se marcan para que el panel los destaque y se
+            // puedan seleccionar juntos para borrar.
+            if ($variosTitulares) {
+                foreach ($titularesOut as $ti => &$ta) {
+                    foreach ($ta['rangos'] as &$rgA) {
+                        foreach ($titularesOut as $tj => $tb) {
+                            if ($tj === $ti) continue;
+                            foreach ($tb['rangos'] as $rgB) {
+                                if ($rgA['idBanda'] === $rgB['idBanda']
+                                    && $rgA['anioInicio'] <= $rgB['anioFin']
+                                    && $rgB['anioInicio'] <= $rgA['anioFin']) {
+                                    $rgA['posibleDuplicado'] = true;
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                    unset($rgA);
+                }
+                unset($ta);
             }
 
             $out[] = ['slug' => $slug, 'nombre' => $h['nombre'], 'titulares' => $titularesOut];
