@@ -27,7 +27,7 @@ $isAdmin = Roles::isAdmin($rol);
             <a class="btn btn-sm btn-ghost" href="/dashboard/ingesta">Ingesta marchas</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/enlaces">Enlaces streaming</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/dedicatorias">Dedicatorias</a>
-            <a class="btn btn-sm btn-ghost" href="/dashboard/temporada/<?= (int) date('Y') ?>">Temporada</a>
+            <a class="btn btn-sm btn-ghost" href="/dashboard/acompanamientos">Acompañamientos</a>
             <a class="btn btn-sm btn-ghost" href="/dashboard/estilos">Estilos CCTT/AM</a>
 <?php endif; ?>
             <form action="/logout" method="POST" class="inline-form">
@@ -53,7 +53,7 @@ $isAdmin = Roles::isAdmin($rol);
         Entorno <strong><?= V::e(Entorno::nombre()) ?></strong>: aquí <strong>nadie escribe en la base de datos</strong>, tampoco tú.
         Las altas y ediciones de <strong>marcha, compositor y banda</strong> se guardan como <strong>propuestas</strong>
         y se aplican al revisarlas en local. El resto del panel (discos, dedicatorias, estilos, ingesta, enlaces,
-        usuarios y temporada) está en <strong>solo lectura</strong>: si intentas guardar, responderá con un error 503.
+        usuarios y acompañamientos) está en <strong>solo lectura</strong>: si intentas guardar, responderá con un error 503.
     </div>
 <?php endif; ?>
 

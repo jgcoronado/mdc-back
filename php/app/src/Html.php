@@ -15,6 +15,21 @@ final class Html
         return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     }
 
+    /**
+     * Asegura esquema en una URL externa (banda.WEB y similares). Sin
+     * http(s)://, el navegador la trata como ruta relativa y el enlace
+     * apunta dentro del propio sitio en vez de salir fuera (visto en
+     * producción: marchasdecristo.com/banda/www.amlacena.com).
+     */
+    public static function externalUrl(?string $url): ?string
+    {
+        $u = trim((string) $url);
+        if ($u === '') return null;
+        if (preg_match('~^https?://~i', $u) === 1) return $u;
+        if (str_starts_with($u, '//')) return 'https:' . $u;
+        return 'https://' . $u;
+    }
+
     // ── Selector Provincia/Localidad (MunicipioRepo) ──────────────────────────
     /**
      * Los dos campos ".field" de Provincia y Localidad, en cascada (elegir
