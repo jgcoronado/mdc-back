@@ -857,8 +857,8 @@ corresponde una a una con la página pública.
 
 ### 14.3 Carga masiva — `seed_acompanamientos.php`
 
-Sucesor de `seed_contratos_2026.php`, que exigía el `ID_BANDA` ya resuelto en
-el CSV. Aquí el CSV se escribe con el **nombre** de la banda tal y como lo
+Sustituye al `seed_contratos_2026.php` de la carga de Sevilla 2026 (borrado en
+2026-09), que exigía el `ID_BANDA` ya resuelto en el CSV. Aquí el CSV se escribe con el **nombre** de la banda tal y como lo
 publica la fuente (que es lo único que trae un listado de prensa) y el script
 lo resuelve contra la base en tres pasadas: slug exacto → slug exacto sin el
 "de \<localidad>" final → todas las palabras contenidas en una única banda.
@@ -880,3 +880,41 @@ FUENTE, NOTA`. Ver la plantilla en
 
 Es idempotente: comprueba (banda, hermandad, paso, año de inicio, localidad)
 antes de insertar, así que relanzarlo tras resolver pendientes no duplica nada.
+
+**Una fila por PASO, no por hermandad.** `TITULAR` es el paso concreto, y la
+**cruz de guía no es un paso**: va abriendo la procesión y es un
+acompañamiento distinto del de los pasos. Se mete **solo si la fuente lo dice
+de forma explícita** — no todas las hermandades llevan música en la cruz de
+guía, y darla por supuesta inventa un acompañamiento que no existe. Cuando la
+fuente solo publica "Cristo" y "Palio", eso es lo que se escribe: se respeta el
+vocabulario de cada fuente en vez de normalizarlo a un vocabulario común, que
+inventaría precisión que el dato no tiene.
+
+### 14.4 `backfill_contrato_localidad.php`
+
+Asigna una localidad a los contratos que **no tienen ninguna** (los 92 de
+Sevilla 2026, cargados antes de que `contrato_localidad` se poblase). No
+adivina: escribe la que se le pase, y nunca toca una fila que ya tiene
+localidad.
+
+```bash
+php php/app/tools/backfill_contrato_localidad.php Sevilla              # dry-run
+php php/app/tools/backfill_contrato_localidad.php Sevilla --anio=2026  # acotado
+php php/app/tools/backfill_contrato_localidad.php Sevilla --commit     # escribe
+```
+
+Solo inserta en `contrato_localidad`; deshacer una pasada es
+`DELETE FROM contrato_localidad WHERE LOCALIDAD = '…'` — el dry-run dice
+cuántas filas tenían ya esa localidad de antes, que es lo que hay que
+comprobar para que ese DELETE sea seguro.
+
+### 14.5 `HERMANDAD` sigue siendo texto libre
+
+N-03 (la entidad `hermandad` real) **no entra antes de estas cargas**. El
+control de grafías es el predictivo acotado por localidad del editor por
+banda, que es suficiente para el volumen que hay: `HERMANDAD_SLUG` ya agrupa
+las variantes en la página pública, y cuando N-03 llegue, migrar esa columna a
+una FK es un ALTER sobre datos ya limpios (lo dice el comentario de
+`005_contrato.sql` desde el principio). Construir la entidad ahora obligaría a
+decidir el modelo de hermandad con tres ciudades de datos, en vez de con las
+tres ciudades ya cargadas.

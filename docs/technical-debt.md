@@ -167,12 +167,20 @@ además de deuda).
   editores de acompañamientos del panel (`AdminRepo::addContrato` /
   `updateContrato`) y `seed_acompanamientos.php`; ver
   [admin-panel.md §14](admin-panel.md#14-acompañamientos-vigencia-por-rango-y-los-dos-editores).
-- **Queda por hacer una sola vez**: rellenar la localidad de los 92 registros
-  de Sevilla 2026 que se cargaron antes de todo esto (todos
-  `LOCALIDAD = 'Sevilla'`, según `contratos_ss_sevilla_2026.csv` en la raíz).
-  El camino sin escribir SQL a mano es abrir
-  `/dashboard/acompanamientos/localidad?loc=` (la lista "Sin localidad") y
-  guardar cada fila, que es lo que se la asigna.
+- **Queda por ejecutar una sola vez** (en local, que es la BD maestra):
+  rellenar la localidad de los 92 registros de Sevilla 2026 que se cargaron
+  antes de todo esto — todos `LOCALIDAD = 'Sevilla'`, según
+  `contratos_ss_sevilla_2026.csv` en la raíz. Lo hace
+  [`backfill_contrato_localidad.php`](../php/app/tools/backfill_contrato_localidad.php),
+  con dry-run por defecto:
+  ```bash
+  php php/app/tools/backfill_contrato_localidad.php Sevilla
+  php php/app/tools/backfill_contrato_localidad.php Sevilla --commit
+  ```
+  Solo inserta en `contrato_localidad` y nunca toca una fila que ya la tenga,
+  así que es reversible con un `DELETE ... WHERE LOCALIDAD = 'Sevilla'` (el
+  dry-run dice cuántas había ya de antes, que es lo que hace seguro ese
+  DELETE).
 
 ---
 

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 /*
  * Carga de acompañamientos (banda ↔ hermandad ↔ paso) desde un CSV por
- * localidad. Sucesor de seed_contratos_2026.php, que exigía el ID_BANDA ya
- * resuelto en el propio CSV: aquí el CSV se escribe con el NOMBRE de la banda
- * tal y como lo publica la fuente y es el script quien lo resuelve contra la
- * base, porque el nombre es lo único que trae un listado de prensa.
+ * localidad. Sustituye al seed_contratos_2026.php de la carga de Sevilla
+ * (borrado), que exigía el ID_BANDA ya resuelto en el propio CSV: aquí el CSV
+ * se escribe con el NOMBRE de la banda tal y como lo publica la fuente y es el
+ * script quien lo resuelve contra la base, porque el nombre es lo único que
+ * trae un listado de prensa.
  *
  * USO (desde la RAÍZ del proyecto, justo encima de php/):
  *   php php/app/tools/seed_acompanamientos.php docs/data/acompanamientos_granada_2026.csv

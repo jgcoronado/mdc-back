@@ -50,7 +50,8 @@ $nombre  = (string) ($banda['NOMBRE_BREVE'] ?? ('#' . $idBanda));
 
         <div class="field">
             <label class="field-label" for="TITULAR">Paso / titular (opcional)</label>
-            <input class="input" id="TITULAR" name="TITULAR" type="text" placeholder="p. ej. Cruz de Guía, Paso de Misterio, Palio">
+            <input class="input" id="TITULAR" name="TITULAR" type="text" placeholder="p. ej. Cristo, Paso de Misterio, Palio">
+            <p class="muted small">Un acompañamiento por paso. La <strong>cruz de guía no es un paso</strong>: va abriendo la procesión y solo se registra si la fuente la nombra de forma explícita.</p>
         </div>
 
         <div class="row acomp-row-anios">

@@ -38,10 +38,20 @@ cargar nada.
 1. Conseguir el texto de los listados (pegarlo en un fichero, o permitir esos
    dominios en la política de egress de la sesión).
 2. Volcarlo a un CSV por ciudad con las columnas de
-   [`acompanamientos_PLANTILLA.csv`](acompanamientos_PLANTILLA.csv), una fila
-   **por paso** (Cruz de Guía / Misterio / Palio…), no por hermandad.
-   `ANIO = 2026`; `ANIO_FIN` vacío salvo que la fuente diga que el contrato
-   termina, y con los años del contrato cuando los publique.
+   [`acompanamientos_PLANTILLA.csv`](acompanamientos_PLANTILLA.csv), **una fila
+   por paso**, no por hermandad. `ANIO = 2026`; `ANIO_FIN` vacío salvo que la
+   fuente diga que el contrato termina, y con los años del contrato cuando los
+   publique.
+
+   Dos reglas sobre `TITULAR`:
+   - **La cruz de guía no es un paso**: va abriendo la procesión y es un
+     acompañamiento aparte. Se mete **solo si la fuente la nombra de forma
+     explícita** — no todas las hermandades llevan música ahí, y darla por
+     supuesta inventa un acompañamiento.
+   - **Se respeta el vocabulario de cada fuente.** Sevilla publica "Paso de
+     Misterio"; Granada y Cádiz suelen publicar "Cristo" y "Palio". Se escribe
+     lo que diga cada una: normalizarlo a un vocabulario común inventaría una
+     precisión que el dato no tiene.
 3. Dry-run y revisión de pendientes:
    ```bash
    php php/app/tools/seed_acompanamientos.php docs/data/acompanamientos_granada_2026.csv

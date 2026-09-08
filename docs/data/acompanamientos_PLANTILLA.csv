@@ -1,3 +1,4 @@
 LOCALIDAD,HERMANDAD,TITULAR,BANDA,ID_BANDA,ANIO,ANIO_FIN,FUENTE,NOTA
-Granada,Hermandad de la Esperanza,Cruz de Guía,Banda de CCTT Ejemplo,,2026,,https://fuente.example/anuncio,
+Granada,Hermandad de la Esperanza,Cristo,Banda de CCTT Ejemplo,,2026,,https://fuente.example/anuncio,
 Granada,Hermandad de la Esperanza,Palio,AM Ejemplo,,2026,2028,https://fuente.example/anuncio,contrato a tres años
+Granada,Hermandad del Silencio,Cruz de Guía,Banda de CCTT Ejemplo,,2026,,https://fuente.example/anuncio,"solo porque la fuente nombra la cruz de guía de forma explícita"

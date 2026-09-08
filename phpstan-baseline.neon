@@ -12,7 +12,8 @@
 #   74 → 137 (2026-08-28). No es limpieza: es deuda real acumulada en `pre`
 #   entre el 31-jul y el 12-ago sin regenerar este fichero (B-02/B-03 en
 #   docs/roadmap.md) — código y ficheros nuevos que el baseline de agosto
-#   nunca llegó a ver (seed_bandas_2026.php, seed_contratos_2026.php,
+#   nunca llegó a ver (seed_bandas_2026.php, seed_contratos_2026.php — este
+#   último borrado en 2026-09, sustituido por seed_acompanamientos.php —,
 #   ci_smoke.php, fill_enlaces_odesli.php, disco_form.php...). De camino se
 #   corrigieron dos cosas que NO se baselinean por ser bugs reales, no ruido
 #   de `??`: la constante BASE_DIR sin declarar en config.php (ver
@@ -310,12 +311,6 @@ parameters:
 			path: php/app/tools/import_candidatos.php
 
 		-
-			message: '#^Offset ''code'' on array\{code\: string, contratoId\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: php/app/tools/seed_contratos_2026.php
-
-		-
 			message: '#^Anonymous function has an unused use \$F\.$#'
 			identifier: closure.unusedUse
 			count: 1
@@ -362,12 +357,6 @@ parameters:
 			identifier: nullCoalesce.offset
 			count: 3
 			path: php/tools/seed_bandas_2026.php
-
-		-
-			message: '#^Offset ''code'' on array\{code\: string, contratoId\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: php/tools/seed_contratos_2026.php
 
 		-
 			message: '#^Function get200\(\) should return array but returns string\|null\.$#'
