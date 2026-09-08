@@ -148,12 +148,6 @@ parameters:
 			path: php/app/src/ImportadorPistas.php
 
 		-
-			message: '#^Offset ''BANDA_LOCALIDAD'' on array\{ID_CONTRATO\: int, HERMANDAD\: string, HERMANDAD_SLUG\: string, TITULAR\: string\|null, FUENTE\: string\|null, ID_BANDA\: int, BANDA\: string, BANDA_LOCALIDAD\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: php/app/src/Pages.php
-
-		-
 			message: '#^Offset ''PERSONAL'' on array\{ID_DEDIC\: int, NOMBRE\: string, LOCALIDAD\: string, PROVINCIA\: string\|null, SLUG_KEY\: string, PERSONAL\: int, marchas\: list\<array\<string, mixed\>\>, N\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1

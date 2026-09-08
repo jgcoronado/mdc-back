@@ -210,6 +210,7 @@ $router->get('/api/municipio/fastSearch', [Admin::class, 'municipioFastSearch'])
 $router->post('/dashboard/municipio/add', [Admin::class, 'municipioAddPost']);
 $router->get('/api/marcha/checkDuplicate', [Admin::class, 'marchaCheckDuplicate']);
 $router->get('/api/dedicatoria/fastSearch', [Admin::class, 'dedicatoriaFastSearch']);
+$router->get('/api/hermandad/fastSearch', [Admin::class, 'hermandadFastSearch']);
 // Curación de dedicatorias (hubs N-01/N-02). Lista antes que el detalle {id}.
 $router->get('/dashboard/dedicatorias', [Admin::class, 'dedicatoriasList']);
 $router->get('/dashboard/dedicatoria/{id}', [Admin::class, 'dedicatoriaEditForm']);
@@ -243,6 +244,19 @@ $router->post('/dashboard/ingesta/{id}/descartar', [Admin::class, 'ingestaDescar
 $router->get('/dashboard/temporada/{anio}', [Admin::class, 'temporadaAdmin']);
 $router->post('/dashboard/temporada/{anio}/add', [Admin::class, 'temporadaAddPost']);
 $router->post('/dashboard/temporada/{anio}/{contrato}/borrar', [Admin::class, 'temporadaDeletePost']);
+
+// ── Acompañamientos: los dos editores de trabajo sobre `contrato` ───────────
+// Por LOCALIDAD (repasar una Semana Santa entera, editando banda y vigencia
+// fila a fila) y por BANDA (dar de alta lo que toca una banda, buscando
+// localidad → hermandad). /dashboard/temporada/{anio} sigue siendo la vista
+// por año, la que se corresponde con la página pública.
+$router->get('/dashboard/acompanamientos', [Admin::class, 'acompanamientosIndex']);
+$router->get('/dashboard/acompanamientos/localidad', [Admin::class, 'acompanamientosLocalidad']);
+$router->post('/dashboard/acompanamientos/localidad/{contrato}', [Admin::class, 'acompanamientosLocalidadPost']);
+$router->post('/dashboard/acompanamientos/localidad/{contrato}/borrar', [Admin::class, 'acompanamientosLocalidadDeletePost']);
+$router->get('/dashboard/acompanamientos/banda/{id}', [Admin::class, 'acompanamientosBanda']);
+$router->post('/dashboard/acompanamientos/banda/{id}/add', [Admin::class, 'acompanamientosBandaAddPost']);
+$router->post('/dashboard/acompanamientos/banda/{id}/{contrato}', [Admin::class, 'acompanamientosBandaPost']);
 
 // ── Enlaces de streaming (curación de candidatos Spotify/Apple/Deezer) ───────
 $router->get('/dashboard/enlaces', [Admin::class, 'enlaceList']);

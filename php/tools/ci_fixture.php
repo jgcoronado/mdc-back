@@ -113,7 +113,13 @@ CREATE TABLE enlace_candidato (
 CREATE TABLE admin_log (ID INTEGER PRIMARY KEY, accion TEXT, tabla TEXT, id_registro INTEGER, usuario TEXT, ts INTEGER, payload TEXT);
 CREATE TABLE contrato (
   ID_CONTRATO INTEGER PRIMARY KEY, ID_BANDA INTEGER, HERMANDAD TEXT, HERMANDAD_SLUG TEXT,
-  TITULAR TEXT, ANIO INTEGER, FUENTE TEXT, NOTA TEXT, CREATED_AT TEXT DEFAULT (datetime('now'))
+  TITULAR TEXT, ANIO INTEGER, ANIO_FIN INTEGER, FUENTE TEXT, NOTA TEXT,
+  CREATED_AT TEXT DEFAULT (datetime('now'))
+);
+-- Espejo de 009_contrato_localidad.sql: la localidad DEL ACOMPAÑAMIENTO
+-- (de qué Semana Santa procede), distinta de la localidad de la banda.
+CREATE TABLE contrato_localidad (
+  ID_CONTRATO INTEGER PRIMARY KEY REFERENCES contrato(ID_CONTRATO), LOCALIDAD TEXT NOT NULL
 );
 CREATE VIRTUAL TABLE marcha_fts USING fts5(TITULO, content=marcha, content_rowid=ID_MARCHA, tokenize="unicode61 remove_diacritics 2");
 CREATE VIRTUAL TABLE autor_fts USING fts5(NOMBRE, APELLIDOS, NOMBRE_ART, content=autor, content_rowid=ID_AUTOR, tokenize="unicode61 remove_diacritics 2");
@@ -199,9 +205,16 @@ $ins('INSERT INTO enlace_streaming (TIPO_ENT, ID_ENT, SERVICIO, URL, VERSION, AN
     ['marcha', 5, 'spotify', 'https://open.spotify.com/track/y', 'actual', null],
 ]);
 
-$ins('INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, FUENTE) VALUES (?,?,?,?,?,?)', [
-    [1, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Virgen de las Angustias', 2026, 'https://example.org/anuncio'],
-    [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2026, null],
+// ANIO = año de inicio, ANIO_FIN = último año vigente (NULL = sigue vigente).
+// La segunda fila lleva vigencia cerrada a propósito: así el smoke cubre las
+// dos ramas del filtro de /temporada/{año}.
+$ins('INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, ANIO_FIN, FUENTE) VALUES (?,?,?,?,?,?,?)', [
+    [1, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Virgen de las Angustias', 2026, null, 'https://example.org/anuncio'],
+    [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2026, 2026, null],
+]);
+$ins('INSERT INTO contrato_localidad (ID_CONTRATO, LOCALIDAD) VALUES (?,?)', [
+    [1, 'Sevilla'],
+    [2, 'Sevilla'],
 ]);
 
 $ins('INSERT INTO municipio (PROVINCIA, NOMBRE, LAT, LNG, OFICIAL, CLAVE) VALUES (?,?,?,?,?,?)', [

@@ -133,7 +133,7 @@ además de deuda).
   ahora que SQLite (y no MySQL) es el motor definitivo. Baja prioridad — no
   hay corrupción de datos, solo aspereza del esquema.
 
-### 4.2 `contrato_localidad` a medio terminar (hallado 2026-07-31) 🟢
+### 4.2 `contrato_localidad` a medio terminar (hallado 2026-07-31) ✅ resuelto (2026-09)
 - El instalador local `instalar_temporada_2026.php` (ejecutado el 2026-07-27,
   cargó los 92 acompañamientos reales de Sevilla 2026 en `contrato`) traía
   también una migración nueva, `contrato_localidad` — tabla satélite pensada
@@ -161,12 +161,18 @@ además de deuda).
   (`App\Secciones`, ver [entornos.md](entornos.md)), y
   los 92 contratos cargados son todos de Sevilla, así que el heurístico
   incorrecto no se nota mientras no haya bandas foráneas en los datos.
-- **Fix, si se retoma**: poblar `contrato_localidad` (los 92 registros
-  actuales son todos `LOCALIDAD = 'Sevilla'`, según `contratos_ss_sevilla_2026.csv`
-  en la raíz del repo) y cambiar `Repo::temporada()`/`Pages::temporada()` para
-  agrupar por esta tabla con fallback a `banda.LOCALIDAD` cuando falte fila.
-  No es urgente mientras `/temporada` siga oculta en producción y sin datos de
-  localidades distintas a Sevilla.
+- **Resuelto (2026-09)**: `Repo::temporada()` ya trae la `LOCALIDAD` de esta
+  tabla y `Pages::temporada()` la prefiere sobre el heurístico, que queda como
+  respaldo para las filas que aún no la tienen. La escritura la hacen los dos
+  editores de acompañamientos del panel (`AdminRepo::addContrato` /
+  `updateContrato`) y `seed_acompanamientos.php`; ver
+  [admin-panel.md §14](admin-panel.md#14-acompañamientos-vigencia-por-rango-y-los-dos-editores).
+- **Queda por hacer una sola vez**: rellenar la localidad de los 92 registros
+  de Sevilla 2026 que se cargaron antes de todo esto (todos
+  `LOCALIDAD = 'Sevilla'`, según `contratos_ss_sevilla_2026.csv` en la raíz).
+  El camino sin escribir SQL a mano es abrir
+  `/dashboard/acompanamientos/localidad?loc=` (la lista "Sin localidad") y
+  guardar cada fila, que es lo que se la asigna.
 
 ---
 

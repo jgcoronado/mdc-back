@@ -1,6 +1,6 @@
 <?php use App\View as V; use App\Auth; use App\Slug as S;
 /** @var array $session @var string $anio
- *  @var list<array{ID_CONTRATO:int,HERMANDAD:string,TITULAR:?string,FUENTE:?string,ID_BANDA:int,BANDA:string}> $contratos
+ *  @var list<array{ID_CONTRATO:int,HERMANDAD:string,TITULAR:?string,FUENTE:?string,ID_BANDA:int,BANDA:string,ANIO:int,ANIO_FIN:?int}> $contratos
  *  @var array|null $notice */
 $csrf = Auth::csrfToken($session);
 ?>
@@ -14,7 +14,7 @@ $csrf = Auth::csrfToken($session);
 </div>
 
 <h1>Temporada <?= V::e($anio) ?> — contratos</h1>
-<p class="muted">Alta manual (N-06, la ingesta automática de anuncios, queda pendiente). La hermandad es texto libre: escríbela igual cada vez para que se agrupe bien en <a href="/temporada/<?= V::e($anio) ?>">la página pública</a>.</p>
+<p class="muted">Alta manual (N-06, la ingesta automática de anuncios, queda pendiente). La hermandad es texto libre: escríbela igual cada vez para que se agrupe bien en <a href="/temporada/<?= V::e($anio) ?>">la página pública</a>. Aquí se ven los acompañamientos <strong>vigentes</strong> en <?= V::e($anio) ?> (empezados ese año o antes y sin cerrar todavía); para editarlos uno a uno, <a href="/dashboard/acompanamientos">los editores por localidad y por banda</a>.</p>
 
 <?php if ($notice): ?><div class="alert alert-<?= $notice['type'] === 'ok' ? 'success' : ($notice['type'] === 'error' ? 'error' : 'info') ?>"><?= V::e($notice['msg']) ?></div><?php endif; ?>
 
@@ -43,6 +43,14 @@ $csrf = Auth::csrfToken($session);
             <input class="input" id="TITULAR" name="TITULAR" type="text" placeholder="p. ej. Virgen de la Esperanza">
         </div>
 
+        <?php /* El año de inicio es el de la URL; aquí solo se cierra la
+                 vigencia si ya se sabe que el acompañamiento termina. */ ?>
+        <div class="field">
+            <label class="field-label" for="ANIO_FIN">Año de fin (opcional)</label>
+            <input class="input acomp-anio" id="ANIO_FIN" name="ANIO_FIN" type="number" min="1900" max="2100" step="1" placeholder="vigente">
+            <p class="muted small">En blanco = sigue vigente y aparecerá también en las temporadas siguientes.</p>
+        </div>
+
         <div class="field">
             <label class="field-label" for="FUENTE">Fuente (opcional, se muestra público)</label>
             <input class="input" id="FUENTE" name="FUENTE" type="text" placeholder="URL del anuncio">
@@ -61,13 +69,14 @@ $csrf = Auth::csrfToken($session);
     <h2 class="section-title">Contratos de <?= V::e($anio) ?> (<?= count($contratos) ?>)</h2>
 <?php if ($contratos): ?>
     <div class="tableList"><table class="table table-zebra table-sm">
-        <thead class="thead-neutral"><tr><td>Hermandad</td><td>Titular</td><td>Banda</td><td>Fuente</td><td></td></tr></thead>
+        <thead class="thead-neutral"><tr><td>Hermandad</td><td>Titular</td><td>Banda</td><td>Vigencia</td><td>Fuente</td><td></td></tr></thead>
         <tbody>
 <?php foreach ($contratos as $c): ?>
             <tr>
                 <td><?= V::e($c['HERMANDAD']) ?></td>
                 <td><?= V::e($c['TITULAR'] ?? '—') ?></td>
                 <td><a href="<?= V::e(S::buildDetailPath('banda', $c['ID_BANDA'], (string) $c['BANDA'])) ?>"><?= V::e($c['BANDA']) ?></a></td>
+                <td class="small"><?= (int) $c['ANIO'] ?>–<?= $c['ANIO_FIN'] !== null ? (int) $c['ANIO_FIN'] : '…' ?></td>
                 <td class="small"><?= !empty($c['FUENTE']) ? '<a href="' . V::e($c['FUENTE']) . '" rel="noopener">enlace</a>' : '—' ?></td>
                 <td>
                     <form action="/dashboard/temporada/<?= V::e($anio) ?>/<?= (int) $c['ID_CONTRATO'] ?>/borrar" method="POST" class="inline-form" onsubmit="return confirm('¿Eliminar este contrato?');">

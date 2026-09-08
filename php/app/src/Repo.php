@@ -1680,26 +1680,159 @@ final class Repo
      * carga inserta las filas en el mismo orden del CSV de origen (día →
      * hermandad → paso), así que el ID autoincremental ya reconstruye ese
      * orden sin necesidad de guardarlo aparte.
+     * LOCALIDAD es la del ACOMPAÑAMIENTO (contrato_localidad, 009) y puede
+     * faltar en las cargas viejas; Pages::temporada la prefiere sobre el
+     * heurístico basado en BANDA_LOCALIDAD cuando está.
+     *
+     * El filtro ya no es "ANIO = año" sino vigencia por rango: un
+     * acompañamiento cuenta en $anio si empezó ese año o antes y no se ha
+     * cerrado todavía (ANIO_FIN NULL) o se cierra en $anio o después.
+     *
      * @return list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
-     *                     TITULAR:?string,FUENTE:?string,ID_BANDA:int,BANDA:string,
+     *                     TITULAR:?string,FUENTE:?string,ANIO:int,ANIO_FIN:?int,
+     *                     LOCALIDAD:?string,ID_BANDA:int,BANDA:string,
      *                     BANDA_LOCALIDAD:string}>
      */
     public static function temporada(string $anio): array
     {
         return Db::all(
             "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.FUENTE,
+                    c.ANIO, c.ANIO_FIN, cl.LOCALIDAD AS LOCALIDAD,
                     b.ID_BANDA, (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA,
                     b.LOCALIDAD AS BANDA_LOCALIDAD
-             FROM contrato c INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
-             WHERE c.ANIO = ?
+             FROM contrato c
+             INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
+             LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             WHERE c.ANIO <= ? AND (c.ANIO_FIN IS NULL OR c.ANIO_FIN >= ?)
              ORDER BY c.ID_CONTRATO ASC",
-            [$anio]
+            [$anio, $anio]
         );
     }
 
-    /** Años con al menos un contrato, para el sitemap y el índice de /temporada. */
+    /**
+     * Años con al menos un contrato VIGENTE, para el sitemap y el índice de
+     * /temporada. Con vigencia por rango ya no basta con agrupar por ANIO: un
+     * acompañamiento 2024→2026 tiene que hacer que existan las tres temporadas,
+     * así que hay que expandir cada rango año a año.
+     *
+     * El desglose se hace en PHP y no en SQL a propósito: son unos cientos de
+     * filas de dos enteros, y la versión con un CTE recursivo es mucho más
+     * frágil de lo que compensa aquí. Los rangos abiertos (ANIO_FIN NULL) se
+     * cortan en el año en curso + 2, el mismo tope que valida Pages::temporada
+     * antes de servir una temporada.
+     *
+     * @return list<array{K:int, N:int}>
+     */
     public static function aniosConTemporada(): array
     {
-        return Db::all('SELECT ANIO AS K, COUNT(*) AS N FROM contrato GROUP BY ANIO ORDER BY ANIO DESC');
+        $tope = (int) gmdate('Y') + 2;
+        $porAnio = [];
+        foreach (Db::all('SELECT ANIO, ANIO_FIN FROM contrato') as $c) {
+            $desde = (int) $c['ANIO'];
+            $hasta = $c['ANIO_FIN'] !== null ? (int) $c['ANIO_FIN'] : $tope;
+            if ($hasta > $tope) $hasta = $tope;
+            for ($a = $desde; $a <= $hasta; $a++) {
+                $porAnio[$a] = ($porAnio[$a] ?? 0) + 1;
+            }
+        }
+        krsort($porAnio);
+
+        $out = [];
+        foreach ($porAnio as $anio => $n) {
+            $out[] = ['K' => $anio, 'N' => $n];
+        }
+        return $out;
+    }
+
+    // ── Acompañamientos: edición por localidad y por banda ───────────────────
+    /**
+     * Localidades con acompañamientos cargados, con su recuento. La localidad
+     * vive en `contrato_localidad` (009); los contratos sin fila ahí se
+     * agrupan bajo cadena vacía para que se vean y se puedan corregir en vez
+     * de desaparecer del selector.
+     * @return list<array{LOCALIDAD:string, N:int}>
+     */
+    public static function localidadesConAcompanamiento(): array
+    {
+        return Db::all(
+            "SELECT COALESCE(cl.LOCALIDAD, '') AS LOCALIDAD, COUNT(*) AS N
+             FROM contrato c
+             LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             GROUP BY COALESCE(cl.LOCALIDAD, '')
+             ORDER BY LOCALIDAD = '' ASC, LOCALIDAD ASC"
+        );
+    }
+
+    /**
+     * Acompañamientos de una localidad, en el orden de carga (día → hermandad
+     * → paso, ver el comentario de temporada()). Cadena vacía = los que no
+     * tienen localidad asignada.
+     * @return list<array<string,mixed>>
+     */
+    public static function acompanamientosPorLocalidad(string $localidad): array
+    {
+        $sql =
+            "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.ANIO, c.ANIO_FIN,
+                    c.FUENTE, c.NOTA, COALESCE(cl.LOCALIDAD, '') AS LOCALIDAD,
+                    b.ID_BANDA, (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
+             FROM contrato c
+             INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
+             LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             WHERE COALESCE(cl.LOCALIDAD, '') = ?
+             ORDER BY c.HERMANDAD COLLATE NOCASE ASC, c.ID_CONTRATO ASC";
+        return Db::all($sql, [$localidad]);
+    }
+
+    /**
+     * Acompañamientos de una banda concreta, para el editor por banda.
+     * @return list<array<string,mixed>>
+     */
+    public static function acompanamientosPorBanda(int $idBanda): array
+    {
+        return Db::all(
+            "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.ANIO, c.ANIO_FIN,
+                    c.FUENTE, c.NOTA, COALESCE(cl.LOCALIDAD, '') AS LOCALIDAD
+             FROM contrato c
+             LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             WHERE c.ID_BANDA = ?
+             ORDER BY c.ANIO DESC, LOCALIDAD ASC, c.HERMANDAD COLLATE NOCASE ASC",
+            [$idBanda]
+        );
+    }
+
+    /**
+     * Hermandades ya escritas alguna vez, para el predictivo del editor por
+     * banda: evita que la misma hermandad entre con tres grafías distintas
+     * (HERMANDAD es texto libre hasta que exista la entidad real, N-03).
+     * $localidad acota la búsqueda a una localidad concreta; vacía = todas.
+     * @return list<array{HERMANDAD:string, LOCALIDAD:string, TITULARES:?string}>
+     */
+    public static function hermandadesConocidas(string $q, string $localidad = '', int $limit = 15): array
+    {
+        $tokens = preg_split('/\s+/u', trim(Db::noAcc($q)), -1, PREG_SPLIT_NO_EMPTY);
+        if ($tokens === []) return [];
+
+        $where = [];
+        $values = [];
+        foreach ($tokens as $t) {
+            $where[] = 'NOACC(c.HERMANDAD) LIKE ?';
+            $values[] = '%' . $t . '%';
+        }
+        if ($localidad !== '') {
+            $where[] = "COALESCE(cl.LOCALIDAD, '') = ?";
+            $values[] = $localidad;
+        }
+        $whereSql = implode(' AND ', $where);
+
+        return Db::all(
+            "SELECT c.HERMANDAD, COALESCE(cl.LOCALIDAD, '') AS LOCALIDAD,
+                    GROUP_CONCAT(DISTINCT c.TITULAR) AS TITULARES
+             FROM contrato c
+             LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             WHERE $whereSql
+             GROUP BY c.HERMANDAD_SLUG, COALESCE(cl.LOCALIDAD, '')
+             ORDER BY c.HERMANDAD COLLATE NOCASE ASC LIMIT ?",
+            [...$values, $limit]
+        );
     }
 }

@@ -805,3 +805,78 @@ SELECT c.TS, c.TABLA, c.CAMPO, c.ANTES, c.DESPUES, a.accion
                        AND ABS(a.ts - c.TS) <= 2
  WHERE c.ACTOR='jaguerra' ORDER BY c.TS DESC;
 ```
+
+---
+
+## 14. Acompañamientos: vigencia por rango y los dos editores
+
+Un acompañamiento (`contrato`) ya no es "banda X con la hermandad Y **en el año
+Z**" sino **un rango de temporadas**:
+
+| Columna | Significado |
+| --- | --- |
+| `ANIO` | Año de **inicio**. Obligatorio. |
+| `ANIO_FIN` | Último año vigente. **NULL = sigue vigente.** |
+
+`/temporada/{año}` muestra un acompañamiento cuando
+`ANIO <= año AND (ANIO_FIN IS NULL OR ANIO_FIN >= año)`, de modo que una
+contratación de varios años deja de tener que cargarse una vez por temporada.
+La columna la añade `migrate_ingest.php` (ALTER guardado por `PRAGMA
+table_info`, antes del lote de `.sql` porque `005_contrato.sql` la indexa);
+las filas que ya había quedan con `ANIO_FIN` NULL, es decir, vigentes — que es
+lo que describían.
+
+La **localidad del acompañamiento** vive en `contrato_localidad` (migración
+009). Es la ciudad de cuya Semana Santa procede el acompañamiento, **no** la
+sede de la banda: una hermandad de Granada puede contratar una banda de
+Sevilla. `Pages::temporada()` ya la prefiere sobre el heurístico que infería la
+ciudad a partir de `banda.LOCALIDAD`, con ese heurístico como respaldo para las
+filas que aún no la tienen (cierra `technical-debt.md` §4.2).
+
+### 14.1 Editor por localidad — `/dashboard/acompanamientos/localidad?loc=…`
+
+Todos los acompañamientos de una Semana Santa, uno por tarjeta. De cada fila se
+editan **la banda** (predictivo sobre `/api/banda/fastSearch`) y **la vigencia**
+(desde / hasta), y se guarda o se borra fila a fila. Hermandad y paso no se
+tocan aquí a propósito: son la identidad de la fila, cambiarlos es dar de alta
+otro acompañamiento. Guardar una fila que venía sin localidad (cargas viejas)
+se la asigna, así que abrir "Sin localidad" y repasarla es la forma de
+completarlas.
+
+### 14.2 Editor por banda — `/dashboard/acompanamientos/banda/{id}`
+
+Lo que toca una banda concreta, y el alta desde su lado: primero la
+**localidad** (con `<datalist>` de las ya cargadas), que acota el predictivo de
+**hermandades** (`/api/hermandad/fastSearch?q=&loc=`) a esa Semana Santa; luego
+el paso y la vigencia. El predictivo de hermandades existe porque `HERMANDAD`
+sigue siendo texto libre hasta que exista la entidad real (N-03): elegir del
+predictivo es lo que evita que la misma hermandad entre con tres grafías.
+
+`/dashboard/temporada/{año}` sigue siendo la vista por año, la que se
+corresponde una a una con la página pública.
+
+### 14.3 Carga masiva — `seed_acompanamientos.php`
+
+Sucesor de `seed_contratos_2026.php`, que exigía el `ID_BANDA` ya resuelto en
+el CSV. Aquí el CSV se escribe con el **nombre** de la banda tal y como lo
+publica la fuente (que es lo único que trae un listado de prensa) y el script
+lo resuelve contra la base en tres pasadas: slug exacto → slug exacto sin el
+"de \<localidad>" final → todas las palabras contenidas en una única banda.
+Lo que no resuelve **no se carga**: sale a un CSV de pendientes con el motivo y
+las candidatas, para darlo de alta a mano (o crear la banda) y relanzar.
+
+```bash
+# Dry-run (no escribe nada, ya dice qué resolvería y qué queda pendiente):
+php php/app/tools/seed_acompanamientos.php docs/data/acompanamientos_granada_2026.csv
+
+# Escritura real:
+php php/app/tools/seed_acompanamientos.php docs/data/acompanamientos_granada_2026.csv --commit
+```
+
+Columnas del CSV (cabecera obligatoria, orden indiferente):
+`LOCALIDAD, HERMANDAD, TITULAR, BANDA, ID_BANDA (opcional), ANIO, ANIO_FIN,
+FUENTE, NOTA`. Ver la plantilla en
+[`docs/data/acompanamientos_PLANTILLA.csv`](data/acompanamientos_PLANTILLA.csv).
+
+Es idempotente: comprueba (banda, hermandad, paso, año de inicio, localidad)
+antes de insertar, así que relanzarlo tras resolver pendientes no duplica nada.

@@ -67,6 +67,19 @@ try {
         }
     }
 
+    // ── Año de fin del acompañamiento en contrato ────────────────────────────
+    // Mismo motivo que el bloque de arriba: 005_contrato.sql indexa ANIO_FIN
+    // (idx_contrato_vigencia), así que la columna tiene que estar puesta antes
+    // de que corra el lote de .sql o el índice se queda fuera hasta la
+    // siguiente pasada. ANIO pasa a ser el año de INICIO; NULL en ANIO_FIN =
+    // el acompañamiento sigue vigente, que es justo lo que describen las filas
+    // que ya había (cargas de un solo año), de ahí que no haga falta backfill.
+    $colsContrato = $columnasDe('contrato');
+    if ($colsContrato !== [] && !in_array('ANIO_FIN', $colsContrato, true)) {
+        $pdo->exec('ALTER TABLE contrato ADD COLUMN ANIO_FIN INTEGER');
+        echo "añadida: contrato.ANIO_FIN\n";
+    }
+
     foreach ($files as $file) {
         $sql = file_get_contents($file);
         if ($sql === false) {

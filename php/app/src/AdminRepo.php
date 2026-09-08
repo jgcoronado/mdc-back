@@ -418,9 +418,12 @@ final class AdminRepo
         return ['code' => 'DELETED'];
     }
 
-    // ── Temporada / contratos (N-04/N-05) — alta manual, sin edición: borrar
-    // y volver a crear si hay un error, es más simple que un formulario de
-    // edición para el volumen bajo que tiene esto de momento. ────────────────
+    // ── Temporada / contratos (N-04/N-05) — alta manual y edición ────────────
+    // El "borrar y volver a crear" que había aquí dejó de valer al pasar los
+    // acompañamientos a rango de años: corregir la banda o cerrar la vigencia
+    // de una fila es la operación normal, no la excepción. updateContrato
+    // cubre justo eso (banda + años + localidad); el resto de campos siguen
+    // fijándose en el alta.
 
     /**
      * $localidad es la del ACOMPAÑAMIENTO (ciudad de cuya Semana Santa procede
@@ -430,17 +433,18 @@ final class AdminRepo
      *
      * @return array{code:string, contratoId?:int}
      */
-    public static function addContrato(int $idBanda, string $hermandad, string $anio, ?string $titular, ?string $fuente, ?string $nota, ?string $localidad = null): array
+    public static function addContrato(int $idBanda, string $hermandad, string $anio, ?string $titular, ?string $fuente, ?string $nota, ?string $localidad = null, ?string $anioFin = null): array
     {
         if (!self::bandaExiste($idBanda)) return ['code' => 'INVALID_BANDA'];
         $hermandad = trim($hermandad);
         if ($hermandad === '') return ['code' => 'HERMANDAD_REQUERIDA'];
-        if (!preg_match('/^\d{4}$/', $anio)) return ['code' => 'INVALID_ANIO'];
+        $anios = self::validarVigencia($anio, $anioFin);
+        if (is_string($anios)) return ['code' => $anios];
 
         Db::run(
-            'INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, FUENTE, NOTA)
-             VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [$idBanda, $hermandad, Slug::slugify($hermandad), self::normalize($titular), (int) $anio, self::normalize($fuente), self::normalize($nota)]
+            'INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, ANIO_FIN, FUENTE, NOTA)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [$idBanda, $hermandad, Slug::slugify($hermandad), self::normalize($titular), $anios[0], $anios[1], self::normalize($fuente), self::normalize($nota)]
         );
         $contratoId = Db::lastInsertId();
 
@@ -449,13 +453,70 @@ final class AdminRepo
             Db::run('INSERT INTO contrato_localidad (ID_CONTRATO, LOCALIDAD) VALUES (?, ?)', [$contratoId, $localidad]);
         }
 
-        Db::logAdmin('INSERT', 'contrato', $contratoId, ['banda' => $idBanda, 'hermandad' => $hermandad, 'anio' => $anio]);
+        Db::logAdmin('INSERT', 'contrato', $contratoId, ['banda' => $idBanda, 'hermandad' => $hermandad, 'anio' => $anio, 'anio_fin' => $anios[1]]);
         return ['code' => 'CREATED', 'contratoId' => $contratoId];
+    }
+
+    /**
+     * Vigencia de un acompañamiento: año de inicio obligatorio (4 dígitos),
+     * año de fin opcional (vacío = sigue vigente) y nunca anterior al inicio.
+     * @return array{0:int,1:?int}|string  Los dos años, o el código de error.
+     */
+    private static function validarVigencia(string $anio, ?string $anioFin): array|string
+    {
+        if (preg_match('/^\d{4}$/', $anio) !== 1) return 'INVALID_ANIO';
+        $fin = trim((string) $anioFin);
+        if ($fin === '') return [(int) $anio, null];
+        if (preg_match('/^\d{4}$/', $fin) !== 1) return 'INVALID_ANIO_FIN';
+        if ((int) $fin < (int) $anio) return 'ANIO_FIN_ANTERIOR';
+        return [(int) $anio, (int) $fin];
+    }
+
+    /**
+     * Edición individual de un acompañamiento desde el listado por localidad:
+     * banda y vigencia (inicio/fin). La hermandad y el paso NO se tocan aquí a
+     * propósito — son la identidad de la fila; cambiarlos es dar de alta otro
+     * acompañamiento distinto, no editar este.
+     *
+     * $localidad se pasa desde el editor por localidad para que una fila que
+     * llegó sin `contrato_localidad` (cargas viejas) quede asignada al
+     * guardarla; null la deja como esté.
+     *
+     * @return array{code:string}
+     */
+    public static function updateContrato(int $idContrato, int $idBanda, string $anio, ?string $anioFin, ?string $localidad = null): array
+    {
+        if (!self::bandaExiste($idBanda)) return ['code' => 'INVALID_BANDA'];
+        $anios = self::validarVigencia($anio, $anioFin);
+        if (is_string($anios)) return ['code' => $anios];
+
+        $changes = Db::run(
+            'UPDATE contrato SET ID_BANDA = ?, ANIO = ?, ANIO_FIN = ? WHERE ID_CONTRATO = ?',
+            [$idBanda, $anios[0], $anios[1], $idContrato]
+        );
+        if ($changes === 0 && Db::one('SELECT ID_CONTRATO FROM contrato WHERE ID_CONTRATO = ?', [$idContrato]) === null) {
+            return ['code' => 'NOT_FOUND'];
+        }
+
+        $localidad = self::normalize($localidad);
+        if ($localidad !== null) {
+            // 1:1 con PRIMARY KEY: DELETE + INSERT en vez de UPSERT, que es lo
+            // mismo que hace aprobarEnlace() y no depende de la versión de
+            // SQLite del host (ON CONFLICT necesita 3.24+).
+            Db::run('DELETE FROM contrato_localidad WHERE ID_CONTRATO = ?', [$idContrato]);
+            Db::run('INSERT INTO contrato_localidad (ID_CONTRATO, LOCALIDAD) VALUES (?, ?)', [$idContrato, $localidad]);
+        }
+
+        Db::logAdmin('UPDATE', 'contrato', $idContrato, ['banda' => $idBanda, 'anio' => $anios[0], 'anio_fin' => $anios[1]]);
+        return ['code' => 'UPDATED'];
     }
 
     /** @return array{code:string} */
     public static function deleteContrato(int $idContrato): array
     {
+        // La satélite primero: tiene FK a contrato y dejarla huérfana rompería
+        // el borrado con `PRAGMA foreign_keys = ON`.
+        Db::run('DELETE FROM contrato_localidad WHERE ID_CONTRATO = ?', [$idContrato]);
         $changes = Db::run('DELETE FROM contrato WHERE ID_CONTRATO = ?', [$idContrato]);
         if ($changes === 0) return ['code' => 'NOT_FOUND'];
         Db::logAdmin('DELETE', 'contrato', $idContrato);

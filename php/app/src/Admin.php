@@ -671,7 +671,16 @@ final class Admin
         $nota = is_string($_POST['NOTA'] ?? null) ? (string) $_POST['NOTA'] : null;
 
         try {
-            $r = AdminRepo::addContrato($idBanda, $hermandad, $anio, $titular, $fuente, $nota);
+            $r = AdminRepo::addContrato(
+                $idBanda,
+                $hermandad,
+                $anio,
+                $titular,
+                $fuente,
+                $nota,
+                null,
+                isset($_POST['ANIO_FIN']) ? (string) $_POST['ANIO_FIN'] : null
+            );
         } catch (\Throwable $e) {
             error_log('[dashboard/temporada/add] ' . $e->getMessage());
             Http::redirect("/dashboard/temporada/$anio?err=TABLA_NO_MIGRADA", 302);
@@ -689,6 +698,187 @@ final class Admin
         $r = AdminRepo::deleteContrato($contrato);
         if (($r['code'] ?? '') === 'DELETED') Http::redirect("/dashboard/temporada/$anio?deleted=1", 302);
         Http::redirect("/dashboard/temporada/$anio?err=" . ($r['code'] ?? 'ERROR'), 302);
+    }
+
+    // ── Acompañamientos: dos editores sobre la misma tabla `contrato` ────────
+    // El de TEMPORADA (arriba) es la vista por año, atada a la página pública.
+    // Estos dos son las vistas de trabajo del pipeline de carga:
+    //   · por LOCALIDAD → repasar de una tacada todos los acompañamientos de
+    //     una Semana Santa y corregir banda y vigencia fila a fila;
+    //   · por BANDA     → dar de alta lo que toca una banda concreta, buscando
+    //     primero la localidad y luego la hermandad dentro de ella.
+    // Comparten el fallback de "tabla sin migrar" de temporadaAdmin().
+
+    /** Mensaje único para cuando `contrato` no está migrada en este host. */
+    private static function contratoNoMigrado(\Throwable $e, string $ctx): array
+    {
+        error_log("[dashboard/$ctx] " . $e->getMessage());
+        return ['type' => 'error', 'msg' => 'La tabla contrato no existe todavía en este host — falta aplicar la migración 005_contrato.sql (migrate_ingest.php vía Plesk, con PHP 8.4 seleccionado).'];
+    }
+
+    /** Índice: elegir una localidad ya cargada, o una banda por el predictivo. */
+    public static function acompanamientosIndex(): void
+    {
+        $session = Auth::requireAdmin();
+        $notice = self::noticeFromQuery();
+        try {
+            $localidades = Repo::localidadesConAcompanamiento();
+        } catch (\Throwable $e) {
+            $localidades = [];
+            $notice = self::contratoNoMigrado($e, 'acompanamientos');
+        }
+        View::render('admin/acompanamientos_index', [
+            'session' => $session, 'localidades' => $localidades, 'notice' => $notice,
+        ], ['title' => 'Acompañamientos — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    /** Editor por localidad: una fila por acompañamiento, banda y años editables. */
+    public static function acompanamientosLocalidad(): void
+    {
+        $session = Auth::requireAdmin();
+        $localidad = trim((string) ($_GET['loc'] ?? ''));
+        $notice = self::noticeFromQuery();
+        try {
+            $filas = Repo::acompanamientosPorLocalidad($localidad);
+        } catch (\Throwable $e) {
+            $filas = [];
+            $notice = self::contratoNoMigrado($e, 'acompanamientos/localidad');
+        }
+        View::render('admin/acompanamientos_localidad', [
+            'session' => $session, 'localidad' => $localidad, 'filas' => $filas, 'notice' => $notice,
+        ], ['title' => 'Acompañamientos · ' . ($localidad !== '' ? $localidad : 'sin localidad') . ' — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    /** Guardar una fila del editor por localidad (banda + vigencia). */
+    public static function acompanamientosLocalidadPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $contrato = (int) $p['contrato'];
+        $localidad = trim((string) ($_POST['LOCALIDAD'] ?? ''));
+        $volver = '/dashboard/acompanamientos/localidad?loc=' . rawurlencode($localidad);
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("$volver&err=CSRF", 302);
+
+        $r = AdminRepo::updateContrato(
+            $contrato,
+            (int) ($_POST['ID_BANDA'] ?? 0),
+            trim((string) ($_POST['ANIO'] ?? '')),
+            isset($_POST['ANIO_FIN']) ? (string) $_POST['ANIO_FIN'] : null,
+            $localidad !== '' ? $localidad : null
+        );
+        if ($r['code'] === 'UPDATED') Http::redirect("$volver&saved=1", 302);
+        Http::redirect("$volver&err=" . $r['code'], 302);
+    }
+
+    /** Borrar una fila desde el editor por localidad. */
+    public static function acompanamientosLocalidadDeletePost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $contrato = (int) $p['contrato'];
+        $localidad = trim((string) ($_POST['LOCALIDAD'] ?? ''));
+        $volver = '/dashboard/acompanamientos/localidad?loc=' . rawurlencode($localidad);
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("$volver&err=CSRF", 302);
+        $r = AdminRepo::deleteContrato($contrato);
+        if ($r['code'] === 'DELETED') Http::redirect("$volver&deleted=1", 302);
+        Http::redirect("$volver&err=" . $r['code'], 302);
+    }
+
+    /** Editor por banda: sus acompañamientos + alta (localidad → hermandad → años). */
+    public static function acompanamientosBanda(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (int) $p['id'];
+        $banda = Repo::fetchBandaRaw((string) $id);
+        if ($banda === null) Http::notFound();
+
+        $notice = self::noticeFromQuery();
+        try {
+            $filas = Repo::acompanamientosPorBanda($id);
+            $localidades = Repo::localidadesConAcompanamiento();
+        } catch (\Throwable $e) {
+            $filas = [];
+            $localidades = [];
+            $notice = self::contratoNoMigrado($e, 'acompanamientos/banda');
+        }
+        View::render('admin/acompanamientos_banda', [
+            'session' => $session, 'banda' => $banda, 'filas' => $filas,
+            'localidades' => $localidades, 'notice' => $notice,
+        ], ['title' => 'Acompañamientos de ' . ($banda['NOMBRE_BREVE'] ?? '') . ' — Marchas de Cristo', 'noindex' => true]);
+    }
+
+    /** Alta de un acompañamiento desde la ficha de una banda. */
+    public static function acompanamientosBandaAddPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (int) $p['id'];
+        $volver = "/dashboard/acompanamientos/banda/$id";
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("$volver?err=CSRF", 302);
+
+        $localidad = trim((string) ($_POST['LOCALIDAD'] ?? ''));
+        try {
+            $r = AdminRepo::addContrato(
+                $id,
+                (string) ($_POST['HERMANDAD'] ?? ''),
+                trim((string) ($_POST['ANIO'] ?? '')),
+                is_string($_POST['TITULAR'] ?? null) ? (string) $_POST['TITULAR'] : null,
+                is_string($_POST['FUENTE'] ?? null) ? (string) $_POST['FUENTE'] : null,
+                is_string($_POST['NOTA'] ?? null) ? (string) $_POST['NOTA'] : null,
+                $localidad !== '' ? $localidad : null,
+                isset($_POST['ANIO_FIN']) ? (string) $_POST['ANIO_FIN'] : null
+            );
+        } catch (\Throwable $e) {
+            error_log('[dashboard/acompanamientos/banda/add] ' . $e->getMessage());
+            Http::redirect("$volver?err=TABLA_NO_MIGRADA", 302);
+        }
+        if ($r['code'] === 'CREATED') Http::redirect("$volver?created=1", 302);
+        Http::redirect("$volver?err=" . $r['code'], 302);
+    }
+
+    /** Guardar la vigencia de una fila desde el editor por banda. */
+    public static function acompanamientosBandaPost(array $p): void
+    {
+        $session = Auth::requireAdmin();
+        $id = (int) $p['id'];
+        $contrato = (int) $p['contrato'];
+        $volver = "/dashboard/acompanamientos/banda/$id";
+        if (!Auth::checkCsrf($_POST['_csrf'] ?? null, $session)) Http::redirect("$volver?err=CSRF", 302);
+
+        if (isset($_POST['borrar'])) {
+            $r = AdminRepo::deleteContrato($contrato);
+            if ($r['code'] === 'DELETED') Http::redirect("$volver?deleted=1", 302);
+            Http::redirect("$volver?err=" . $r['code'], 302);
+        }
+
+        $localidad = trim((string) ($_POST['LOCALIDAD'] ?? ''));
+        $r = AdminRepo::updateContrato(
+            $contrato,
+            $id,
+            trim((string) ($_POST['ANIO'] ?? '')),
+            isset($_POST['ANIO_FIN']) ? (string) $_POST['ANIO_FIN'] : null,
+            $localidad !== '' ? $localidad : null
+        );
+        if ($r['code'] === 'UPDATED') Http::redirect("$volver?saved=1", 302);
+        Http::redirect("$volver?err=" . $r['code'], 302);
+    }
+
+    /** Predictivo de hermandades ya escritas, acotable por localidad. */
+    public static function hermandadFastSearch(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (Auth::currentSession() === null) {
+            http_response_code(401);
+            echo json_encode(['code' => 'AUTH_REQUIRED', 'data' => []]);
+            return;
+        }
+        $q = trim((string) ($_GET['q'] ?? ''));
+        if (mb_strlen($q) < 3) { echo json_encode(['rowsReturned' => 0, 'data' => []]); return; }
+        try {
+            $data = Repo::hermandadesConocidas($q, trim((string) ($_GET['loc'] ?? '')));
+        } catch (\Throwable $e) {
+            error_log('[api/hermandad/fastSearch] ' . $e->getMessage());
+            $data = [];
+        }
+        echo json_encode(['rowsReturned' => count($data), 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     /** Alta/edición/baja manual de los enlaces de streaming/RRSS musicales de una banda (pestaña Social). */

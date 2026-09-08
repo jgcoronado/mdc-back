@@ -1018,7 +1018,17 @@ final class Pages
             $key = (string) $c['HERMANDAD_SLUG'];
             $grupos[$key]['nombre'] ??= $c['HERMANDAD'];
             $grupos[$key]['items'][] = $c;
-            $loc = trim((string) ($c['BANDA_LOCALIDAD'] ?? ''));
+            // La localidad DEL ACOMPAÑAMIENTO (contrato_localidad, 009) cuando
+            // está cargada: es el dato real, y manda sobre el heurístico. Se
+            // cuenta con un peso alto para que una sola fila con localidad
+            // conocida gane a cualquier mayoría inferida de las bandas —
+            // técnica-debt §4.2, que era justo lo que quedaba por terminar.
+            $real = trim((string) ($c['LOCALIDAD'] ?? ''));
+            if ($real !== '') {
+                $grupos[$key]['localidades'][$real] = ($grupos[$key]['localidades'][$real] ?? 0) + 1000;
+                continue;
+            }
+            $loc = trim($c['BANDA_LOCALIDAD']);
             if ($loc !== '') {
                 $grupos[$key]['localidades'][$loc] = ($grupos[$key]['localidades'][$loc] ?? 0) + 1;
             }

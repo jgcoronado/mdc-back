@@ -669,6 +669,15 @@ a.ln-name:hover { text-decoration: underline; }
 .admin-narrow { margin: 0 auto; }
 .admin-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .admin-bar h1 { margin: 0; }
+/* La botonera del panel: .row es un flex sin wrap (se usa así en formularios,
+   donde eso es lo que se quiere), pero aquí lleva una decena larga de botones
+   y en cuanto la pantalla se estrecha se sale por la derecha y hay que hacer
+   scroll horizontal para llegar a las últimas opciones. Se envuelve solo aquí
+   para no cambiar el comportamiento de .row en el resto del panel.
+   min-width: 0 evita que el propio flex-item se niegue a encoger por debajo
+   del ancho de su contenido, que es lo que provoca el desbordamiento. */
+.admin-bar > .row { flex-wrap: wrap; justify-content: flex-end; row-gap: 0.4rem; min-width: 0; flex: 1 1 auto; }
+.admin-bar > .row > * { flex: 0 0 auto; }
 .inline-form { display: inline; }
 .admin-form textarea.input { resize: vertical; min-height: 5rem; }
 
@@ -695,6 +704,26 @@ dialog.panel::backdrop { background: var(--velo); }
 .chip { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--s2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.2rem 0.6rem; font-size: 0.85rem; }
 .chip-x { border: 0; background: none; cursor: pointer; font-size: 1.05rem; line-height: 1; color: var(--muted-c); padding: 0; }
 .chip-x:hover { color: var(--ink); }
+
+/* ── Acompañamientos (editor por localidad y por banda) ──────────────────
+   Lista de tarjetas en vez de tabla: cada acompañamiento lleva su propio
+   <form> (un form no puede repartirse entre <td>) y los controles se reparten
+   en varias líneas cuando no caben, sin scroll horizontal. */
+.acomp-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.acomp-item { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); padding: 0.6rem 0.75rem; }
+.acomp-item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
+.acomp-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem 0.75rem; }
+.acomp-row-anios { flex-wrap: wrap; gap: 0.75rem; }
+.acomp-field { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.acomp-field-banda { flex: 1 1 18rem; }
+.acomp-field-banda .input { width: 100%; }
+.acomp-field-anio { flex: 0 0 6.5rem; }
+.acomp-field-acciones { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 0.4rem; }
+.acomp-anio { width: 6.5rem; }
+.input-sm { padding: 0.3rem 0.5rem; font-size: 0.9rem; }
+/* Va en su propio <form> (no puede compartirlo con el de guardar), así que
+   se alinea a la derecha para que no parezca una acción principal más. */
+.acomp-borrar { margin-top: 0.4rem; text-align: right; }
 
 .autocomplete { position: relative; }
 .suggest { position: absolute; z-index: 25; left: 0; right: 0; margin-top: 0.25rem; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--sombra-media); max-height: 16rem; overflow-y: auto; }
