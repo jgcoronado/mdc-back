@@ -120,15 +120,26 @@ php php/app/tools/resolver_contratos_banda.php contratos_ss_granada_2026.csv
 
 Eso no escribe nada: informa de cuántas bandas casan por nombre contra `banda`
 (por slug, insensible a acentos y puntuación, contra `NOMBRE_COMPLETO` y
-`NOMBRE_BREVE`), cuáles salen ambiguas y cuáles no aparecen. Con esa lista de
-"sin match" se recorta `bandas_ss2026_hue_cad_gra.csv` a las bandas que realmente
-hay que crear y se pasa por el camino de siempre:
+`NOMBRE_BREVE`), cuáles salen ambiguas y cuáles no aparecen.
+
+`--faltantes` da el segundo paso: cruza las que no aparecen contra
+`bandas_ss2026_hue_cad_gra.csv` y escribe
+`bandas_a_crear_contratos_ss_<loc>_2026.csv` ya en el formato de
+`seed_bandas_2026.php`, sin tener que recortar el inventario a mano.
 
 ```powershell
 # Windows/PowerShell
-php php/tools/seed_bandas_2026.php bandas_a_crear_hue_cad_gra.csv            # dry-run
-php php/tools/seed_bandas_2026.php bandas_a_crear_hue_cad_gra.csv --commit
+php php/app/tools/resolver_contratos_banda.php contratos_ss_huelva_2026.csv --faltantes
+# revisa NOMBRE_BREVE en bandas_a_crear_contratos_ss_huelva_2026.csv, y entonces:
+php php/tools/seed_bandas_2026.php bandas_a_crear_contratos_ss_huelva_2026.csv            # dry-run
+php php/tools/seed_bandas_2026.php bandas_a_crear_contratos_ss_huelva_2026.csv --commit
 ```
+
+Ojo con el orden: las tres localidades comparten bandas (la BCT Santísimo Cristo
+de la Victoria de León sale en Huelva y en Cádiz), así que haz una localidad
+entera antes de pasar a la siguiente — si no, el segundo `--faltantes` volvería a
+proponer altas que el primero ya hizo. `seed_bandas_2026.php` no duplica
+(comprueba `NOMBRE_COMPLETO`), pero el ruido sobra.
 
 Y ya con las bandas dadas de alta, se vuelve al resolutor con `--write` y se carga:
 

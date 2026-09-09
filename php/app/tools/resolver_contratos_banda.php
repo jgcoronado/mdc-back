@@ -22,14 +22,33 @@ declare(strict_types=1);
  * Las filas sin match salen listadas al final: esas son las bandas que faltan
  * por dar de alta antes de volver a lanzar el resolutor.
  *
+ * Con --faltantes ademas escribe bandas_a_crear_<nombre>.csv: las bandas sin
+ * match, ya en el formato que espera php/tools/seed_bandas_2026.php, sacando
+ * NOMBRE_BREVE/LOCALIDAD/PROVINCIA del inventario bandas_ss2026_hue_cad_gra.csv
+ * (o del que se le pase en --inventario=<fichero>). Asi no hay que recortar el
+ * inventario a mano entre una pasada y la siguiente. REVISA ese CSV antes de
+ * darlo de alta: NOMBRE_BREVE es una propuesta derivada del nombre largo.
+ *
  * Solo lee de la BD (SELECT); no escribe nada en ella ni deja rastro en admin_log.
  */
 
-$csvPath = $argv[1] ?? '';
-$write   = in_array('--write', $argv, true);
+$csvPath   = $argv[1] ?? '';
+$write     = in_array('--write', $argv, true);
+$faltantes = in_array('--faltantes', $argv, true);
+
+$inventarioPath = 'bandas_ss2026_hue_cad_gra.csv';
+foreach ($argv as $arg) {
+    if (str_starts_with((string) $arg, '--inventario=')) {
+        $inventarioPath = substr((string) $arg, strlen('--inventario='));
+    }
+}
 
 if ($csvPath === '' || !is_file($csvPath)) {
-    fwrite(STDERR, "USO: php php/app/tools/resolver_contratos_banda.php <contratos.csv> [--write]\n");
+    fwrite(STDERR, "USO: php php/app/tools/resolver_contratos_banda.php <contratos.csv> [--write] [--faltantes] [--inventario=<bandas.csv>]\n");
+    exit(1);
+}
+if ($faltantes && !is_file($inventarioPath)) {
+    fwrite(STDERR, "ERROR: --faltantes necesita el inventario de bandas; no encuentro $inventarioPath\n");
     exit(1);
 }
 
@@ -80,6 +99,7 @@ if ($write) {
 $ok = $ya = $ambiguas = 0;
 $sinMatch = [];
 $ambiguasLog = [];
+$claveDe = [];
 
 while (($row = fgetcsv($fh)) !== false) {
     if (count($row) === 1 && trim((string) $row[0]) === '') continue;
@@ -104,6 +124,9 @@ while (($row = fgetcsv($fh)) !== false) {
     } else {
         $sinMatch[$banda] = ($sinMatch[$banda] ?? 0) + 1;
     }
+    if (isset($idx['CLAVE_BANDA'])) {
+        $claveDe[$banda] = trim((string) $row[$idx['CLAVE_BANDA']]);
+    }
     if ($out) fputcsv($out, $row);
 }
 fclose($fh);
@@ -123,6 +146,47 @@ if ($sinMatch) {
     arsort($sinMatch);
     foreach ($sinMatch as $nombre => $n) fwrite(STDERR, sprintf("  - %-90s (%d filas)\n", $nombre, $n));
 }
+if ($faltantes && $sinMatch) {
+    // Inventario indexado por clave_normalizada Y por slug del nombre completo,
+    // para que cruce igual aunque el CSV de contratos no traiga CLAVE_BANDA.
+    $inv = [];
+    $ih  = fopen($inventarioPath, 'r');
+    $ihead = fgetcsv($ih);
+    $iidx  = array_flip($ihead);
+    while (($ir = fgetcsv($ih)) !== false) {
+        if (count($ir) === 1 && trim((string) $ir[0]) === '') continue;
+        $completo = trim((string) $ir[$iidx['NOMBRE_COMPLETO']]);
+        $inv[\App\Slug::slugify($completo)] = $ir;
+        if (isset($iidx['clave_normalizada'])) {
+            $inv[trim((string) $ir[$iidx['clave_normalizada']])] = $ir;
+        }
+    }
+    fclose($ih);
+
+    $destino = 'bandas_a_crear_' . preg_replace('/\.csv$/', '', basename($csvPath)) . '.csv';
+    $fo = fopen($destino, 'w');
+    fputcsv($fo, ['NOMBRE_COMPLETO', 'NOMBRE_BREVE', 'LOCALIDAD', 'PROVINCIA', 'clave_normalizada']);
+    $escritas = 0;
+    $sinFicha = [];
+    foreach (array_keys($sinMatch) as $nombre) {
+        $ir = $inv[\App\Slug::slugify($nombre)] ?? $inv[$claveDe[$nombre] ?? ''] ?? null;
+        if ($ir === null) { $sinFicha[] = $nombre; continue; }
+        fputcsv($fo, [
+            $ir[$iidx['NOMBRE_COMPLETO']],
+            $ir[$iidx['NOMBRE_BREVE']],
+            $ir[$iidx['LOCALIDAD']],
+            $ir[$iidx['PROVINCIA']],
+            $iidx['clave_normalizada'] !== null ? ($ir[$iidx['clave_normalizada']] ?? '') : '',
+        ]);
+        $escritas++;
+    }
+    fclose($fo);
+    fwrite(STDERR, "\n-> $destino ($escritas bandas a dar de alta; revisa NOMBRE_BREVE antes)\n");
+    foreach ($sinFicha as $n) {
+        fwrite(STDERR, "  ! sin ficha en $inventarioPath, anadela a mano: $n\n");
+    }
+}
+
 if ($write) {
     fwrite(STDERR, "\n-> " . $csvPath . ".resuelto.csv\n");
 } else {
