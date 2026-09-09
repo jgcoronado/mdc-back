@@ -1784,6 +1784,16 @@ final class Repo
      *                                       banda:string,actual:bool,contratos:list<int>,
      *                                       posibleDuplicado:bool}>}>}>
      */
+    /** TITULAR con el que se etiqueta la cruz de guía en `contrato` (única forma
+     * vista hasta ahora: "Cruz de Guia", sin tilde). Comparación sin
+     * mayúsculas/tilde para no depender de que todas las cargas futuras
+     * escriban exactamente igual. */
+    private static function esCruzDeGuia(string $titular): bool
+    {
+        $t = str_replace(['í', 'Í'], ['i', 'I'], trim($titular));
+        return strcasecmp($t, 'Cruz de Guia') === 0;
+    }
+
     public static function agruparAcompanamientos(array $rows): array
     {
         $porHermandad = [];
@@ -1832,9 +1842,16 @@ final class Repo
 
                 $titularesOut[] = [
                     'titular' => $variosTitulares ? ($t['label'] !== '' ? $t['label'] : 'Sin especificar') : null,
+                    'esCruzDeGuia' => self::esCruzDeGuia($key),
                     'rangos' => $rangos,
                 ];
             }
+
+            // La cruz de guía no es un paso pero va siempre la primera en la
+            // procesión — igual que fija 012_hermandad_paso.sql (ORDEN = 0)
+            // para cuando haya nómina real. Orden estable: entre el resto no
+            // se toca nada.
+            usort($titularesOut, static fn(array $a, array $b): int => (int) $b['esCruzDeGuia'] <=> (int) $a['esCruzDeGuia']);
 
             // Posible duplicado: dos TITULAR distintos ("Paso de Misterio" /
             // "Paso de Cristo"...) con la MISMA banda en años que se solapan
@@ -1862,6 +1879,11 @@ final class Repo
                 }
                 unset($ta);
             }
+
+            foreach ($titularesOut as &$to) {
+                unset($to['esCruzDeGuia']);
+            }
+            unset($to);
 
             $out[] = ['slug' => $slug, 'nombre' => $h['nombre'], 'titulares' => $titularesOut];
         }
