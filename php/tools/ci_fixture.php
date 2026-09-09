@@ -115,6 +115,37 @@ CREATE TABLE contrato (
   ID_CONTRATO INTEGER PRIMARY KEY, ID_BANDA INTEGER, HERMANDAD TEXT, HERMANDAD_SLUG TEXT,
   TITULAR TEXT, ANIO INTEGER, FUENTE TEXT, NOTA TEXT, CREATED_AT TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE contrato_localidad (
+    ID_CONTRATO INTEGER PRIMARY KEY REFERENCES contrato(ID_CONTRATO),
+    LOCALIDAD   TEXT NOT NULL
+);
+-- Nómina real (012_hermandad_paso.sql): vacía en la fixture a propósito — sin
+-- filas para 'Sevilla', /acompanamientos/sevilla cae al orden alfabético de
+-- siempre, que es justo el camino que ejercita este smoke test.
+CREATE TABLE hermandad (
+    ID_HERMANDAD INTEGER PRIMARY KEY,
+    LOCALIDAD    TEXT    NOT NULL,
+    NOMBRE       TEXT    NOT NULL,
+    SLUG         TEXT    NOT NULL,
+    DIA          TEXT    NOT NULL,
+    DIA_ORDEN    INTEGER NOT NULL,
+    ORDEN        INTEGER NOT NULL,
+    HORA_SALIDA  TEXT,
+    FUENTE       TEXT,
+    UNIQUE (LOCALIDAD, SLUG)
+);
+CREATE TABLE paso (
+    ID_PASO      INTEGER PRIMARY KEY,
+    ID_HERMANDAD INTEGER NOT NULL REFERENCES hermandad(ID_HERMANDAD),
+    NOMBRE       TEXT    NOT NULL,
+    ORDEN        INTEGER NOT NULL,
+    ES_CRUZ_GUIA INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (ID_HERMANDAD, NOMBRE)
+);
+CREATE TABLE contrato_paso (
+    ID_CONTRATO INTEGER PRIMARY KEY REFERENCES contrato(ID_CONTRATO),
+    ID_PASO     INTEGER NOT NULL REFERENCES paso(ID_PASO)
+);
 CREATE VIRTUAL TABLE marcha_fts USING fts5(TITULO, content=marcha, content_rowid=ID_MARCHA, tokenize="unicode61 remove_diacritics 2");
 CREATE VIRTUAL TABLE autor_fts USING fts5(NOMBRE, APELLIDOS, NOMBRE_ART, content=autor, content_rowid=ID_AUTOR, tokenize="unicode61 remove_diacritics 2");
 CREATE TABLE municipio (
@@ -202,6 +233,10 @@ $ins('INSERT INTO enlace_streaming (TIPO_ENT, ID_ENT, SERVICIO, URL, VERSION, AN
 $ins('INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, FUENTE) VALUES (?,?,?,?,?,?)', [
     [1, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Virgen de las Angustias', 2026, 'https://example.org/anuncio'],
     [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2026, null],
+]);
+$ins('INSERT INTO contrato_localidad (ID_CONTRATO, LOCALIDAD) VALUES (?,?)', [
+    [1, 'Sevilla'],
+    [2, 'Sevilla'],
 ]);
 
 $ins('INSERT INTO municipio (PROVINCIA, NOMBRE, LAT, LNG, OFICIAL, CLAVE) VALUES (?,?,?,?,?,?)', [

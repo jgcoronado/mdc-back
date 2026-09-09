@@ -1709,9 +1709,17 @@ final class Repo
     /**
      * Todos los contratos de una localidad, cualquier año — a diferencia de
      * la vieja temporada() (un año cada vez), aquí se trae el histórico
-     * completo para poder colapsarlo en rangos por hermandad/paso. Orden por
-     * HERMANDAD_SLUG (agrupa en la plantilla) y ANIO ASC (agruparAcompanamientos
-     * colapsa consecutivos y luego invierte a reciente→antiguo).
+     * completo para poder colapsarlo en rangos por hermandad/paso.
+     *
+     * Orden de hermandades: si la localidad tiene nómina real en `hermandad`
+     * (012_hermandad_paso.sql — hoy solo Córdoba y Jerez), se usa el orden de
+     * la Semana Santa (DIA_ORDEN, ORDEN); las hermandades con contrato pero
+     * sin fila en `hermandad` todavía (enlace por SLUG) caen al final,
+     * alfabéticas. Si la localidad no tiene nómina en absoluto (Sevilla,
+     * Málaga, Huelva, Cádiz, Granada de momento), el JOIN no casa nada y el
+     * orden es puramente alfabético por HERMANDAD_SLUG, como antes. Dentro de
+     * cada hermandad, ANIO ASC (agruparAcompanamientos colapsa consecutivos y
+     * luego invierte a reciente→antiguo).
      * @return list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
      *                     TITULAR:?string,ANIO:int,ID_BANDA:int,BANDA:string}>
      */
@@ -1734,8 +1742,10 @@ final class Repo
              FROM contrato c
              INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
              INNER JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             LEFT JOIN hermandad h ON h.LOCALIDAD = cl.LOCALIDAD AND h.SLUG = c.HERMANDAD_SLUG
              WHERE cl.LOCALIDAD = ?
-             ORDER BY c.HERMANDAD_SLUG ASC, c.ANIO ASC",
+             ORDER BY (h.ID_HERMANDAD IS NULL) ASC, h.DIA_ORDEN ASC, h.ORDEN ASC,
+                      c.HERMANDAD_SLUG ASC, c.ANIO ASC",
             [$localidad]
         );
     }
