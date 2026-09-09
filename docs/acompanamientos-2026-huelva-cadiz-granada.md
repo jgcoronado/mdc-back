@@ -52,9 +52,16 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ## Diferencia de alcance respecto a Sevilla
 
 La carga de Sevilla solo tiene cruces de guía y misterios (nada de palios). Estos
-tres CSV incluyen **todos los pasos**, palios de banda de música incluidos. Es más
-completo, pero significa que `/temporada/2026` mostrará Huelva/Cádiz/Granada con
-más detalle que Sevilla hasta que se complete Sevilla.
+tres CSV, tal como se investigaron el 2026-09-09, incluían **todos los pasos**,
+palios de banda de música incluidos.
+
+**Corrección 2026-09-09 (antes de cargar Huelva):** el usuario decidió alinear el
+alcance con el resto del proyecto de acompañamientos — se descarta cualquier paso
+acompañado por banda de música, sea Cristo, Misterio, Palio o Cruz de Guía; solo
+cuentan CCTT y AM. `contratos_ss_huelva_2026.csv.resuelto.csv` pasó de 44 a 24
+filas (se quitaron 19 palios + El Santo Entierro, que llevaba banda de música en
+un paso de Misterio) y `bandas_a_crear_contratos_ss_huelva_2026.csv` de 22 a 10
+bandas. Aplicar el mismo filtro al resolver Cádiz y Granada.
 
 Se han **excluido** las filas sin banda: `Silencio`, `Trío de Capilla`,
 `Capilla Musical`, el tambor ronco del Silencio de Granada y el cornetín de la
