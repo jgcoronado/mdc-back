@@ -1665,41 +1665,197 @@ final class Repo
         return $rows;
     }
 
-    // ── Temporada / contratos (N-04/N-05) ───────────────────────────────────
+    // ── Acompañamientos (rehecho 2026-08-29: por localidad → hermandad → paso,
+    // reemplaza a /temporada, que agrupaba por año y solo enseñaba una
+    // temporada cada vez). `contrato` sigue siendo una fila por año — el
+    // colapso en rangos (1991-2023: misma banda) es puramente de
+    // presentación, ver agruparAcompanamientos(). ────────────────────────────
+
     /**
-     * Contratos de un año, ordenados para agrupar por hermandad en la
-     * plantilla (misma hermandad = filas consecutivas). FUENTE se selecciona
-     * por si se necesita más adelante, pero la plantilla ya no la muestra
-     * (info pública sin contraste, no aporta como enlace visible); NOTA es
-     * interna del admin y no se selecciona.
-     * BANDA_LOCALIDAD viaja aparte (no solo dentro de BANDA ya formateado)
-     * para que Pages::temporada pueda inferir una "ciudad" aproximada por
-     * hermandad (localidad más frecuente entre sus bandas contratadas) sin
-     * esperar a la entidad `hermandad` real (N-03, ver docs/n03-hermandad.md).
-     * Orden: por ID_CONTRATO (orden de alta), no alfabético — el pipeline de
-     * carga inserta las filas en el mismo orden del CSV de origen (día →
-     * hermandad → paso), así que el ID autoincremental ya reconstruye ese
-     * orden sin necesidad de guardarlo aparte.
-     * @return list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
-     *                     TITULAR:?string,FUENTE:?string,ID_BANDA:int,BANDA:string,
-     *                     BANDA_LOCALIDAD:string}>
+     * Localidades del ACOMPAÑAMIENTO (contrato_localidad.LOCALIDAD, no
+     * banda.LOCALIDAD — ver 009_contrato_localidad.sql) con al menos un
+     * contrato, para el índice de /acompanamientos y el sitemap. Las filas
+     * de contrato sin fila en contrato_localidad (no debería haberlas desde
+     * que addContratoRango() la exige siempre) caen en 'Sin localidad' en vez
+     * de desaparecer.
+     * @return list<array{LOCALIDAD:string,N:int}>
      */
-    public static function temporada(string $anio): array
+    public static function acompanamientosLocalidades(): array
     {
         return Db::all(
-            "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.FUENTE,
-                    b.ID_BANDA, (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA,
-                    b.LOCALIDAD AS BANDA_LOCALIDAD
-             FROM contrato c INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
-             WHERE c.ANIO = ?
-             ORDER BY c.ID_CONTRATO ASC",
-            [$anio]
+            "SELECT COALESCE(cl.LOCALIDAD, 'Sin localidad') AS LOCALIDAD, COUNT(*) AS N
+             FROM contrato c LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             GROUP BY COALESCE(cl.LOCALIDAD, 'Sin localidad')
+             ORDER BY LOCALIDAD = 'Sin localidad', LOCALIDAD ASC"
         );
     }
 
-    /** Años con al menos un contrato, para el sitemap y el índice de /temporada. */
-    public static function aniosConTemporada(): array
+    /**
+     * Slug de ruta (/acompanamientos/{slug}) → LOCALIDAD literal, igual que
+     * HERMANDAD_SLUG pero sin columna dedicada: la lista de localidades es
+     * corta (una decena, no miles), así que comparar slugs en PHP sobre
+     * acompanamientosLocalidades() es más simple que mantener otra columna.
+     */
+    public static function resolverLocalidadPorSlug(string $slug): ?string
     {
-        return Db::all('SELECT ANIO AS K, COUNT(*) AS N FROM contrato GROUP BY ANIO ORDER BY ANIO DESC');
+        foreach (self::acompanamientosLocalidades() as $l) {
+            if (Slug::slugify((string) $l['LOCALIDAD']) === $slug) {
+                return (string) $l['LOCALIDAD'];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Todos los contratos de una localidad, cualquier año — a diferencia de
+     * la vieja temporada() (un año cada vez), aquí se trae el histórico
+     * completo para poder colapsarlo en rangos por hermandad/paso. Orden por
+     * HERMANDAD_SLUG (agrupa en la plantilla) y ANIO ASC (agruparAcompanamientos
+     * colapsa consecutivos y luego invierte a reciente→antiguo).
+     * @return list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
+     *                     TITULAR:?string,ANIO:int,ID_BANDA:int,BANDA:string}>
+     */
+    public static function acompanamientosPorLocalidad(string $localidad): array
+    {
+        if ($localidad === 'Sin localidad') {
+            return Db::all(
+                "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.ANIO,
+                        b.ID_BANDA, (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
+                 FROM contrato c
+                 INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
+                 LEFT JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+                 WHERE cl.ID_CONTRATO IS NULL
+                 ORDER BY c.HERMANDAD_SLUG ASC, c.ANIO ASC"
+            );
+        }
+        return Db::all(
+            "SELECT c.ID_CONTRATO, c.HERMANDAD, c.HERMANDAD_SLUG, c.TITULAR, c.ANIO,
+                    b.ID_BANDA, (b.NOMBRE_BREVE || ' (' || b.LOCALIDAD || ')') AS BANDA
+             FROM contrato c
+             INNER JOIN banda b ON b.ID_BANDA = c.ID_BANDA
+             INNER JOIN contrato_localidad cl ON cl.ID_CONTRATO = c.ID_CONTRATO
+             WHERE cl.LOCALIDAD = ?
+             ORDER BY c.HERMANDAD_SLUG ASC, c.ANIO ASC",
+            [$localidad]
+        );
+    }
+
+    /**
+     * Agrupa las filas de acompanamientosPorLocalidad() en hermandad → paso →
+     * rangos de años con la misma banda, más reciente primero (petición
+     * expresa: al revés del orden habitual "más antiguo arriba" de este tipo
+     * de listados, y terminando en 1980 porque ahí se acaba el histórico
+     * cargado — no se rellenan huecos ni años sin contrato conocido, eso
+     * inventaría datos).
+     *
+     * Un hueco entre dos años (p.ej. hay 1991 y 1993 pero no 1992) NUNCA se
+     * fusiona en un solo rango aunque la banda coincida: solo se colapsan
+     * años consecutivos de verdad, fila a fila.
+     *
+     * Dentro de una hermandad, si TODOS los contratos comparten el mismo
+     * TITULAR (o todos lo tienen vacío) se devuelve un único grupo con
+     * titular=null (sin subtítulo en la plantilla, como en el ejemplo con una
+     * sola línea de "Paso Cristo"). Si hay TITULAR distintos (varios pasos:
+     * Cruz de Guía, Paso de Misterio…) cada uno sale como su propio grupo con
+     * su texto tal cual está en la fila — sin normalizar variantes de
+     * redacción, eso también sería inventar/corregir un dato sin confirmar.
+     *
+     * "posibleDuplicado" en un rango: otro TITULAR de la misma hermandad tiene
+     * un rango con la misma banda en años que se solapan — casi seguro el
+     * mismo paso real cargado dos veces con redacciones de TITULAR distintas
+     * (ver docs/acompanamientos-nomina-2026.md §Deuda). Es una pista para el
+     * panel, no una fusión automática: el admin decide y borra a mano.
+     *
+     * @param list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
+     *                    TITULAR:?string,ANIO:int,ID_BANDA:int,BANDA:string}> $rows
+     * @return list<array{slug:string,nombre:string,titulares:list<array{
+     *                    titular:?string,
+     *                    rangos:list<array{anioInicio:int,anioFin:int,idBanda:int,
+     *                                       banda:string,actual:bool,contratos:list<int>,
+     *                                       posibleDuplicado:bool}>}>}>
+     */
+    public static function agruparAcompanamientos(array $rows): array
+    {
+        $porHermandad = [];
+        foreach ($rows as $r) {
+            $slug = (string) $r['HERMANDAD_SLUG'];
+            $porHermandad[$slug]['nombre'] ??= $r['HERMANDAD'];
+            $porHermandad[$slug]['rows'][] = $r;
+        }
+
+        $out = [];
+        foreach ($porHermandad as $slug => $h) {
+            $porTitular = [];
+            foreach ($h['rows'] as $r) {
+                $key = trim((string) ($r['TITULAR'] ?? ''));
+                $porTitular[$key]['label'] ??= $key;
+                $porTitular[$key]['rows'][] = $r;
+            }
+            $variosTitulares = count($porTitular) > 1;
+
+            $titularesOut = [];
+            foreach ($porTitular as $key => $t) {
+                $rangos = [];
+                foreach ($t['rows'] as $r) {
+                    $anio = (int) $r['ANIO'];
+                    $idBanda = (int) $r['ID_BANDA'];
+                    $i = $rangos === [] ? null : array_key_last($rangos);
+                    if ($i !== null && $rangos[$i]['idBanda'] === $idBanda && $rangos[$i]['anioFin'] === $anio - 1) {
+                        $rangos[$i]['anioFin'] = $anio;
+                        $rangos[$i]['contratos'][] = (int) $r['ID_CONTRATO'];
+                    } else {
+                        $rangos[] = [
+                            'anioInicio' => $anio,
+                            'anioFin' => $anio,
+                            'idBanda' => $idBanda,
+                            'banda' => (string) $r['BANDA'],
+                            'contratos' => [(int) $r['ID_CONTRATO']],
+                            'posibleDuplicado' => false,
+                        ];
+                    }
+                }
+                $rangos = array_reverse($rangos); // reciente → antiguo
+                foreach ($rangos as $i => &$rg) {
+                    $rg['actual'] = ($i === 0);
+                }
+                unset($rg);
+
+                $titularesOut[] = [
+                    'titular' => $variosTitulares ? ($t['label'] !== '' ? $t['label'] : 'Sin especificar') : null,
+                    'rangos' => $rangos,
+                ];
+            }
+
+            // Posible duplicado: dos TITULAR distintos ("Paso de Misterio" /
+            // "Paso de Cristo"...) con la MISMA banda en años que se solapan
+            // casi seguro son el mismo paso real cargado dos veces con
+            // redacciones distintas (ver docs/acompanamientos-nomina-2026.md
+            // §Deuda). No se fusionan solos — Regla 1, esto lo confirma un
+            // humano — solo se marcan para que el panel los destaque y se
+            // puedan seleccionar juntos para borrar.
+            if ($variosTitulares) {
+                foreach ($titularesOut as $ti => &$ta) {
+                    foreach ($ta['rangos'] as &$rgA) {
+                        foreach ($titularesOut as $tj => $tb) {
+                            if ($tj === $ti) continue;
+                            foreach ($tb['rangos'] as $rgB) {
+                                if ($rgA['idBanda'] === $rgB['idBanda']
+                                    && $rgA['anioInicio'] <= $rgB['anioFin']
+                                    && $rgB['anioInicio'] <= $rgA['anioFin']) {
+                                    $rgA['posibleDuplicado'] = true;
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                    unset($rgA);
+                }
+                unset($ta);
+            }
+
+            $out[] = ['slug' => $slug, 'nombre' => $h['nombre'], 'titulares' => $titularesOut];
+        }
+
+        return $out;
     }
 }

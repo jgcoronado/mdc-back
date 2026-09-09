@@ -52,7 +52,7 @@ $nav = [
     '/rankings' => 'Estadísticas',
     '/aniversarios' => 'Aniversarios',
     '/mapa' => 'Mapa',
-    '/temporada' => 'Temporada',
+    '/acompanamientos' => 'Acompañamientos',
 ];
 $nav = array_filter(
     $nav,

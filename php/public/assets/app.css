@@ -455,6 +455,18 @@ ul.vease { list-style: disc; margin: 0.5rem 0 0; padding: 0 0 0 1.15rem; }
 ul.vease li { padding: 0.34rem 0; font-size: 0.95rem; }
 ul.vease li::marker { color: var(--faint); }
 
+/* Acompañamientos (/acompanamientos): rangos de años colapsados por
+   hermandad/paso, más reciente primero — el primero de cada lista (actual)
+   se destaca en negrita, igual que en los programas de mano de referencia. */
+.acomp-jump { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; margin: 0.8rem 0 0.2rem; padding: 0.7rem 0.9rem; background: var(--s2); border-radius: var(--radius-sm); font-size: 0.86rem; }
+.acomp-jump a { color: var(--muted-c); text-decoration: none; }
+.acomp-jump a:hover { color: var(--acc); text-decoration: underline; }
+.acomp-paso { font-weight: 600; margin: 1rem 0 0.15rem; font-size: 0.92rem; color: var(--muted-c); }
+ul.acomp-rangos { margin-top: 0.15rem; }
+ul.acomp-rangos li .anio { color: var(--faint); margin-right: 0.35rem; }
+ul.acomp-rangos li.acomp-actual { font-weight: 700; }
+ul.acomp-rangos li.acomp-actual .anio { color: var(--muted-c); }
+
 /* Permalink del registro */
 .ids { display: flex; flex-wrap: wrap; gap: 0.35rem 1.2rem; margin-top: 2rem; padding-top: 0.6rem; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--faint); }
 .ids a { color: var(--muted-c); text-decoration: none; }
@@ -670,6 +682,7 @@ a.ln-name:hover { text-decoration: underline; }
 .admin-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .admin-bar h1 { margin: 0; }
 .inline-form { display: inline; }
+.inline-form[hidden] { display: none; }
 .admin-form textarea.input { resize: vertical; min-height: 5rem; }
 
 .alert { border-radius: var(--radius-sm); padding: 0.6rem 0.9rem; font-size: 0.9rem; }
