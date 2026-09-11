@@ -1013,12 +1013,14 @@ final class Pages
         $slug = (string) $p['localidad'];
         $localidad = null;
         $contratos = [];
+        $sinSalida = [];
         // Fallback defensivo, igual que antes en /temporada: la tabla
         // `contrato` puede no estar migrada aún en este host.
         try {
             $localidad = Repo::resolverLocalidadPorSlug($slug);
             if ($localidad !== null) {
                 $contratos = Repo::acompanamientosPorLocalidad($localidad);
+                $sinSalida = Repo::temporadasSinSalida($localidad);
             }
         } catch (\Throwable $e) {
             error_log('[acompanamientos] ' . $e->getMessage());
@@ -1030,7 +1032,7 @@ final class Pages
             Http::notFound();
         }
 
-        $hermandades = Repo::agruparAcompanamientos($contratos);
+        $hermandades = Repo::agruparAcompanamientos($contratos, $sinSalida);
 
         $base = self::base();
         $canonical = $base . '/acompanamientos/' . $slug;
@@ -1042,6 +1044,7 @@ final class Pages
             'h1' => $h1,
             'localidad' => $localidad,
             'hermandades' => $hermandades,
+            'sinSalida' => $sinSalida,
         ], [
             'title' => "$h1 — Marchas de Cristo",
             'description' => $desc,

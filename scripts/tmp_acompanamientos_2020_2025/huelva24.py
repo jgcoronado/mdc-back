@@ -10,6 +10,8 @@ import csv
 import re
 import unicodedata
 
+from vocab import compacta, localiza
+
 ROTULOS = [
     'EL PRADO', 'LOS DOLORES', 'LA BORRIQUITA', 'SAGRADA CENA', 'MUTILAOS', 'REDENCIÓN',
     'CAUTIVO', 'PERDÓN', 'TRES CAÍDAS', 'CALVARIO', 'LANZADA', 'SENTENCIA', 'ESTUDIANTES',
@@ -55,8 +57,13 @@ def parse(path, anio):
                 i = j
             else:
                 i += 1
-        rot = [(n, t) for n, t in bloques if sa(t).upper() in [sa(r).upper() for r in ROTULOS]]
-        tit = [(n, t) for n, t in bloques if (n, t) not in rot]
+        rot, tit = [], []
+        for n, t in bloques:
+            hits = localiza(t, ROTULOS)
+            if hits:
+                rot += [(n, h) for h in hits]
+            else:
+                tit.append((n, t))
         for n, l in enumerate(lineas):
             if not re.match(r'^\s*M[úu]sica\s*:', l.strip()):
                 continue
@@ -78,8 +85,10 @@ def parse(path, anio):
 
 
 if __name__ == '__main__':
-    filas = parse('txt/huelva_2024.txt', '2024')
-    with open('raw_huelva_2024.csv', 'w', newline='', encoding='utf-8') as fh:
+    import sys
+    anio = sys.argv[1] if len(sys.argv) > 1 else '2024'
+    filas = parse(f'txt/huelva_{anio}.txt', anio)
+    with open(f'raw_huelva_{anio}.csv', 'w', newline='', encoding='utf-8') as fh:
         w = csv.writer(fh)
         w.writerow(['ANIO', 'PAG', 'HERMANDAD', 'TITULAR_FUENTE', 'TITULAR', 'BANDA'])
         w.writerows(filas)

@@ -466,6 +466,9 @@ ul.acomp-rangos { margin-top: 0.15rem; }
 ul.acomp-rangos li .anio { color: var(--faint); margin-right: 0.35rem; }
 ul.acomp-rangos li.acomp-actual { font-weight: 700; }
 ul.acomp-rangos li.acomp-actual .anio { color: var(--muted-c); }
+/* Año sin salida procesional (014_temporada_sin_salida.sql): es una nota,
+   no un contrato — sin enlace y en el gris de los textos secundarios. */
+ul.acomp-rangos li.acomp-sin-salida { color: var(--faint); font-style: italic; }
 
 /* Permalink del registro */
 .ids { display: flex; flex-wrap: wrap; gap: 0.35rem 1.2rem; margin-top: 2rem; padding-top: 0.6rem; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--faint); }

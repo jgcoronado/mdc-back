@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Alcance y normalización comunes a las 14 extracciones de 2025 y 2024.
+"""Alcance y normalización comunes a las 28 extracciones de 2022 a 2025.
 
 Regla de alcance (la misma que se fijó para 2026, docs/acompanamientos-nomina-2026.md):
 sólo cuentan bandas de cornetas y tambores (CCTT/BCT/CyT) y agrupaciones musicales
@@ -43,7 +43,17 @@ def tipo(nombre):
         return 'AM'
     return None
 
+# 'Tambores roncos de la Banda de Cornetas y Tambores X', 'Cuatro tambores de
+# la Banda X': es un destacamento de la banda, no la banda tocando tras el paso.
+DESTACAMENTO = re.compile(
+    r'^\s*(?:tambores?\s+roncos?|'
+    r'(?:un|dos|tres|cuatro|cinco|seis|siete|ocho|varios|unos|los|las)\s+tambores?\b|'
+    r'corneti?[íi]n\b|escuadra\s+de|s[óo]lo\s+tambor)', re.I)
+
+
 def en_alcance(nombre):
+    if DESTACAMENTO.match(nombre.strip()):
+        return False
     t = tipo(nombre)
     if t is None:
         return False
@@ -67,8 +77,28 @@ EXPANDE = [
     (r'^\s*Banda\s+Cornetas\s+y\s+[Tt]ambores\s*', 'Banda de Cornetas y Tambores '),
 ]
 
+CONECTORAS = {'de', 'del', 'la', 'el', 'los', 'las', 'y', 'e', 'en', 'con', 'por',
+              'para', 'san', 'santa', 'santo'}
+ESTILO = re.compile(r'banda\s+de\s+cornetas|agrupaci[óo]n\s+musical|'
+                    r'\bB\.?\s?C\.?\s?T\.?\b|\bA\.?\s?M\.?\s', re.I)
+
+
+def _es_prosa(cola):
+    """¿La frase que sigue al punto es prosa de la ficha y no otro nombre?"""
+    return any(p not in CONECTORAS for p in re.findall(r'\b[a-záéíóúñ]{3,}\b', cola))
+
+
 def expande(nombre):
     n = re.sub(r'[«»“”‘’¨\'"´`]', '', nombre).strip()
+    # las guías de Cádiz escriben el estilo en minúscula dentro de la frase
+    # ('acompaña la banda de cornetas y tambores X')
+    if n[:1].islower():
+        n = n[0].upper() + n[1:]
+    # prosa por delante ('Este año le acompañará la banda de cornetas y tambores X')
+    m = ESTILO.search(n)
+    if m and m.start() > 0:
+        n = n[m.start():]
+        n = n[0].upper() + n[1:]
     for pat, rep in EXPANDE:
         n2 = re.sub(pat, rep, n, count=1)
         if n2 != n:
@@ -81,6 +111,28 @@ def expande(nombre):
     n = re.sub(r'\bM[ªa]\.?\s+Santísima', 'María Santísima', n)
     # cola de prosa que el PDF encadena detrás del nombre (minúscula suelta)
     n = re.sub(r'(\))\s+(?!y\b|de\b)\S.*$', r'\1', n)
+    # ... o detrás de un punto, si lo que sigue es prosa de la ficha
+    # ('... de Melilla. La Legión acompañará también al Señor de la Caridad')
+    while True:
+        m = re.search(r'\.\s+(?=[A-ZÁÉÍÓÚ¡])', n)
+        if not m or not _es_prosa(n[m.end():]):
+            break
+        n = n[:m.start()]
+    # cola corta en mayúscula tras el punto: es la localidad de la banda
+    # ('Agrupación Musical Virgen de la Oliva. Vejer de la Frontera')
+    n = re.sub(r'\.\s+((?!(?:La|El|Los|Las|Est[ae])\b)[A-ZÁÉÍÓÚ][^.()]{2,40})\s*$',
+               r' (\1)', n)
+    # a estas alturas las abreviaturas ya están expandidas: lo que siga a un
+    # punto es prosa de la ficha ('... de Espinas. La Legión')
+    n = re.split(r'\.\s+', n, maxsplit=1)[0]
+    # ... o detrás del verbo, sin punto de por medio
+    n = re.sub(r'\s+(?:acompa[ñn]a(?:r[áa]n?|ndo)?|ir[áa]n?|saldr[áa]n?|toca(?:r[áa]n?)?)'
+               r'\s+(?:a|al|en|tras|con|por|delante)\b.*$', '', n, flags=re.I)
     n = re.sub(r'\s+(?:Hermano mayor|Hermana mayor|Capataces?|Costaleros|Nº|N\.º|'
-               r'Detalles|Estrenos?|Tiempo de|Imaginer|Reseña)\b.*$', '', n, flags=re.I)
-    return re.sub(r'\s+', ' ', n).strip(' .,;')
+               r'Detalles|Estrenos?|Tiempo de|Imaginer|Im[áa]genes|Reseña)\b.*$', '',
+               n, flags=re.I)
+    n = re.sub(r'\s+', ' ', n).strip(' .,;')
+    # el PDF corta la línea dentro del paréntesis ('... del Rosario (Cádiz')
+    if n.count('(') == n.count(')') + 1 and not n.endswith(')'):
+        n += ')'
+    return n

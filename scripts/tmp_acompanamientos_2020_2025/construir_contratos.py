@@ -3,7 +3,7 @@
 `contratos_ss_<localidad>_<anio>.csv`, con el mismo formato y el mismo alcance
 que la carga de 2026.
 
-    python3 scripts/tmp_acompanamientos_2025_2024/construir_contratos.py
+    python3 scripts/tmp_acompanamientos_2020_2025/construir_contratos.py
 
 Alcance (docs/acompanamientos-nomina-2026.md): sólo CCTT y AM. Cualquier paso
 acompañado por banda de música, capilla, escolanía, coro o silencio se descarta,
@@ -29,6 +29,28 @@ sys.path.insert(0, AQUI)
 from normalizar import clave, en_alcance, expande, sa          # noqa: E402
 from prosa import trocea                                        # noqa: E402
 from sevilla_bandas import DENTRO as SEV_BANDAS                 # noqa: E402
+from vocab import compacta, localiza                            # noqa: E402
+
+
+_INDICES: dict[int, dict[str, str]] = {}
+
+
+def busca_rotulo(texto, mapa):
+    """Traduce un rótulo de la fuente ignorando espacios, acentos y puntuación.
+
+    pypdf parte las palabras de los programas de 2022 y 2023 ('LA BORRIQUIT A',
+    'SANT A CENA', 'P ASIÓN'), así que la comparación literal falla. Si el
+    rótulo trae dos hermandades pegadas, gana la primera que aparece.
+    """
+    idx = _INDICES.get(id(mapa))
+    if idx is None:
+        idx = {compacta(k): v for k, v in mapa.items()}
+        _INDICES[id(mapa)] = idx
+    directo = idx.get(compacta(texto))
+    if directo is not None:
+        return directo
+    hits = localiza(texto, list(mapa))
+    return mapa[hits[0]] if hits else None
 
 CABECERA = ['ID_BANDA', 'BANDA', 'CLAVE_BANDA', 'HERMANDAD', 'TITULAR', 'ANIO',
             'FUENTE', 'NOTA', 'LOCALIDAD']
@@ -45,7 +67,7 @@ CRISTO = ('Paso de Misterio', 'Paso de Cristo')
 def alinea_con_2026(localidad, filas):
     """Usa la etiqueta que ya tiene esa hermandad en 2026.
 
-    Las fuentes de 2025/2024 no distinguen 'Paso de Misterio' de 'Paso de
+    Las fuentes de 2022-2025 no distinguen 'Paso de Misterio' de 'Paso de
     Cristo' con el mismo criterio que musicofrades, y si la etiqueta no coincide
     con la de 2026 la serie de ese paso se parte en dos en /acompanamientos.
     """
@@ -66,7 +88,23 @@ def alinea_con_2026(localidad, filas):
     return salida
 
 
+COLA = re.compile(r'\s*[(,]\s*(?:despu[ée]s|antes|tras|desde|hasta|s[óo]lo|solo|durante|'
+                  r'en el tramo|a partir de|ida|vuelta)\b[^)]*\)?\s*$', re.I)
+
+
+def limpia_banda(nombre):
+    """Quita las coletillas del programa que no son parte del nombre.
+
+    Los programas de Málaga marcan con '*' las bandas que van sólo en un tramo
+    y aclaran entre paréntesis cuándo ('(después del recorrido oficial)'). El
+    tramo no se registra: la fila dice qué banda tocó tras ese paso ese año.
+    """
+    n = COLA.sub('', nombre)
+    return re.sub(r'[\s.*]+$', '', n).strip()
+
+
 def escribe(localidad, anio, filas, fuente):
+    filas = [(limpia_banda(b), h, t, n) for b, h, t, n in filas]
     filas = dedup(alinea_con_2026(localidad, filas))
     destino = os.path.join(RAIZ, f'contratos_ss_{localidad}_{anio}.csv')
     with open(destino, 'w', newline='', encoding='utf-8') as fh:
@@ -180,6 +218,13 @@ SEV_ANADIR = {
         ('Agrupación Musical Nuestro Padre Jesús de la Salud (Los Gitanos) de Sevilla',
          'San Jose Obrero', 'Paso de Cristo', ''),
     ],
+    '2022': [
+        # la ficha de La Sed trae dos 'Música:' sin etiqueta de paso: la primera
+        # es la cruz de guía (la propia hermandad estrenaba banda ese año), la
+        # segunda el misterio, y esa sí la coge el parser
+        ('Banda de Cornetas y Tambores Cristo de la Sed', 'La Sed', 'Cruz de Guia',
+         'banda de la propia hermandad, recién creada'),
+    ],
 }
 
 SEV_FUERA = re.compile(
@@ -189,7 +234,8 @@ SEV_FUERA = re.compile(
     r'oliva de salteras|carmen de salteras|nieves de olivares|santa ana|'
     r'soledad de cantillana|carmen de villalba|mairena del alcor|coria del r[íi]o|'
     r'puebla del r[íi]o|virgen del [áa]guila|f\. guerrero|g[óo]mez caminero|moguer|'
-    r'aznalc[óo]llar|santa cecilia|sanl[úu]car la mayor|virgen de las angustias\s*,?\s*sanl', re.I)
+    r'aznalc[óo]llar|santa cecilia|sanl[úu]car la mayor|virgen de las angustias\s*,?\s*sanl|'
+    r'quinteto|cuarteto|tr[íi]o de', re.I)
 
 
 def desdobla(texto):
@@ -201,16 +247,28 @@ def desdobla(texto):
 
 
 def sevilla_banda(texto):
-    """Nombre completo de la banda, o None si está fuera de alcance."""
+    """Nombre completo de la banda, o None si está fuera de alcance.
+
+    El descarte va por posición: en 'Banda de la Redención y Santa Ana de Dos
+    Hermanas' la que está fuera de alcance es la segunda banda de la frase y no
+    descalifica a la primera. En cambio 'La Soledad de Cantillana' empieza donde
+    empieza el descarte, así que se va entera.
+    """
     txt = re.sub(r'(\w)\s*-\s+(\w)', r'\1\2', texto)
     txt = re.sub(r'\bSta\.?\b', 'Santa', txt)
-    if SEV_FUERA.search(txt):
-        return None
     k = clave(txt)
-    for patron, completo in sorted(SEV_BANDAS.items(), key=lambda x: -len(x[0])):
-        if patron in k:
-            return completo
-    return None
+    dentro = None
+    for patron, completo in SEV_BANDAS.items():
+        i = k.find(patron)
+        if i >= 0 and (dentro is None or i < dentro[0] or
+                       (i == dentro[0] and len(patron) > dentro[2])):
+            dentro = (i, completo, len(patron))
+    if dentro is None:
+        return None
+    fuera = SEV_FUERA.search(k)
+    if fuera and fuera.start() <= dentro[0]:
+        return None
+    return dentro[1]
 
 
 def sevilla(anio):
@@ -243,7 +301,7 @@ def sevilla(anio):
                 banda = sevilla_banda(trozo)
                 if banda:
                     filas.append((banda, herm, titular, ''))
-    filas += [(b, h, t, n) for b, h, t, n in SEV_ANADIR[anio]]
+    filas += [(b, h, t, n) for b, h, t, n in SEV_ANADIR.get(anio, [])]
     return filas
 
 
@@ -308,6 +366,11 @@ GRA_HERMANDAD = {
     'Soledad de San Jerónimo': 'Soledad de San Jeronimo', 'Alhambra': 'Alhambra',
     'Facundillos': 'Facundillos', 'Resurrección y Triunfo': 'Resurreccion y Triunfo',
     'Resucitado y Alegría': 'Resucitado y Alegria',
+    'La Borriquilla': 'Borriquilla', 'Las Maravillas': 'Maravillas',
+    'La Lanzada': 'Lanzada', 'La Esperanza': 'Esperanza', 'La Concha': 'Concha',
+    'El Huerto': 'Huerto', 'La Aurora': 'Aurora', 'La Estrella': 'Estrella',
+    'Los Ferroviarios': 'Ferroviarios', 'Redención (Salesianos)': 'Salesianos',
+    'Santa María de la Alhambra': 'Alhambra', 'Humildad': 'Canilla',
 }
 
 
@@ -354,7 +417,8 @@ MAL_HERMANDAD = {
     'Calvario': 'Monte Calvario', 'Santa Cruz': 'Santa Cruz', 'Piedad': 'Piedad',
     'Sepulcro': 'Sepulcro', 'Santo Sepulcro': 'Sepulcro', 'Servitas': 'Servitas',
     'Soledad de San Pablo': 'Santo Traslado', 'Resucitado': 'Resucitado',
-    'Esperanza': 'Esperanza',
+    'Esperanza': 'Esperanza', 'Santo Traslado': 'Santo Traslado',
+    'Dolores de San Juan': 'Dolores de San Juan', 'Gitanos': 'Columna',
 }
 
 
@@ -400,7 +464,29 @@ CAD_HERMANDAD = {
     'SANTO ENTIERRO': 'Santo Entierro', 'Santo Entierro': 'Santo Entierro',
     'LA RESURRECCIÓN': 'El Resucitado', 'Resucitado': 'El Resucitado',
     'Oracion en el Huerto': 'La Oracion en el Huerto',
+    'Oración en el Huerto': 'La Oracion en el Huerto',
+    'Dolores Servitas': 'Servitas', 'Dolores Servita': 'Servitas',
+    'El Nazareno': 'El Nazareno', 'El Perdón': 'El Perdon',
+    'Expiración': 'Expiracion', 'Jesús Caído': 'Caido',
+    'Prendimiento': 'Prendimiento', 'Ecce Homo': 'Ecce Homo',
+    'Borriquita': 'La Borriquita',
+    # Sin fila en la carga de 2026 (aquel año no llevaron CCTT/AM): se nombran
+    # como las nombra la fuente para que el resolutor las dé de alta.
+    'Angustias': 'El Caminito', 'Angustias (El Caminito)': 'El Caminito',
+    'CAMINITO': 'El Caminito', 'Caminito': 'El Caminito',
+    'Ecce-Mater-Tua': 'Ecce Mater Tua', 'Ecce Mater Tua': 'Ecce Mater Tua',
+    'ECCE-MATER-TUA': 'Ecce Mater Tua',
 }
+
+
+CAD_BANDA_FIX = [
+    ('agrupacion de la salud',
+     'Agrupación Musical Nuestro Padre Jesús de la Salud de Cádiz'),
+    ('asociacion musical encarnacion',
+     'Agrupación Musical Nuestra Señora de la Encarnación (San Benito) de Sevilla'),
+    ('banda de la humildad de huelva',
+     'Banda de Cornetas y Tambores Nuestro Padre Jesús de la Humildad de Huelva'),
+]
 
 
 def cadiz(anio):
@@ -410,7 +496,7 @@ def cadiz(anio):
         herm = CAD_HERMANDAD.get(r['HERMANDAD'].strip())
         if not herm:
             continue
-        if anio == '2025':
+        if anio in ('2023', '2025'):
             titular = 'Paso de Misterio' if r['PASO'] == 'Misterio' else 'Paso de Palio'
             textos = [(titular, r['BANDA'])]
         else:
@@ -420,7 +506,14 @@ def cadiz(anio):
         for titular, texto in textos:
             for trozo in re.split(r'\s+y\s+(?=Banda|Agrupaci|AM |BCT|A\.M|B\.C)|'
                                  r',\s*(?=BCT|BM|AM |Banda|Agrupaci)', texto):
-                if en_alcance(trozo):
+                arreglada = None
+                for pista, completo in CAD_BANDA_FIX:
+                    if pista in clave(trozo):
+                        arreglada = completo
+                        break
+                if arreglada is not None:
+                    filas.append((arreglada, herm, titular, 'estilo de banda confirmado con las fichas de 2023-2026'))
+                elif en_alcance(trozo):
                     filas.append((expande(trozo), herm, titular, ''))
     return filas
 
@@ -457,6 +550,9 @@ HUE_HERMANDAD = {
     'La Bendición': 'Asociacion Parroquial de la Bendicion',
     'La Fe': 'La Fe', 'Los Dolores': 'Los Dolores', 'La Soledad': 'La Soledad',
     'Santa Cruz': 'Santa Cruz', 'VeraCruz': 'La Vera Cruz',
+    'FE': 'La Fe', 'LOS DOLORES': 'Los Dolores', 'SANTA CRUZ': 'Santa Cruz',
+    'SOLEDAD': 'La Soledad', 'VERA+CRUZ': 'La Vera Cruz',
+    'BENDICIÓN': 'Asociacion Parroquial de la Bendicion',
 }
 
 # El programa Cruz de Guía de 2025 pone dos hermandades en el mismo rótulo de
@@ -473,7 +569,7 @@ def huelva(anio):
         if anio == '2025' and r['PAG'] in HUE_2025_PAG:
             herm = HUE_2025_PAG[r['PAG']]
         else:
-            herm = HUE_HERMANDAD.get(r['HERMANDAD'].strip())
+            herm = busca_rotulo(r['HERMANDAD'].strip(), HUE_HERMANDAD)
         if not herm:
             continue
         texto = r['BANDA']
@@ -523,7 +619,10 @@ JER_HERMANDAD = {
     'LA SAGRADA MORTAJA': 'La Mortaja', 'LA EXALTACIÓN': 'La Exaltación',
     'EL SANTO CRUCIFIJO': 'El Santo Crucifijo', 'JEREZ': 'Entrega de Guadalcacín',
     'LAS CINCO LLAGAS': 'Las Cinco Llagas', 'EL SILENCIO': 'El Silencio',
-    'LAS ANGUSTIAS': 'Las Angustias',
+    'LAS ANGUSTIAS': 'Las Angustias', 'DEFENSIÓN': 'La Defensión',
+    'LA BUENA MUERTE': 'Buena Muerte', 'LOS JUDIOS': 'Judíos de San Mateo',
+    'EL LORETO': 'El Loreto', 'LA ENTREGA': 'Entrega de Guadalcacín',
+    'LA MORTAJA': 'La Mortaja', 'MORTAJA': 'La Mortaja', 'PASIÓN': 'Pasión',
 }
 
 JER_VIRGEN = re.compile(r'(mar[íi]a|virgen|ntra\.?\s*sra|nuestra\s+se[ñn]ora|dolorosa|'
@@ -533,7 +632,7 @@ JER_VIRGEN = re.compile(r'(mar[íi]a|virgen|ntra\.?\s*sra|nuestra\s+se[ñn]ora|d
 def jerez(anio):
     filas = []
     for r in raw(f'raw_jerez_{anio}.csv'):
-        herm = JER_HERMANDAD.get(r['HERMANDAD'].strip())
+        herm = busca_rotulo(r['HERMANDAD'].strip(), JER_HERMANDAD)
         if not herm:
             continue
         titular_fuente = r['TITULAR'].strip()
@@ -542,11 +641,14 @@ def jerez(anio):
         if JER_VIRGEN.search(titular_fuente) and not re.search(
                 r'cristo|se[ñn]or|nazareno|jes[úu]s|crucifijo|lignum', titular_fuente, re.I):
             continue     # paso de palio: fuera del sitio
+        # el programa de 2022 sale de pypdf con las dos columnas entremezcladas y
+        # hay fichas cuyo titular no se puede emparejar: se quedan sin nota
+        nota = (f'titular real: {titular_fuente.title()}'
+                if titular_fuente not in ('', '?') else '')
         for trozo in re.split(r'\s+y\s+(?=Banda|Agrupaci|A\.?M\.?\s|B\.?C\.?T)', r['BANDA']):
             if not en_alcance(trozo):
                 continue
-            filas.append((expande(trozo), herm, herm,
-                          f'titular real: {titular_fuente.title()}'))
+            filas.append((expande(trozo), herm, herm, nota))
     return filas
 
 
@@ -572,6 +674,17 @@ COR_HERMANDAD = {
     'LA CONVERSIÓN': 'Conversión', 'LOS DOLORES': 'Dolores',
     'EL RESUCITADO': 'Resucitado', 'FUENSANTA': 'Quinta Angustia',
     'ENTRADA TRIUNFAL': 'Entrada Triunfal',
+    'ENTRADA TRIUNFAL (LA BORRIQUITA)': 'Entrada Triunfal',
+    'COFRADÍA UNIVERSITARIA': 'Universitaria', 'EL CALVARIO': 'Calvario',
+    'EL NAZARENO': 'Nazareno', 'EL SANTO SEPULCRO': 'Sepulcro',
+    'HDAD. DEL STMO. CRISTO DE LAS LÁGRIMAS': 'Lágrimas',
+    'HERMANDAD QUINTA ANGUSTIA': 'Quinta Angustia',
+    'LA BUENA MUERTE': 'Buena Muerte', 'LA EXPIRACIÓN': 'Expiración',
+    'LA SOLEDAD': 'Soledad', 'LAS ANGUSTIAS': 'Angustias',
+    'PRO-HERMANDAD TRASLADO AL SEPULCRO': 'Traslado al Sepulcro',
+    'VÍA CRUCIS': 'Vía Crucis', 'ÁNIMAS': 'Ánimas',
+    'PRO-HERMANDAD DE LA O': 'La O', 'LA PROVIDENCIA': 'Providencia',
+    'EL BUEN SUCESO': 'Buen Suceso', 'LA SANTA FAZ': 'Santa Faz',
 }
 
 COR_PASO = {
@@ -594,17 +707,25 @@ COR_PASO = {
 }
 # Pasos de Cristo que la nómina de 2026 no llegó a nombrar: se dejan con la
 # etiqueta genérica para no inventar un titular.
+# Las dos hermandades cordobesas con DOS pasos de Cristo: cuál es cada uno se
+# decide por lo que dice el propio trozo de texto de esa banda, no por la ficha
+# entera (si no, las dos filas se llevarían el mismo titular).
 COR_PASO_2 = {('Huerto', 'columna'): 'El Señor Amarrado a la Columna',
-              ('Amor', 'amor'): 'Cristo del Amor'}
+              ('Amor', 'amor'): 'Cristo del Amor',
+              ('Amor', 'silencio'): 'Jesús del Silencio'}
 
 
 def cordoba(anio):
     filas = []
     for r in raw(f'raw_cordoba_{anio}.csv'):
-        herm = COR_HERMANDAD.get(r['HERMANDAD'].strip(), r['HERMANDAD'].strip()) \
-            if anio == '2024' else r['HERMANDAD'].strip()
+        herm = r['HERMANDAD'].strip()
+        if anio != '2025':
+            herm = busca_rotulo(herm, COR_HERMANDAD) or herm
         texto = r['BANDA']
         pares = trocea(texto, 'Paso de Cristo')
+        # 'Paso a Paso' encadena dos bandas en frases distintas
+        pares = [(rol, t) for rol, texto_rol in pares
+                 for t in re.split(r'\.\s+(?=Banda|Agrupaci|A\.?M\.?\s|B\.?C\.?T)', texto_rol)]
         for rol, trozo in pares:
             if rol in ('Paso de Palio', 'Paso de Virgen'):
                 continue
@@ -612,7 +733,7 @@ def cordoba(anio):
                 continue
             titular = COR_PASO.get(herm)
             for (h, pista), nombre in COR_PASO_2.items():
-                if h == herm and pista in sa(texto).lower():
+                if h == herm and pista in sa(trozo).lower():
                     titular = nombre
             if not titular:
                 continue
@@ -622,7 +743,23 @@ def cordoba(anio):
 
 # --------------------------------------------------------------------------- #
 
+ANIOS = ('2022', '2023', '2024', '2025')
+
 FUENTES = {
+    ('sevilla', '2022'): 'El Llamador (Canal Sur) Sevilla 2022',
+    ('sevilla', '2023'): 'El Llamador (Canal Sur) Sevilla 2023',
+    ('huelva', '2022'): 'El Llamador de Huelva (Canal Sur) 2022',
+    ('huelva', '2023'): 'El Llamador de Huelva (Canal Sur) 2023',
+    ('cadiz', '2022'): 'andaluciainformacion.es (guias por jornada)',
+    ('cadiz', '2023'): 'semanasantacadiz.com',
+    ('granada', '2022'): 'ahoragranada.com',
+    ('granada', '2023'): 'ahoragranada.com',
+    ('malaga', '2022'): 'malagamusical.blogspot.com',
+    ('malaga', '2023'): 'malagamusical.blogspot.com',
+    ('cordoba', '2022'): 'Paso a Paso (Canal Sur) Cordoba 2022',
+    ('cordoba', '2023'): 'Paso a Paso (Canal Sur) Cordoba 2023',
+    ('jerez', '2022'): 'Estacion de Penitencia (Canal Sur) Jerez 2022',
+    ('jerez', '2023'): 'Estacion de Penitencia (Canal Sur) Jerez 2023',
     ('sevilla', '2024'): 'El Llamador (Canal Sur) Sevilla 2024',
     ('sevilla', '2025'): 'El Llamador (Canal Sur) Sevilla 2025',
     ('huelva', '2024'): 'El Llamador de Huelva (Canal Sur) 2024',
@@ -645,7 +782,7 @@ CONSTRUCTORES = {'sevilla': sevilla, 'granada': granada, 'malaga': malaga,
 if __name__ == '__main__':
     total = 0
     for localidad, fn in CONSTRUCTORES.items():
-        for anio in ('2024', '2025'):
+        for anio in ANIOS:
             filas = escribe(localidad, anio, fn(anio), FUENTES[(localidad, anio)])
             total += len(filas)
     print(f'\nTOTAL {total} filas')

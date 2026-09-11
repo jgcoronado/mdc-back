@@ -2,6 +2,8 @@
 """El Llamador (Canal Sur, Sevilla) -> una fila por (hermandad, paso, banda)."""
 import re, sys, unicodedata, csv
 
+from vocab import localiza
+
 VOCAB = ['Bendición y Esperanza','Cristo de la Corona','Divino Perdón de Alcosa',
  'Dolores de Torreblanca','Dulce Nombre de Bellavista','El Amor','El Baratillo','El Buen Fin',
  'El Cachorro','El Calvario','El Carmen Doloroso','El Carmen','El Cerro del Águila',
@@ -30,21 +32,16 @@ def key(s):
 
 KEYS = sorted(((key(v), v) for v in VOCAB), key=lambda x: -len(x[0]))
 
+# Rótulos que el programa abrevia en el titular de la ficha y que no coinciden
+# con el nombre con el que la hermandad aparece en el resto de la publicación.
+ALIAS = {'Bellavista': 'Dulce Nombre de Bellavista'}
+
 def split_names(caps):
-    txt = ' ' + re.sub(r'\s+', ' ', key(caps)).strip() + ' '
-    found = []
-    while True:
-        best = None
-        for k, v in KEYS:
-            i = txt.find(' ' + k + ' ')
-            if i >= 0 and (best is None or i < best[0]):
-                best = (i, k, v)
-        if not best:
-            break
-        i, k, v = best
-        found.append((i, v))
-        txt = txt[:i + 1] + ' ' * len(k) + txt[i + 1 + len(k):]
-    return [v for _, v in sorted(found)]
+    """El PDF de 2022 mete espacios dentro de las palabras ('LA HINIEST A'),
+    así que la comparación va sin espacios (vocab.localiza)."""
+    nombres = [ALIAS.get(n, n) for n in localiza(caps, VOCAB + list(ALIAS))]
+    # los horarios repiten el rótulo de la hermandad justo debajo del titular
+    return [n for i, n in enumerate(nombres) if i == 0 or n != nombres[i - 1]]
 
 def unwrap(txt):
     """Une los cortes de línea del PDF: guion de partición y continuación."""
@@ -99,13 +96,18 @@ def parse(path, anio):
         for ln in body.split('\n'):
             ln = ln.strip()
             if len(ln) > 2 and ln == ln.upper() and sum(c.isalpha() for c in ln) >= 3:
-                k2 = key(ln)
+                k2 = ' '.join(key(ln).split())
+                if 'INFORMACION DE SERVICIO' in k2:
+                    break     # debajo va el recuadro de dispositivo, con más rótulos
+                if 'HDAD' in k2:
+                    continue
                 for d in DIAS:
                     k2 = k2.replace(d, ' ')
                 if k2.strip():
                     caps.append(k2)
         nombres = split_names(' '.join(caps))
-        fichas = re.split(r'(?m)^\s*Sede:', body)[1:]
+        # en 2023 y 2024 la segunda ficha de la página empieza por 'Nombre: Sede:'
+        fichas = re.split(r'(?m)^[^\S\n]*(?:Nombre:[^\S\n]*)?Sede:', body)[1:]
         cuadra = len(fichas) == len(nombres)
         for idx, f in enumerate(fichas):
             herm = nombres[idx] if cuadra else '? ' + '/'.join(nombres)

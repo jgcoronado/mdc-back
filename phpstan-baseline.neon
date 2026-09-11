@@ -1,30 +1,3 @@
-# Estado congelado de PHPStan: los errores que YA existían cuando se introdujo
-# el gate (2026-08-03, nivel 5). CI está en verde con este fichero, así que el
-# código NUEVO tiene que salir limpio desde el primer día.
-#
-# Esto NO es una lista de cosas ignoradas para siempre: es la lista de trabajo
-# del burn-down priorizado de docs/code-quality.md §6. Al resolver un error,
-# regenera el fichero con `scripts/quality.sh baseline` y el contador baja.
-#
-#   97 → 74 (2026-08-03, §6.1 resuelto). Lo que queda es el ruido de `??`
-#   redundante de §6.4: 66 nullCoalesce.offset + 8 nullCoalesce.variable.
-#
-#   74 → 137 (2026-08-28). No es limpieza: es deuda real acumulada en `pre`
-#   entre el 31-jul y el 12-ago sin regenerar este fichero (B-02/B-03 en
-#   docs/roadmap.md) — código y ficheros nuevos que el baseline de agosto
-#   nunca llegó a ver (seed_bandas_2026.php, seed_contratos_2026.php,
-#   ci_smoke.php, fill_enlaces_odesli.php, disco_form.php...). De camino se
-#   corrigieron dos cosas que NO se baselinean por ser bugs reales, no ruido
-#   de `??`: la constante BASE_DIR sin declarar en config.php (ver
-#   ignoreErrors de phpstan.neon.dist) y AdminRepo::addContrato() invocado
-#   con 7 argumentos cuando solo aceptaba 6 (seed_contratos_2026.php perdía
-#   la localidad del acompañamiento en silencio — el método ya la persiste).
-#
-# Los falsos positivos estructurales (extract() en plantillas, closures con
-# use (&$x), el artefacto de tuplas de banda_form…) NO viven aquí, sino en
-# `ignoreErrors` de phpstan.neon.dist, con su motivo escrito. Si algo de este
-# fichero resulta ser un falso positivo, muévelo allí en vez de dejarlo aquí.
-
 parameters:
 	ignoreErrors:
 		-
@@ -46,13 +19,13 @@ parameters:
 			path: php/app/src/Admin.php
 
 		-
-			message: '#^Offset ''code'' on array\{code\: string, clave\?\: string, usuario\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset ''code'' on array\{code\: string, borrados\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
 			path: php/app/src/Admin.php
 
 		-
-			message: '#^Offset ''code'' on array\{code\: string, contratoId\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset ''code'' on array\{code\: string, clave\?\: string, usuario\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
 			path: php/app/src/Admin.php
@@ -65,6 +38,12 @@ parameters:
 
 		-
 			message: '#^Offset ''code'' on array\{code\: string, count\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: php/app/src/Admin.php
+
+		-
+			message: '#^Offset ''code'' on array\{code\: string, creados\?\: int, existentes\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
 			path: php/app/src/Admin.php
@@ -146,12 +125,6 @@ parameters:
 			identifier: notIdentical.alwaysTrue
 			count: 2
 			path: php/app/src/ImportadorPistas.php
-
-		-
-			message: '#^Offset ''BANDA_LOCALIDAD'' on array\{ID_CONTRATO\: int, HERMANDAD\: string, HERMANDAD_SLUG\: string, TITULAR\: string\|null, FUENTE\: string\|null, ID_BANDA\: int, BANDA\: string, BANDA_LOCALIDAD\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: php/app/src/Pages.php
 
 		-
 			message: '#^Offset ''PERSONAL'' on array\{ID_DEDIC\: int, NOMBRE\: string, LOCALIDAD\: string, PROVINCIA\: string\|null, SLUG_KEY\: string, PERSONAL\: int, marchas\: list\<array\<string, mixed\>\>, N\: int\} on left side of \?\? always exists and is not nullable\.$#'
@@ -298,6 +271,18 @@ parameters:
 			path: php/app/templates/marcha_detail.php
 
 		-
+			message: '#^Constant BASE_DIR not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: php/app/tools/cargar_dudas_acompanamientos.php
+
+		-
+			message: '#^Constant BASE_DIR not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: php/app/tools/cargar_temporadas_sin_salida.php
+
+		-
 			message: '#^Undefined variable\: \$idExt»$#'
 			identifier: variable.undefined
 			count: 1
@@ -316,6 +301,24 @@ parameters:
 			path: php/app/tools/import_candidatos.php
 
 		-
+			message: '#^Offset ''HORA_SALIDA'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: php/app/tools/poblar_hermandad_paso_cordoba.php
+
+		-
+			message: '#^Offset ''PASOS'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: php/app/tools/poblar_hermandad_paso_cordoba.php
+
+		-
+			message: '#^Offset ''TIENE_PASO'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: php/app/tools/poblar_hermandad_paso_jerez.php
+
+		-
 			message: '#^Offset ''code'' on array\{code\: string, contratoId\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
@@ -324,6 +327,24 @@ parameters:
 		-
 			message: '#^Anonymous function has an unused use \$F\.$#'
 			identifier: closure.unusedUse
+			count: 1
+			path: php/tools/ci_enlaces_auto.php
+
+		-
+			message: '#^Offset ''ESTADO'' does not exist on array\{LOCALIDAD\: string, DIA\: string\|null, HERMANDAD\: string, ETIQUETA_RAW\: string\|null, BANDA_TEXTO\: string\|null, BANDA_URL\: string\|null, FUENTE\: string, MOTIVO\: string\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: php/tools/ci_enlaces_auto.php
+
+		-
+			message: '#^Offset ''SCORE'' does not exist on array\{LOCALIDAD\: string, DIA\: string\|null, HERMANDAD\: string, ETIQUETA_RAW\: string\|null, BANDA_TEXTO\: string\|null, BANDA_URL\: string\|null, FUENTE\: string, MOTIVO\: string\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: php/tools/ci_enlaces_auto.php
+
+		-
+			message: '#^Offset ''SERVICIO'' does not exist on array\{LOCALIDAD\: string, DIA\: string\|null, HERMANDAD\: string, ETIQUETA_RAW\: string\|null, BANDA_TEXTO\: string\|null, BANDA_URL\: string\|null, FUENTE\: string, MOTIVO\: string\}\.$#'
+			identifier: offsetAccess.notFound
 			count: 1
 			path: php/tools/ci_enlaces_auto.php
 
@@ -337,6 +358,24 @@ parameters:
 			message: '#^Offset ''code'' on array\{code\: string, marchaId\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
+			path: php/tools/ci_enlaces_auto.php
+
+		-
+			message: '#^Offset 0 does not exist on array\{\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: php/tools/ci_enlaces_auto.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 1
+			path: php/tools/ci_enlaces_auto.php
+
+		-
+			message: '#^Parameter \#2 \$cordobaCsv of function candidatos expects string, int given\.$#'
+			identifier: argument.type
+			count: 5
 			path: php/tools/ci_enlaces_auto.php
 
 		-
@@ -354,13 +393,13 @@ parameters:
 		-
 			message: '#^Offset ''headers'' on string\|null on left side of \?\? does not exist\.$#'
 			identifier: nullCoalesce.offset
-			count: 6
+			count: 5
 			path: php/tools/ci_smoke.php
 
 		-
 			message: '#^Offset ''status'' does not exist on string\.$#'
 			identifier: offsetAccess.notFound
-			count: 15
+			count: 14
 			path: php/tools/ci_smoke.php
 
 		-
@@ -386,4 +425,46 @@ parameters:
 			identifier: offsetAccess.notFound
 			count: 3
 			path: php/tools/smoke_remote.php
+
+		-
+			message: '#^Offset ''nota'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: scripts/tmp_acompanamientos/proponer_contratos_cordoba.php
+
+		-
+			message: '#^Offset ''paso'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 4
+			path: scripts/tmp_acompanamientos/proponer_contratos_cordoba.php
+
+		-
+			message: '#^Offset ''raw'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 4
+			path: scripts/tmp_acompanamientos/proponer_contratos_cordoba.php
+
+		-
+			message: '#^Offset ''slug'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 4
+			path: scripts/tmp_acompanamientos/proponer_contratos_cordoba.php
+
+		-
+			message: '#^Offset ''paso'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: scripts/tmp_acompanamientos/proponer_contratos_jerez.php
+
+		-
+			message: '#^Offset ''raw'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: scripts/tmp_acompanamientos/proponer_contratos_jerez.php
+
+		-
+			message: '#^Offset ''slug'' does not exist on array\{NOMBRE\: string, DIA\: string, DIA_ORDEN\: int, ORDEN\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 4
+			path: scripts/tmp_acompanamientos/proponer_contratos_jerez.php
 

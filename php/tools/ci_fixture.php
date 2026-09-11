@@ -146,6 +146,17 @@ CREATE TABLE contrato_paso (
     ID_CONTRATO INTEGER PRIMARY KEY REFERENCES contrato(ID_CONTRATO),
     ID_PASO     INTEGER NOT NULL REFERENCES paso(ID_PASO)
 );
+-- 014_temporada_sin_salida.sql: años sin estación de penitencia. La fixture
+-- carga 2020-2021 de Sevilla para ejercitar la anotación del hueco entre los
+-- contratos de 2019 y 2022.
+CREATE TABLE temporada_sin_salida (
+    LOCALIDAD  TEXT    NOT NULL,
+    ANIO       INTEGER NOT NULL,
+    MOTIVO     TEXT    NOT NULL,
+    FUENTE     TEXT,
+    CREATED_AT TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (LOCALIDAD, ANIO)
+);
 CREATE VIRTUAL TABLE marcha_fts USING fts5(TITULO, content=marcha, content_rowid=ID_MARCHA, tokenize="unicode61 remove_diacritics 2");
 CREATE VIRTUAL TABLE autor_fts USING fts5(NOMBRE, APELLIDOS, NOMBRE_ART, content=autor, content_rowid=ID_AUTOR, tokenize="unicode61 remove_diacritics 2");
 CREATE TABLE municipio (
@@ -233,10 +244,21 @@ $ins('INSERT INTO enlace_streaming (TIPO_ENT, ID_ENT, SERVICIO, URL, VERSION, AN
 $ins('INSERT INTO contrato (ID_BANDA, HERMANDAD, HERMANDAD_SLUG, TITULAR, ANIO, FUENTE) VALUES (?,?,?,?,?,?)', [
     [1, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Virgen de las Angustias', 2026, 'https://example.org/anuncio'],
     [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2026, null],
+    // 2019 y 2022 con la misma banda dejan un hueco en 2020-2021 que
+    // temporada_sin_salida sí explica, y otro en 2023-2025 que no: la
+    // plantilla debe anotar solo el primero.
+    [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2022, null],
+    [2, 'Hdad de los Gitanos', 'hdad-de-los-gitanos', 'Cristo de la Salud', 2019, null],
 ]);
 $ins('INSERT INTO contrato_localidad (ID_CONTRATO, LOCALIDAD) VALUES (?,?)', [
     [1, 'Sevilla'],
     [2, 'Sevilla'],
+    [3, 'Sevilla'],
+    [4, 'Sevilla'],
+]);
+$ins('INSERT INTO temporada_sin_salida (LOCALIDAD, ANIO, MOTIVO, FUENTE) VALUES (?,?,?,?)', [
+    ['Sevilla', 2020, 'No hubo salida procesional (pandemia de COVID-19)', 'fixture'],
+    ['Sevilla', 2021, 'No hubo salida procesional (pandemia de COVID-19)', 'fixture'],
 ]);
 
 $ins('INSERT INTO municipio (PROVINCIA, NOMBRE, LAT, LNG, OFICIAL, CLAVE) VALUES (?,?,?,?,?,?)', [

@@ -48,4 +48,10 @@ DENTRO = {
     'nuestra senora de los angeles': 'Banda de Cornetas y Tambores Nuestra Señora de los Ángeles de Sevilla',
     'angusitas': 'Agrupación Musical María Santísima de las Angustias Coronada de Sevilla',
     'jesus nazareno de sevilla': 'Banda de Cornetas y Tambores Jesús Nazareno de Sevilla',
+    # formas cortas que sólo aparecen en los programas de 2022 y 2023
+    'senora de los reyes': 'Agrupación Musical Virgen de los Reyes',
+    'presentacion al pueblo': 'Banda de Cornetas y Tambores Nuestro Padre Jesús en la Presentación al Pueblo de Dos Hermanas',
+    'paso y la esperanza': 'Banda de Cornetas y Tambores del Paso y la Esperanza',
+    'fraternita': 'Agrupación Musical Santa María de la Esperanza (Fraternitas)',
+    'jesus de la salud': 'Agrupación Musical Nuestro Padre Jesús de la Salud (Los Gitanos) de Sevilla',
 }

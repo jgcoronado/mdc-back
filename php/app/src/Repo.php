@@ -1751,6 +1751,35 @@ final class Repo
     }
 
     /**
+     * Años en que la localidad no tuvo salida procesional
+     * (014_temporada_sin_salida.sql): 2020 y 2021 en las siete localidades
+     * cargadas. `contrato` es una fila por año CON banda, así que un año sin
+     * procesión no deja rastro y en /acompanamientos se ve como un hueco mudo
+     * entre dos rangos. Esto permite anotarlo sin inventar contratos.
+     *
+     * Devuelve año → motivo. Si la tabla todavía no está migrada en el host,
+     * devuelve [] en vez de reventar la página, igual que el catch defensivo
+     * de Pages::acompanamientos().
+     * @return array<int,string>
+     */
+    public static function temporadasSinSalida(string $localidad): array
+    {
+        try {
+            $rows = Db::all(
+                'SELECT ANIO, MOTIVO FROM temporada_sin_salida WHERE LOCALIDAD = ? ORDER BY ANIO ASC',
+                [$localidad]
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['ANIO']] = (string) $r['MOTIVO'];
+        }
+        return $out;
+    }
+
+    /**
      * Agrupa las filas de acompanamientosPorLocalidad() en hermandad → paso →
      * rangos de años con la misma banda, más reciente primero (petición
      * expresa: al revés del orden habitual "más antiguo arriba" de este tipo
@@ -1776,13 +1805,21 @@ final class Repo
      * (ver docs/acompanamientos-nomina-2026.md §Deuda). Es una pista para el
      * panel, no una fusión automática: el admin decide y borra a mano.
      *
+     * Los huecos que explica `temporada_sin_salida` (2020-2021, sin salida por
+     * la pandemia) sí se anotan: entre dos rangos consecutivos se inserta una
+     * fila `sinSalida` con el motivo, y SOLO si todos los años del hueco están
+     * en esa tabla. Un hueco que no está explicado del todo se queda mudo como
+     * hasta ahora — no se rellena a medias.
+     *
      * @param list<array{ID_CONTRATO:int,HERMANDAD:string,HERMANDAD_SLUG:string,
      *                    TITULAR:?string,ANIO:int,ID_BANDA:int,BANDA:string}> $rows
+     * @param array<int,string> $sinSalida año → motivo, de temporadasSinSalida()
      * @return list<array{slug:string,nombre:string,titulares:list<array{
      *                    titular:?string,
      *                    rangos:list<array{anioInicio:int,anioFin:int,idBanda:int,
      *                                       banda:string,actual:bool,contratos:list<int>,
-     *                                       posibleDuplicado:bool}>}>}>
+     *                                       posibleDuplicado:bool,sinSalida:bool,
+     *                                       motivo:?string}>}>}>
      */
     /** TITULAR con el que se etiqueta la cruz de guía en `contrato` (única forma
      * vista hasta ahora: "Cruz de Guia", sin tilde). Comparación sin
@@ -1794,7 +1831,54 @@ final class Repo
         return strcasecmp($t, 'Cruz de Guia') === 0;
     }
 
-    public static function agruparAcompanamientos(array $rows): array
+    /**
+     * Inserta, entre dos rangos consecutivos (ya en orden reciente → antiguo),
+     * la anotación del hueco cuando TODOS sus años están en `$sinSalida`.
+     * @param list<array<string,mixed>> $rangos
+     * @param array<int,string> $sinSalida
+     * @return list<array<string,mixed>>
+     */
+    private static function anotarSinSalida(array $rangos, array $sinSalida): array
+    {
+        if ($sinSalida === [] || count($rangos) < 2) {
+            return $rangos;
+        }
+        $out = [];
+        foreach ($rangos as $i => $rg) {
+            $out[] = $rg;
+            $siguiente = $rangos[$i + 1] ?? null;   // el inmediatamente anterior en el tiempo
+            if ($siguiente === null) {
+                continue;
+            }
+            $desde = (int) $siguiente['anioFin'] + 1;
+            $hasta = (int) $rg['anioInicio'] - 1;
+            if ($desde > $hasta) {
+                continue;
+            }
+            $motivos = [];
+            for ($a = $desde; $a <= $hasta; $a++) {
+                if (!isset($sinSalida[$a])) {
+                    continue 2;                     // hueco no explicado del todo
+                }
+                $motivos[$sinSalida[$a]] = true;
+            }
+            $out[] = [
+                'anioInicio' => $desde,
+                'anioFin' => $hasta,
+                'idBanda' => 0,
+                'banda' => '',
+                'actual' => false,
+                'contratos' => [],
+                'posibleDuplicado' => false,
+                'sinSalida' => true,
+                'motivo' => implode(' / ', array_keys($motivos)),
+            ];
+        }
+        return $out;
+    }
+
+    /** @param array<int,string> $sinSalida */
+    public static function agruparAcompanamientos(array $rows, array $sinSalida = []): array
     {
         $porHermandad = [];
         foreach ($rows as $r) {
@@ -1831,6 +1915,8 @@ final class Repo
                             'banda' => (string) $r['BANDA'],
                             'contratos' => [(int) $r['ID_CONTRATO']],
                             'posibleDuplicado' => false,
+                            'sinSalida' => false,
+                            'motivo' => null,
                         ];
                     }
                 }
@@ -1880,8 +1966,11 @@ final class Repo
                 unset($ta);
             }
 
+            // Después de marcar duplicados: esas comprobaciones van por
+            // idBanda y las filas de "sin salida" no tienen banda.
             foreach ($titularesOut as &$to) {
                 unset($to['esCruzDeGuia']);
+                $to['rangos'] = self::anotarSinSalida($to['rangos'], $sinSalida);
             }
             unset($to);
 

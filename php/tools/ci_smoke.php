@@ -757,6 +757,13 @@ if ($modo === 'pro') {
     $tests['mapa: la provincia se enlaza desde el índice'] = static fn() => assertContains('/mapa', 'href="/mapa/provincia/sevilla"', $base);
     $tests['acompanamientos: índice enlaza a la localidad de la fixture'] = static fn() => assertContains('/acompanamientos', 'href="/acompanamientos/sevilla"', $base);
     $tests['acompanamientos: la localidad agrupa por hermandad'] = static fn() => assertContains('/acompanamientos/sevilla', 'Hdad de los Gitanos', $base);
+    $tests['acompanamientos: el hueco de 2020-2021 sale anotado'] = static fn() => assertContains('/acompanamientos/sevilla', 'No hubo salida procesional', $base);
+    $tests['acompanamientos: el hueco sin explicar sigue mudo'] = static function () use ($base): void {
+        $r = assertStatus('/acompanamientos/sevilla', 200, $base);
+        if (str_contains($r['body'], '2023–2025')) {
+            throw new RuntimeException('/acompanamientos/sevilla → el hueco de 2023-2025 no está en temporada_sin_salida y no debe anotarse');
+        }
+    };
     $tests['acompanamientos: localidad inexistente 404'] = static fn() => assertStatus('/acompanamientos/no-existe', 404, $base);
 }
 

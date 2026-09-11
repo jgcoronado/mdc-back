@@ -19,19 +19,25 @@ DIAS = re.compile(r'^(Domingo de Ramos|Lunes Santo|Martes Santo|Mi[ée]rcoles Sa
                   r'Viernes de Dolores|S[áa]bado de Pasi[óo]n)$', re.I)
 
 def granada(path, anio):
-    """<p>HermandadMúsica misterio: X Música palio: Y</p>"""
-    filas, dia = [], ''
+    """Dos maquetaciones de ahoragranada:
+    - 2023-2026: <p>HermandadMúsica misterio: X Música palio: Y</p>
+    - 2022:      <p><strong>Hermandad</strong></p><p>Música misterio: X</p>
+    """
+    filas, dia, actual = [], '', ''
     for tag, c in bloques(path):
         if DIAS.match(c):
             dia = c
             continue
-        if not re.search(r'M[úu]sica', c):
+        if not re.search(r'M[úu]sica|Abre calle', c):
+            if tag == 'p' and 2 < len(c) < 45 and ':' not in c and not c.endswith('.'):
+                actual = c.strip()
             continue
         c = re.sub(r'(?<=[a-zúí])(M[úu]sica)', r' | \1', c)
         partes = re.split(r'(M[úu]sica[^:]{0,30}:|Abre calle:)', c)
-        herm = partes[0].strip(' :·-|').strip()
+        herm = partes[0].strip(' :·-|').strip() or actual
         if not herm or len(herm) > 60:
             continue
+        actual = herm
         for i in range(1, len(partes), 2):
             etiqueta = partes[i].strip(':')
             filas.append([anio, dia, herm, etiqueta, partes[i + 1].strip(' .')])
@@ -51,6 +57,43 @@ def tv101(path, anio):
             paso, banda = c.split(':', 1)
             filas.append([anio, dia, herm, paso.strip(), banda.strip(' .')])
     return filas
+
+ROLES_MAL = (r'Cruz de Gu[íi]a|Cruz Gu[íi]a|Cristo|Virgen|Se[ñn]or|Misterio|Palio|'
+             r'Abriendo secci[óo]n de la Virgen|Abriendo Secci[óo]n de la|'
+             r'Delante del Trono|[ÁA]nimas de Ciegos|Azotes y Columna|Exaltaci[óo]n|'
+             r'Urna|Duelo|Nazareno|Trono|Crucificado|San Juan|Sant[íi]sima|No Lleva')
+DIAS_MAL = (r'DOMINGO DE RAMOS|LUNES SANTO|MARTES SANTO|MI[EÉ]RCOLES SANTO|JUEVES SANTO|'
+            r'MADRUGADA|VIERNES SANTO|S[ÁA]BADO SANTO|DOMINGO DE RESURRECCI[ÓO]N|'
+            r'V[ÍI]SPERAS')
+
+
+def malagablog2(path, anio):
+    """Años en que el blog pega el rótulo de la cofradía al del paso:
+    'PollinicaCruz de Guía', 'Lágrimas y FavoresVirgen', 'LUNES SANTOCrucifixiónCristo'."""
+    filas, dia, herm, rol = [], '', '', ''
+    for l in open(path, encoding='utf-8'):
+        l = l.replace('\xa0', ' ').strip()
+        if not l:
+            continue
+        if re.match(r'^[-–•]', l):
+            if herm and rol:
+                filas.append([anio, dia, herm, rol, l.lstrip('-–• ').strip(' .*')])
+            continue
+        m = re.match(rf'^({DIAS_MAL})\s*', l)
+        if m:
+            dia, l = m.group(1), l[m.end():].strip()
+            if not l:
+                continue
+        m = re.search(rf'({ROLES_MAL})\s*$', l)
+        if m:
+            pre = l[:m.start()].strip(' .-')
+            if pre:
+                herm = pre
+            rol = m.group(1)
+        else:
+            herm, rol = l.strip(' .'), ''
+    return filas
+
 
 def malagablog(path, anio):
     """Texto plano del blog: DIA / Cofradía / Rol / -Banda."""
@@ -76,7 +119,8 @@ def malagablog(path, anio):
 
 if __name__ == '__main__':
     modo, path, anio, out = sys.argv[1:5]
-    filas = {'granada': granada, 'tv101': tv101, 'malagablog': malagablog}[modo](path, anio)
+    filas = {'granada': granada, 'tv101': tv101, 'malagablog': malagablog,
+             'malagablog2': malagablog2}[modo](path, anio)
     with open(out, 'w', newline='', encoding='utf-8') as fh:
         w = csv.writer(fh)
         w.writerow(['ANIO', 'DIA', 'HERMANDAD', 'PASO', 'BANDA'])

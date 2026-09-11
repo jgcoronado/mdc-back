@@ -3,6 +3,8 @@
 'Música:' con los nombres de hermandad en versales."""
 import re, sys, csv, unicodedata
 
+from vocab import localiza
+
 RUIDO = re.compile(r'^(X:|HORARIOS?|HORAS?\b|CRUZ DE GU|PASO DE|TRONO|©|EGONDI|CANAL SUR|'
                    r'SALIDA|ENTRADA|CATEDRAL|CANDELARIA|PALILLERO|VALVERDE|BARRI|NUEVA\b|'
                    r'DOMI[NG]|LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|MADRUGADA|PASO |'
@@ -59,6 +61,28 @@ def bloques_caps(lineas, unir=True):
             i += 1
     return out
 
+VOCABULARIO = {
+    # Rótulos tal y como los escribe el programa Paso a Paso de Córdoba.
+    'cordoba': [
+        'PRO-HERMANDAD DE LA BONDAD', 'PRO-HERMANDAD DE LA SALUD', 'FUENSANTA',
+        'HERMANDAD QUINTA ANGUSTIA', 'PRESENTACIÓN', 'HERMANDAD DE LA O',
+        'PRO-HERMANDAD DE LA O', 'AURORA', 'HDAD. DEL STMO. CRISTO DE LAS LÁGRIMAS',
+        'HERMANDAD SANTÍSIMO CRISTO DE LA SANGRE', 'PRO-HERMANDAD DE LA SANGRE',
+        'PRO-HERMANDAD TRASLADO AL SEPULCRO', 'CONSOLACIÓN', 'LA PROVIDENCIA',
+        'ENTRADA TRIUNFAL (LA BORRIQUITA)', 'ENTRADA TRIUNFAL', 'LAS PENAS DE SANTIAGO',
+        'EL HUERTO', 'EL RESCATADO', 'VERA-CRUZ', 'LA ESPERANZA', 'EL AMOR',
+        'LA ESTRELLA', 'LA MERCED', 'LA SENTENCIA', 'VÍA CRUCIS', 'ÁNIMAS',
+        'LA AGONÍA', 'COFRADÍA UNIVERSITARIA', 'LA SANGRE', 'EL BUEN SUCESO',
+        'LA SANTA FAZ', 'EL PRENDIMIENTO', 'EL PERDÓN', 'EL CALVARIO', 'LA PAZ',
+        'LA MISERICORDIA', 'LA PASIÓN', 'LA PIEDAD DE LAS PALMERAS', 'EL NAZARENO',
+        'LA CARIDAD', 'EL CAÍDO', 'LA SAGRADA CENA', 'LAS ANGUSTIAS',
+        'CRISTO DE GRACIA', 'LA BUENA MUERTE', 'LA SOLEDAD', 'LA EXPIRACIÓN',
+        'EL DESCENDIMIENTO', 'LA CONVERSIÓN', 'LOS DOLORES', 'EL SANTO SEPULCRO',
+        'DOLORES DE ALCOLEA', 'EL RESUCITADO', 'LA REDENCIÓN',
+    ],
+}
+
+
 def parse(path, anio, modo):
     raw = open(path, encoding='utf-8').read()
     paginas = re.split(r'\n===== PAG (\d+) =====\n', raw)
@@ -78,6 +102,32 @@ def parse(path, anio, modo):
                 k += 1
             musicas.append((n, limpia(val)))
         if not musicas:
+            continue
+        if modo.startswith('vocab:'):
+            voc = VOCABULARIO[modo[6:]]
+            marcas, i = [], 0
+            while i < len(lineas):
+                if es_caps(lineas[i].strip()):
+                    j, tr = i, []
+                    while j < len(lineas) and es_caps(lineas[j].strip()):
+                        tr.append(lineas[j].strip())
+                        j += 1
+                    for nb in localiza(' '.join(tr), voc):
+                        marcas.append((i, nb))
+                    i = j
+                else:
+                    i += 1
+            nombres = [n for _, n in marcas]
+            if len(nombres) != len(musicas):
+                avisos.append((num, len(musicas), nombres))
+            for i, (ln, m) in enumerate(musicas):
+                if len(nombres) == len(musicas):
+                    herm = nombres[i]          # mismo orden de lectura
+                elif marcas:
+                    herm = min(marcas, key=lambda x: abs(x[0] - ln))[1]
+                else:
+                    herm = '?'
+                filas.append([anio, num, herm, '', m])
             continue
         bl = bloques_caps(lineas, unir=(modo != 'ordenlin'))
         if modo == 'sede':
