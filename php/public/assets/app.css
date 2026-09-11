@@ -681,6 +681,15 @@ a.ln-name:hover { text-decoration: underline; }
 .admin-narrow { margin: 0 auto; }
 .admin-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .admin-bar h1 { margin: 0; }
+/* La botonera del panel: .row es un flex sin wrap (se usa así en formularios,
+   donde eso es lo que se quiere), pero aquí lleva una decena larga de botones
+   y en cuanto la pantalla se estrecha se sale por la derecha y hay que hacer
+   scroll horizontal para llegar a las últimas opciones. Se envuelve solo aquí
+   para no cambiar el comportamiento de .row en el resto del panel.
+   min-width: 0 evita que el propio flex-item se niegue a encoger por debajo
+   del ancho de su contenido, que es lo que provoca el desbordamiento. */
+.admin-bar > .row { flex-wrap: wrap; justify-content: flex-end; row-gap: 0.4rem; min-width: 0; flex: 1 1 auto; }
+.admin-bar > .row > * { flex: 0 0 auto; }
 .inline-form { display: inline; }
 .inline-form[hidden] { display: none; }
 .admin-form textarea.input { resize: vertical; min-height: 5rem; }
