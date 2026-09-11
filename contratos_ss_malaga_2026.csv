@@ -1,5 +1,5 @@
 ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
-,"Agrupación Musical Nuestra Señora del Mar de Huércal de Almería","agrupacion musical nuestra senora del mar de huercal de almeria",Medinaceli,"Paso de Cristo",2026,musicofrades.com,,Malaga
+195,"Agrupación Musical Nuestra Señora del Mar de Huércal de Almería","agrupacion musical nuestra senora del mar de huercal de almeria",Medinaceli,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestro Padre Jesús Nazareno de Almogía","banda de musica nuestro padre jesus nazareno de almogia",Medinaceli,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical Jesús Cautivo de Estepona","agrupacion musical jesus cautivo de estepona","Dolores del Puerto de la Torre","Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Soledad de Mena de Málaga","banda de musica nuestra senora de la soledad de mena de malaga","Dolores del Puerto de la Torre","Paso de Virgen",2026,musicofrades.com,,Malaga
@@ -7,7 +7,7 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Música Sinfónica Virgen de la Trinidad de Málaga","banda de musica sinfonica virgen de la trinidad de malaga","Dolores de Churriana","Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Música Maestro Eloy García de la Archicofradía de la Expiración de Málaga","banda de musica maestro eloy garcia de la archicofradia de la expiracion de malaga",Gamarra,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Nuestro Padre Jesús Nazareno de Almogía","banda de cornetas y tambores nuestro padre jesus nazareno de almogia","San Andrés","Cruz de Guia",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Monte Calvario de Martos","banda de cornetas y tambores monte calvario de martos","San Andrés","Paso de Cristo",2026,musicofrades.com,,Malaga
+59,"Banda de Cornetas y Tambores Monte Calvario de Martos","banda de cornetas y tambores monte calvario de martos","San Andrés","Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestro Padre Jesús Nazareno de Almogía","banda de musica nuestro padre jesus nazareno de almogia","San Andrés","Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical Nuestro Padre Jesús Nazareno de La Roda de Andalucía","agrupacion musical nuestro padre jesus nazareno de la roda de andalucia","Verdad y Sagrario","Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Municipal Maestro Paco Tenorio de Arriate","banda de musica municipal maestro paco tenorio de arriate","Verdad y Sagrario","Paso de Virgen",2026,musicofrades.com,,Malaga
@@ -22,7 +22,7 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Música Sinfónica Virgen de la Trinidad de Málaga","banda de musica sinfonica virgen de la trinidad de malaga","Dulce Nombre","Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical San Lorenzo Mártir de Málaga","agrupacion musical san lorenzo martir de malaga",Salutación,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestro Padre Jesús Nazareno de Almogía","banda de musica nuestro padre jesus nazareno de almogia",Salutación,"Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga","Humildad y Paciencia","Paso de Cristo",2026,musicofrades.com,,Malaga
+101,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga","Humildad y Paciencia","Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Cruz del Humilladero de Málaga","banda de musica cruz del humilladero de malaga","Humildad y Paciencia","Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Paso y Esperanza de Málaga","banda de cornetas y tambores paso y esperanza de malaga",Humidad,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Santa Cecilia de Málaga","banda de musica santa cecilia de malaga",Humidad,"Paso de Virgen",2026,musicofrades.com,,Malaga
@@ -30,10 +30,10 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Música Vera+Cruz de Almogía","banda de musica vera cruz de almogia",Huerto,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Nuestro Padre Jesús Cautivo de Málaga","banda de cornetas y tambores nuestro padre jesus cautivo de malaga",Salud,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música de la Hermandad de Zamarrilla de Málaga","banda de musica de la hermandad de zamarrilla de malaga",Salud,"Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Prendimiento,"Cruz de Guia",2026,musicofrades.com,,Malaga
-,"Agrupación Musical Virgen de Gracia de Archidona","agrupacion musical virgen de gracia de archidona",Prendimiento,"Paso de Cristo",2026,musicofrades.com,,Malaga
+130,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Prendimiento,"Cruz de Guia",2026,musicofrades.com,,Malaga
+202,"Agrupación Musical Virgen de Gracia de Archidona","agrupacion musical virgen de gracia de archidona",Prendimiento,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Virgen del Rocío de Málaga","banda de musica virgen del rocio de malaga",Prendimiento,"Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Crucifixión,"Paso de Cristo",2026,musicofrades.com,,Malaga
+101,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Crucifixión,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestro Padre Jesús Nazareno de Almogía","banda de musica nuestro padre jesus nazareno de almogia",Crucifixión,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Nuestro Padre Jesús Nazareno de Almogía","banda de cornetas y tambores nuestro padre jesus nazareno de almogia",Pasión,"Cruz de Guia",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Paso y Esperanza de Málaga","banda de cornetas y tambores paso y esperanza de malaga",Pasión,"Paso de Cristo",2026,musicofrades.com,,Malaga
@@ -44,7 +44,7 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Música Santa Cecilia de Málaga","banda de musica santa cecilia de malaga","Dolores del Puente","Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Maestro Eloy García de la Archicofradía de la Expiración de Málaga","banda de musica maestro eloy garcia de la archicofradia de la expiracion de malaga","Dolores del Puente","Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Nuestro Padre Jesús Cautivo de Málaga","banda de cornetas y tambores nuestro padre jesus cautivo de malaga",Cautivo,"Paso de Cristo",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Cautivo,"Cruz de Guia",2026,musicofrades.com,"seccion Virgen",Malaga
+130,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Cautivo,"Cruz de Guia",2026,musicofrades.com,"seccion Virgen",Malaga
 ,"Banda de Música Sinfónica Virgen de la Trinidad de Málaga","banda de musica sinfonica virgen de la trinidad de malaga",Cautivo,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Dolores Coronada de Álora","banda de cornetas y tambores dolores coronada de alora",Estudiantes,"Cruz de Guia",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Soledad de Mena de Málaga","banda de musica nuestra senora de la soledad de mena de malaga",Estudiantes,"Paso de Cristo",2026,musicofrades.com,,Malaga
@@ -55,20 +55,20 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Cornetas y Tambores Paso y Esperanza de Málaga","banda de cornetas y tambores paso y esperanza de malaga",Penas,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Paz de Málaga","banda de musica nuestra senora de la paz de malaga",Penas,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical Jesús Cautivo de Estepona","agrupacion musical jesus cautivo de estepona","Nueva Esperanza","Paso de Cristo",2026,musicofrades.com,"comparte paso",Malaga
-,"Agrupación Musical Sagrada Resurrección de Sanlúcar de Barrameda","agrupacion musical sagrada resurreccion de sanlucar de barrameda","Nueva Esperanza","Paso de Cristo",2026,musicofrades.com,"comparte paso",Malaga
+146,"Agrupación Musical Sagrada Resurrección de Sanlúcar de Barrameda","agrupacion musical sagrada resurreccion de sanlucar de barrameda","Nueva Esperanza","Paso de Cristo",2026,musicofrades.com,"comparte paso",Malaga
 ,"Banda de Música de la Hermandad de Zamarrilla de Málaga","banda de musica de la hermandad de zamarrilla de malaga","Nueva Esperanza","Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Estrella,"Cruz de Guia",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Estrella,"Paso de Cristo",2026,musicofrades.com,,Malaga
+130,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Estrella,"Cruz de Guia",2026,musicofrades.com,,Malaga
+101,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Estrella,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Sinfónica Virgen de la Trinidad de Málaga","banda de musica sinfonica virgen de la trinidad de malaga",Estrella,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Vera-Cruz de Almogía","banda de cornetas y tambores vera cruz de almogia",Rescate,"Cruz de Guia",2026,musicofrades.com,,Malaga
-,"Agrupación Musical Santa Cruz de Huelva","agrupacion musical santa cruz de huelva",Rescate,"Paso de Cristo",2026,musicofrades.com,,Malaga
+200,"Agrupación Musical Santa Cruz de Huelva","agrupacion musical santa cruz de huelva",Rescate,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Cruz del Humilladero de Málaga","banda de musica cruz del humilladero de malaga",Rescate,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Nuestro Padre Jesús Nazareno de Almogía","banda de cornetas y tambores nuestro padre jesus nazareno de almogia",Sentencia,"Cruz de Guia",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical San Lorenzo Mártir de Málaga","agrupacion musical san lorenzo martir de malaga",Sentencia,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Soledad de Mena de Málaga","banda de musica nuestra senora de la soledad de mena de malaga",Sentencia,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical de las Reales Cofradías Fusionadas de San Juan de Málaga","agrupacion musical de las reales cofradias fusionadas de san juan de malaga",Fusionadas,"Cruz de Guia",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical Jesús Cautivo de Estepona","agrupacion musical jesus cautivo de estepona",Fusionadas,"Paso de Misterio",2026,musicofrades.com,"Azotes y Columna",Malaga
-,"Banda de Cornetas y Tambores Coronación de Campillos","banda de cornetas y tambores coronacion de campillos",Fusionadas,"Paso de Misterio",2026,musicofrades.com,Exaltación,Malaga
+178,"Banda de Cornetas y Tambores Coronación de Campillos","banda de cornetas y tambores coronacion de campillos",Fusionadas,"Paso de Misterio",2026,musicofrades.com,Exaltación,Malaga
 ,"Banda de Música de la Archicofradía del Paso y la Esperanza de Málaga","banda de musica de la archicofradia del paso y la esperanza de malaga",Fusionadas,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Paso y Esperanza de Málaga","banda de cornetas y tambores paso y esperanza de malaga",Mediadora,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Cruz del Humilladero de Málaga","banda de musica cruz del humilladero de malaga",Mediadora,"Paso de Virgen",2026,musicofrades.com,,Malaga
@@ -77,11 +77,11 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Música de la Hermandad de Zamarrilla de Málaga","banda de musica de la hermandad de zamarrilla de malaga",Sangre,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Música Sinfónica Virgen de la Trinidad de Málaga","banda de musica sinfonica virgen de la trinidad de malaga",Rico,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Soledad de Mena de Málaga","banda de musica nuestra senora de la soledad de mena de malaga",Rico,"Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Paloma,"Paso de Cristo",2026,musicofrades.com,,Malaga
+101,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Paloma,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Santa Vera Cruz – La Pepa – de Alhaurín el Grande","banda de musica santa vera cruz la pepa de alhaurin el grande",Paloma,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Música Maestro Eloy García de la Archicofradía de la Expiración de Málaga","banda de musica maestro eloy garcia de la archicofradia de la expiracion de malaga",Expiración,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Lágrimas de Dolores de Churriana","banda de cornetas y tambores lagrimas de dolores de churriana",Cena,"Cruz de Guia",2026,musicofrades.com,,Malaga
-,"Agrupación Musical Nuestra Señora de la Estrella de Dos Hermanas","agrupacion musical nuestra senora de la estrella de dos hermanas",Cena,"Paso de Cristo",2026,musicofrades.com,,Malaga
+57,"Agrupación Musical Nuestra Señora de la Estrella de Dos Hermanas","agrupacion musical nuestra senora de la estrella de dos hermanas",Cena,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Paz de Málaga","banda de musica nuestra senora de la paz de malaga",Cena,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Música Maestro Eloy García de la Archicofradía de la Expiración de Málaga","banda de musica maestro eloy garcia de la archicofradia de la expiracion de malaga","Santa Cruz","Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Agrupación Musical San Lorenzo Mártir de Málaga","agrupacion musical san lorenzo martir de malaga",Viñeros,"Paso de Cristo",2026,musicofrades.com,,Malaga
@@ -90,7 +90,7 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Cornetas y Tambores Nuestro Padre Jesús Cautivo de Málaga","banda de cornetas y tambores nuestro padre jesus cautivo de malaga",Zamarrilla,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música de la Hermandad de Zamarrilla de Málaga","banda de musica de la hermandad de zamarrilla de malaga",Zamarrilla,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Soledad de Mena de Málaga","banda de musica nuestra senora de la soledad de mena de malaga",Mena,"Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Misericordia,"Paso de Cristo",2026,musicofrades.com,,Malaga
+101,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Misericordia,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Cruz del Humilladero de Málaga","banda de musica cruz del humilladero de malaga",Misericordia,"Paso de Virgen",2026,musicofrades.com,,Malaga
 ,"Banda de Cornetas y Tambores Paso y Esperanza de Málaga","banda de cornetas y tambores paso y esperanza de malaga",Esperanza,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música de la Archicofradía del Paso y la Esperanza de Málaga","banda de musica de la archicofradia del paso y la esperanza de malaga",Esperanza,"Paso de Virgen",2026,musicofrades.com,,Malaga
@@ -106,7 +106,7 @@ ID_BANDA,BANDA,CLAVE_BANDA,HERMANDAD,TITULAR,ANIO,FUENTE,NOTA,LOCALIDAD
 ,"Banda de Música de la Hermandad de Zamarrilla de Málaga","banda de musica de la hermandad de zamarrilla de malaga",Piedad,"Paso de Virgen",2026,musicofrades.com,"acompaña Cristo y Virgen",Malaga
 ,"Banda de Música Municipal de Málaga","banda de musica municipal de malaga",Sepulcro,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música de la Archicofradía del Paso y la Esperanza de Málaga","banda de musica de la archicofradia del paso y la esperanza de malaga",Sepulcro,"Paso de Virgen",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Servitas,"Paso de Virgen",2026,musicofrades.com,tambores,Malaga
+130,"Banda de Cornetas y Tambores del Real Cuerpo de Bomberos de Málaga","banda de cornetas y tambores del real cuerpo de bomberos de malaga",Servitas,"Paso de Virgen",2026,musicofrades.com,tambores,Malaga
 ,"Banda de Cornetas y Tambores Lágrimas de Dolores de Churriana","banda de cornetas y tambores lagrimas de dolores de churriana",Resucitado,"Cruz de Guia",2026,musicofrades.com,,Malaga
-,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Resucitado,"Paso de Cristo",2026,musicofrades.com,,Malaga
+101,"Banda de Cornetas y Tambores Nuestra Señora del Carmen de Málaga","banda de cornetas y tambores nuestra senora del carmen de malaga",Resucitado,"Paso de Cristo",2026,musicofrades.com,,Malaga
 ,"Banda de Música Nuestra Señora de la Paz de Málaga","banda de musica nuestra senora de la paz de malaga",Resucitado,"Paso de Virgen",2026,musicofrades.com,,Malaga
